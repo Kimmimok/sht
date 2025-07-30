@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022", // 최신 JS 지원
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true, // 타입 안정성 향상 (권장)
+    "noEmit": true,
+    "incremental": true,
+    "module": "ESNext",
+    "esModuleInterop": true,
+    "moduleResolution": "Node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "baseUrl": ".", // ✅ 루트 기준 import 허용
+    "paths": {
+      "@/*": ["./*"] // ✅ 예: @/lib/xxx.ts
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": ["next-env.d.ts", ".next/types/**/*.ts", "**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
+}

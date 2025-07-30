@@ -1,0 +1,204 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import { upsertUserProfile } from '@/lib/userUtils';
+import PageWrapper from '@/components/PageWrapper';
+import SectionBox from '@/components/SectionBox';
+
+export default function ReservationProfilePage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const quoteId = searchParams.get('quoteId');
+  
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [userFormData, setUserFormData] = useState({
+    name: '',
+    english_name: '',
+    phone_number: ''
+  });
+
+  useEffect(() => {
+    checkAuthAndLoadUser();
+  }, []);
+
+  const checkAuthAndLoadUser = async () => {
+    try {
+      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
+      if (userError || !authUser) {
+        alert('로그인이 필요합니다.');
+        router.push('/login');
+        return;
+      }
+      setUser(authUser);
+
+      // 기존 사용자 정보 로드
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (existingUser) {
+        setUserFormData({
+          name: existingUser.name || '',
+          english_name: existingUser.english_name || '',
+          phone_number: existingUser.phone_number || ''
+        });
+      }
+    } catch (error) {
+      console.error('사용자 정보 로드 오류:', error);
+    }
+  };
+
+  // 사용자 정보 저장 및 예약 홈으로 이동
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!userFormData.name.trim()) {
+      alert('이름을 입력해주세요.');
+      return;
+    }
+    
+    if (!userFormData.english_name.trim()) {
+      alert('영문 이름을 입력해주세요.');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      if (!user) return;
+      
+      // 향상된 사용자 프로필 업데이트
+      const result = await upsertUserProfile(user.id, user.email || '', {
+        name: userFormData.name.trim(),
+        english_name: userFormData.english_name.trim().toUpperCase(),
+        phone_number: userFormData.phone_number.trim(),
+        role: 'member'  // 예약시 member로 승격
+      });
+      
+      if (!result.success) {
+        console.error('❌ 사용자 정보 저장 실패:', result.error);
+        alert('사용자 정보 저장에 실패했습니다.');
+        return;
+      }
+      
+      console.log('✅ 사용자 정보 저장 성공, 예약 홈으로 이동');
+      
+      // 견적 ID와 함께 예약 홈으로 이동
+      const redirectUrl = quoteId 
+        ? `/mypage/reservations?quoteId=${quoteId}`
+        : '/mypage/reservations';
+      router.push(redirectUrl);
+      
+    } catch (error) {
+      console.error('❌ 사용자 정보 저장 오류:', error);
+      alert('사용자 정보 저장 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 이름 입력 시 영문 이름 자동 생성
+  const handleNameChange = (name: string) => {
+    setUserFormData(prev => {
+      const englishName = convertToEnglish(name);
+      return {
+        ...prev,
+        name,
+        english_name: englishName
+      };
+    });
+  };
+
+  // 한글 이름을 영문으로 변환
+  const convertToEnglish = (koreanName: string): string => {
+    const names = koreanName.trim().split(' ');
+    if (names.length >= 2) {
+      return `${names[0]} ${names.slice(1).join(' ')}`.toUpperCase();
+    }
+    return koreanName.toUpperCase();
+  };
+
+  return (
+    <PageWrapper>
+      <SectionBox title="예약자 정보 입력">
+        <div className="max-w-md mx-auto">
+          {quoteId && (
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+              <h3 className="font-semibold text-blue-800">견적 정보</h3>
+              <p className="text-sm text-blue-600">견적 ID: {quoteId}</p>
+              <p className="text-sm text-blue-600">해당 견적으로 예약을 진행합니다.</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                이름 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={userFormData.name}
+                onChange={(e) => handleNameChange(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="홍길동"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                영문 이름 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={userFormData.english_name}
+                onChange={(e) => setUserFormData(prev => ({ ...prev, english_name: e.target.value.toUpperCase() }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="HONG GILDONG"
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                이름 입력 시 자동으로 영문명이 생성됩니다. 필요시 수정해주세요.
+              </p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                연락처
+              </label>
+              <input
+                type="tel"
+                value={userFormData.phone_number}
+                onChange={(e) => setUserFormData(prev => ({ ...prev, phone_number: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="010-1234-5678"
+              />
+            </div>
+            
+            <div className="flex space-x-3 pt-6">
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="flex-1 px-4 py-3 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+                disabled={loading}
+              >
+                취소
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-4 py-3 text-white bg-blue-500 rounded-md hover:bg-blue-600 disabled:opacity-50"
+                disabled={loading}
+              >
+                {loading ? '저장 중...' : '저장하고 예약하기'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </SectionBox>
+    </PageWrapper>
+  );
+}

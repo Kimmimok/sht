@@ -1,0 +1,217 @@
+table_name,column_name,data_type
+airport,id,uuid
+airport,airport_code,character varying
+airport,passenger_count,integer
+airport,special_requests,text
+airport,base_price,numeric
+airport,created_at,timestamp with time zone
+airport,updated_at,timestamp with time zone
+airport_price,airport_code,text
+airport_price,airport_category,text
+airport_price,airport_route,text
+airport_price,airport_car_type,text
+airport_price,price,numeric
+car,id,uuid
+car,base_price,numeric
+car,created_at,timestamp with time zone
+car,updated_at,timestamp with time zone
+car,car_code,character varying
+car,special_requests,text
+car,car_count,integer
+car_price,car_code,text
+car_price,car_category,text
+car_price,cruise,text
+car_price,car_type,text
+car_price,price,numeric
+car_price,schedule,text
+car_price,passenger_count,text
+cruise,id,uuid
+cruise,cruise_name,character varying
+cruise,departure_date,date
+cruise,return_date,date
+cruise,departure_port,character varying
+cruise,room_type,character varying
+cruise,adult_count,integer
+cruise,child_count,integer
+cruise,infant_count,integer
+cruise,special_requests,text
+cruise,base_price,numeric
+cruise,created_at,timestamp with time zone
+cruise,updated_at,timestamp with time zone
+cruise,schedule_code,text
+cruise,cruise_code,text
+cruise,payment_code,text
+cruise,discount_rate,numeric
+cruise,rooms_detail,jsonb
+cruise,vehicle_detail,jsonb
+hotel,id,uuid
+hotel,hotel_code,character varying
+hotel,special_requests,text
+hotel,base_price,numeric
+hotel,created_at,timestamp with time zone
+hotel,updated_at,timestamp with time zone
+hotel_price,hotel_code,text
+hotel_price,hotel_name,text
+hotel_price,room_name,text
+hotel_price,room_type,text
+hotel_price,price,numeric
+hotel_price,start_date,date
+hotel_price,end_date,date
+hotel_price,weekday_type,text
+quote,id,uuid
+quote,user_id,uuid
+quote,status,character varying
+quote,title,character varying
+quote,description,text
+quote,total_price,numeric
+quote,created_at,timestamp with time zone
+quote,updated_at,timestamp with time zone
+quote,submitted_at,timestamp with time zone
+quote,approved_at,timestamp with time zone
+quote,manager_note,text
+quote_item,id,uuid
+quote_item,quote_id,uuid
+quote_item,service_type,character varying
+quote_item,service_ref_id,uuid
+quote_item,quantity,integer
+quote_item,unit_price,numeric
+quote_item,total_price,numeric
+quote_item,options,jsonb
+quote_item,created_at,timestamp with time zone
+quote_item,updated_at,timestamp with time zone
+rent_price,rent_code,text
+rent_price,rent_type,text
+rent_price,rent_category,text
+rent_price,rent_route,text
+rent_price,rent_car_type,text
+rent_price,price,numeric
+rentcar,id,uuid
+rentcar,rentcar_code,character varying
+rentcar,special_requests,text
+rentcar,base_price,numeric
+rentcar,created_at,timestamp with time zone
+rentcar,updated_at,timestamp with time zone
+reservation,re_id,uuid
+reservation,re_user_id,uuid
+reservation,re_quote_id,uuid
+reservation,re_type,text
+reservation,re_status,text
+reservation,re_created_at,timestamp with time zone
+reservation_airport,ra_reservation_id,uuid
+reservation_airport,airport_price_code,text
+reservation_airport,ra_airport_name,text
+reservation_airport,ra_pickup_location,text
+reservation_airport,ra_dropoff_location,text
+reservation_airport,ra_airport_location,text
+reservation_airport,ra_flight_number,text
+reservation_airport,ra_datetime,timestamp without time zone
+reservation_airport,ra_direction,text
+reservation_airport,ra_stopover_location,text
+reservation_airport,ra_stopover_wait_minutes,integer
+reservation_airport,ra_car_count,integer
+reservation_airport,ra_passenger_count,integer
+reservation_airport,ra_luggage_count,integer
+reservation_airport,ra_is_processed,boolean
+reservation_airport,ra_processed_at,timestamp with time zone
+reservation_airport,request_note,text
+reservation_cruise,reservation_id,uuid
+reservation_cruise,room_price_code,text
+reservation_cruise,checkin,date
+reservation_cruise,guest_count,integer
+reservation_cruise,unit_price,numeric
+reservation_cruise,boarding_assist,text
+reservation_cruise,car_price_code,text
+reservation_cruise,car_count,integer
+reservation_cruise,passenger_count,integer
+reservation_cruise,pickup_datetime,timestamp without time zone
+reservation_cruise,pickup_location,text
+reservation_cruise,dropoff_location,text
+reservation_cruise,room_total_price,numeric
+reservation_cruise,car_total_price,numeric
+reservation_cruise,request_note,text
+reservation_hotel,reservation_id,uuid
+reservation_hotel,schedule,text
+reservation_hotel,room_count,integer
+reservation_hotel,checkin_date,date
+reservation_hotel,breakfast_service,text
+reservation_hotel,hotel_category,text
+reservation_hotel,guest_count,integer
+reservation_hotel,total_price,numeric
+reservation_hotel,hotel_price_code,text
+reservation_hotel,request_note,text
+reservation_rentcar,reservation_id,uuid
+reservation_rentcar,rentcar_price_code,text
+reservation_rentcar,rentcar_count,integer
+reservation_rentcar,unit_price,numeric
+reservation_rentcar,car_count,integer
+reservation_rentcar,passenger_count,integer
+reservation_rentcar,pickup_datetime,timestamp without time zone
+reservation_rentcar,pickup_location,text
+reservation_rentcar,destination,text
+reservation_rentcar,via_location,text
+reservation_rentcar,via_waiting,text
+reservation_rentcar,luggage_count,integer
+reservation_rentcar,total_price,numeric
+reservation_rentcar,request_note,text
+reservation_tour,reservation_id,uuid
+reservation_tour,tour_price_code,text
+reservation_tour,tour_capacity,integer
+reservation_tour,pickup_location,text
+reservation_tour,dropoff_location,text
+reservation_tour,total_price,numeric
+reservation_tour,request_note,text
+reservation_vehicle_sht,reservation_id,uuid
+reservation_vehicle_sht,vehicle_number,text
+reservation_vehicle_sht,seat_number,text
+reservation_vehicle_sht,color_label,text
+room,id,uuid
+room,base_price,numeric
+room,created_at,timestamp with time zone
+room,updated_at,timestamp with time zone
+room,room_code,character varying
+room,special_requests,text
+room,adult_count,integer
+room,child_count,integer
+room,extra_count,integer
+room,single_charge_count,integer
+room_price,room_code,text
+room_price,schedule,text
+room_price,room_category,text
+room_price,cruise,text
+room_price,room_type,text
+room_price,price,numeric
+room_price,start_date,date
+room_price,end_date,date
+room_price,payment,text
+tour,id,uuid
+tour,tour_code,character varying
+tour,tour_date,date
+tour,participant_count,integer
+tour,special_requests,text
+tour,base_price,numeric
+tour,created_at,timestamp with time zone
+tour,updated_at,timestamp with time zone
+tour_price,tour_code,text
+tour_price,tour_name,text
+tour_price,tour_capacity,integer
+tour_price,tour_vehicle,text
+tour_price,tour_type,text
+tour_price,price,numeric
+users,id,uuid
+users,reservation_date,date
+users,email,text
+users,name,text
+users,english_name,text
+users,nickname,text
+users,phone_number,text
+users,created_at,timestamp with time zone
+users,kakao_id,text
+users,role,text
+users,phone,character varying
+users,birth_date,date
+users,address,text
+users,emergency_contact,character varying
+users,emergency_phone,character varying
+users,passport_number,character varying
+users,passport_expiry,date
+users,status,character varying

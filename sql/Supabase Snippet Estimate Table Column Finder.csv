@@ -1,0 +1,486 @@
+table_schema,table_name,column_name,data_type
+auth,audit_log_entries,instance_id,uuid
+auth,audit_log_entries,id,uuid
+auth,audit_log_entries,payload,json
+auth,audit_log_entries,created_at,timestamp with time zone
+auth,audit_log_entries,ip_address,character varying
+auth,flow_state,id,uuid
+auth,flow_state,user_id,uuid
+auth,flow_state,auth_code,text
+auth,flow_state,code_challenge_method,USER-DEFINED
+auth,flow_state,code_challenge,text
+auth,flow_state,provider_type,text
+auth,flow_state,provider_access_token,text
+auth,flow_state,provider_refresh_token,text
+auth,flow_state,created_at,timestamp with time zone
+auth,flow_state,updated_at,timestamp with time zone
+auth,flow_state,authentication_method,text
+auth,flow_state,auth_code_issued_at,timestamp with time zone
+auth,identities,provider_id,text
+auth,identities,user_id,uuid
+auth,identities,identity_data,jsonb
+auth,identities,provider,text
+auth,identities,last_sign_in_at,timestamp with time zone
+auth,identities,created_at,timestamp with time zone
+auth,identities,updated_at,timestamp with time zone
+auth,identities,email,text
+auth,identities,id,uuid
+auth,instances,id,uuid
+auth,instances,uuid,uuid
+auth,instances,raw_base_config,text
+auth,instances,created_at,timestamp with time zone
+auth,instances,updated_at,timestamp with time zone
+auth,mfa_amr_claims,session_id,uuid
+auth,mfa_amr_claims,created_at,timestamp with time zone
+auth,mfa_amr_claims,updated_at,timestamp with time zone
+auth,mfa_amr_claims,authentication_method,text
+auth,mfa_amr_claims,id,uuid
+auth,mfa_challenges,id,uuid
+auth,mfa_challenges,factor_id,uuid
+auth,mfa_challenges,created_at,timestamp with time zone
+auth,mfa_challenges,verified_at,timestamp with time zone
+auth,mfa_challenges,ip_address,inet
+auth,mfa_challenges,otp_code,text
+auth,mfa_challenges,web_authn_session_data,jsonb
+auth,mfa_factors,id,uuid
+auth,mfa_factors,user_id,uuid
+auth,mfa_factors,friendly_name,text
+auth,mfa_factors,factor_type,USER-DEFINED
+auth,mfa_factors,status,USER-DEFINED
+auth,mfa_factors,created_at,timestamp with time zone
+auth,mfa_factors,updated_at,timestamp with time zone
+auth,mfa_factors,secret,text
+auth,mfa_factors,phone,text
+auth,mfa_factors,last_challenged_at,timestamp with time zone
+auth,mfa_factors,web_authn_credential,jsonb
+auth,mfa_factors,web_authn_aaguid,uuid
+auth,one_time_tokens,id,uuid
+auth,one_time_tokens,user_id,uuid
+auth,one_time_tokens,token_type,USER-DEFINED
+auth,one_time_tokens,token_hash,text
+auth,one_time_tokens,relates_to,text
+auth,one_time_tokens,created_at,timestamp without time zone
+auth,one_time_tokens,updated_at,timestamp without time zone
+auth,refresh_tokens,instance_id,uuid
+auth,refresh_tokens,id,bigint
+auth,refresh_tokens,token,character varying
+auth,refresh_tokens,user_id,character varying
+auth,refresh_tokens,revoked,boolean
+auth,refresh_tokens,created_at,timestamp with time zone
+auth,refresh_tokens,updated_at,timestamp with time zone
+auth,refresh_tokens,parent,character varying
+auth,refresh_tokens,session_id,uuid
+auth,saml_providers,id,uuid
+auth,saml_providers,sso_provider_id,uuid
+auth,saml_providers,entity_id,text
+auth,saml_providers,metadata_xml,text
+auth,saml_providers,metadata_url,text
+auth,saml_providers,attribute_mapping,jsonb
+auth,saml_providers,created_at,timestamp with time zone
+auth,saml_providers,updated_at,timestamp with time zone
+auth,saml_providers,name_id_format,text
+auth,saml_relay_states,id,uuid
+auth,saml_relay_states,sso_provider_id,uuid
+auth,saml_relay_states,request_id,text
+auth,saml_relay_states,for_email,text
+auth,saml_relay_states,redirect_to,text
+auth,saml_relay_states,created_at,timestamp with time zone
+auth,saml_relay_states,updated_at,timestamp with time zone
+auth,saml_relay_states,flow_state_id,uuid
+auth,schema_migrations,version,character varying
+auth,sessions,id,uuid
+auth,sessions,user_id,uuid
+auth,sessions,created_at,timestamp with time zone
+auth,sessions,updated_at,timestamp with time zone
+auth,sessions,factor_id,uuid
+auth,sessions,aal,USER-DEFINED
+auth,sessions,not_after,timestamp with time zone
+auth,sessions,refreshed_at,timestamp without time zone
+auth,sessions,user_agent,text
+auth,sessions,ip,inet
+auth,sessions,tag,text
+auth,sso_domains,id,uuid
+auth,sso_domains,sso_provider_id,uuid
+auth,sso_domains,domain,text
+auth,sso_domains,created_at,timestamp with time zone
+auth,sso_domains,updated_at,timestamp with time zone
+auth,sso_providers,id,uuid
+auth,sso_providers,resource_id,text
+auth,sso_providers,created_at,timestamp with time zone
+auth,sso_providers,updated_at,timestamp with time zone
+auth,users,instance_id,uuid
+auth,users,id,uuid
+auth,users,aud,character varying
+auth,users,role,character varying
+auth,users,email,character varying
+auth,users,encrypted_password,character varying
+auth,users,email_confirmed_at,timestamp with time zone
+auth,users,invited_at,timestamp with time zone
+auth,users,confirmation_token,character varying
+auth,users,confirmation_sent_at,timestamp with time zone
+auth,users,recovery_token,character varying
+auth,users,recovery_sent_at,timestamp with time zone
+auth,users,email_change_token_new,character varying
+auth,users,email_change,character varying
+auth,users,email_change_sent_at,timestamp with time zone
+auth,users,last_sign_in_at,timestamp with time zone
+auth,users,raw_app_meta_data,jsonb
+auth,users,raw_user_meta_data,jsonb
+auth,users,is_super_admin,boolean
+auth,users,created_at,timestamp with time zone
+auth,users,updated_at,timestamp with time zone
+auth,users,phone,text
+auth,users,phone_confirmed_at,timestamp with time zone
+auth,users,phone_change,text
+auth,users,phone_change_token,character varying
+auth,users,phone_change_sent_at,timestamp with time zone
+auth,users,confirmed_at,timestamp with time zone
+auth,users,email_change_token_current,character varying
+auth,users,email_change_confirm_status,smallint
+auth,users,banned_until,timestamp with time zone
+auth,users,reauthentication_token,character varying
+auth,users,reauthentication_sent_at,timestamp with time zone
+auth,users,is_sso_user,boolean
+auth,users,deleted_at,timestamp with time zone
+auth,users,is_anonymous,boolean
+extensions,pg_stat_statements,userid,oid
+extensions,pg_stat_statements,dbid,oid
+extensions,pg_stat_statements,toplevel,boolean
+extensions,pg_stat_statements,queryid,bigint
+extensions,pg_stat_statements,query,text
+extensions,pg_stat_statements,plans,bigint
+extensions,pg_stat_statements,total_plan_time,double precision
+extensions,pg_stat_statements,min_plan_time,double precision
+extensions,pg_stat_statements,max_plan_time,double precision
+extensions,pg_stat_statements,mean_plan_time,double precision
+extensions,pg_stat_statements,stddev_plan_time,double precision
+extensions,pg_stat_statements,calls,bigint
+extensions,pg_stat_statements,total_exec_time,double precision
+extensions,pg_stat_statements,min_exec_time,double precision
+extensions,pg_stat_statements,max_exec_time,double precision
+extensions,pg_stat_statements,mean_exec_time,double precision
+extensions,pg_stat_statements,stddev_exec_time,double precision
+extensions,pg_stat_statements,rows,bigint
+extensions,pg_stat_statements,shared_blks_hit,bigint
+extensions,pg_stat_statements,shared_blks_read,bigint
+extensions,pg_stat_statements,shared_blks_dirtied,bigint
+extensions,pg_stat_statements,shared_blks_written,bigint
+extensions,pg_stat_statements,local_blks_hit,bigint
+extensions,pg_stat_statements,local_blks_read,bigint
+extensions,pg_stat_statements,local_blks_dirtied,bigint
+extensions,pg_stat_statements,local_blks_written,bigint
+extensions,pg_stat_statements,temp_blks_read,bigint
+extensions,pg_stat_statements,temp_blks_written,bigint
+extensions,pg_stat_statements,shared_blk_read_time,double precision
+extensions,pg_stat_statements,shared_blk_write_time,double precision
+extensions,pg_stat_statements,local_blk_read_time,double precision
+extensions,pg_stat_statements,local_blk_write_time,double precision
+extensions,pg_stat_statements,temp_blk_read_time,double precision
+extensions,pg_stat_statements,temp_blk_write_time,double precision
+extensions,pg_stat_statements,wal_records,bigint
+extensions,pg_stat_statements,wal_fpi,bigint
+extensions,pg_stat_statements,wal_bytes,numeric
+extensions,pg_stat_statements,jit_functions,bigint
+extensions,pg_stat_statements,jit_generation_time,double precision
+extensions,pg_stat_statements,jit_inlining_count,bigint
+extensions,pg_stat_statements,jit_inlining_time,double precision
+extensions,pg_stat_statements,jit_optimization_count,bigint
+extensions,pg_stat_statements,jit_optimization_time,double precision
+extensions,pg_stat_statements,jit_emission_count,bigint
+extensions,pg_stat_statements,jit_emission_time,double precision
+extensions,pg_stat_statements,jit_deform_count,bigint
+extensions,pg_stat_statements,jit_deform_time,double precision
+extensions,pg_stat_statements,stats_since,timestamp with time zone
+extensions,pg_stat_statements,minmax_stats_since,timestamp with time zone
+extensions,pg_stat_statements_info,dealloc,bigint
+extensions,pg_stat_statements_info,stats_reset,timestamp with time zone
+public,airport,id,uuid
+public,airport,airport_code,character varying
+public,airport,passenger_count,integer
+public,airport,special_requests,text
+public,airport,base_price,numeric
+public,airport,created_at,timestamp with time zone
+public,airport,updated_at,timestamp with time zone
+public,airport_price,airport_code,text
+public,airport_price,airport_category,text
+public,airport_price,airport_route,text
+public,airport_price,airport_car_type,text
+public,airport_price,price,numeric
+public,car_price,car_code,text
+public,car_price,car_category,text
+public,car_price,cruise,text
+public,car_price,car_type,text
+public,car_price,price,numeric
+public,car_price,schedule,text
+public,car_price,passenger_count,text
+public,cruise,id,uuid
+public,cruise,cruise_name,character varying
+public,cruise,departure_date,date
+public,cruise,return_date,date
+public,cruise,departure_port,character varying
+public,cruise,room_type,character varying
+public,cruise,adult_count,integer
+public,cruise,child_count,integer
+public,cruise,infant_count,integer
+public,cruise,special_requests,text
+public,cruise,base_price,numeric
+public,cruise,created_at,timestamp with time zone
+public,cruise,updated_at,timestamp with time zone
+public,cruise,schedule_code,text
+public,cruise,cruise_code,text
+public,cruise,payment_code,text
+public,cruise,discount_rate,numeric
+public,cruise,rooms_detail,jsonb
+public,cruise,vehicle_detail,jsonb
+public,hotel,id,uuid
+public,hotel,hotel_code,character varying
+public,hotel,special_requests,text
+public,hotel,base_price,numeric
+public,hotel,created_at,timestamp with time zone
+public,hotel,updated_at,timestamp with time zone
+public,hotel_price,hotel_code,text
+public,hotel_price,hotel_name,text
+public,hotel_price,room_name,text
+public,hotel_price,room_type,text
+public,hotel_price,price,numeric
+public,hotel_price,start_date,date
+public,hotel_price,end_date,date
+public,hotel_price,weekday_type,text
+public,quote,id,uuid
+public,quote,user_id,uuid
+public,quote,status,character varying
+public,quote,title,character varying
+public,quote,description,text
+public,quote,total_price,numeric
+public,quote,created_at,timestamp with time zone
+public,quote,updated_at,timestamp with time zone
+public,quote,submitted_at,timestamp with time zone
+public,quote,approved_at,timestamp with time zone
+public,quote,manager_note,text
+public,quote_item,id,uuid
+public,quote_item,quote_id,uuid
+public,quote_item,service_type,character varying
+public,quote_item,service_ref_id,uuid
+public,quote_item,quantity,integer
+public,quote_item,unit_price,numeric
+public,quote_item,total_price,numeric
+public,quote_item,options,jsonb
+public,quote_item,created_at,timestamp with time zone
+public,quote_item,updated_at,timestamp with time zone
+public,rent_price,rent_code,text
+public,rent_price,rent_type,text
+public,rent_price,rent_category,text
+public,rent_price,rent_route,text
+public,rent_price,rent_car_type,text
+public,rent_price,price,numeric
+public,rentcar,id,uuid
+public,rentcar,rentcar_code,character varying
+public,rentcar,special_requests,text
+public,rentcar,base_price,numeric
+public,rentcar,created_at,timestamp with time zone
+public,rentcar,updated_at,timestamp with time zone
+public,reservation,re_id,uuid
+public,reservation,re_user_id,uuid
+public,reservation,re_quote_id,uuid
+public,reservation,re_type,text
+public,reservation,re_status,text
+public,reservation,re_created_at,timestamp with time zone
+public,reservation_airport,ra_reservation_id,uuid
+public,reservation_airport,airport_price_code,text
+public,reservation_airport,ra_airport_name,text
+public,reservation_airport,ra_pickup_location,text
+public,reservation_airport,ra_dropoff_location,text
+public,reservation_airport,ra_airport_location,text
+public,reservation_airport,ra_flight_number,text
+public,reservation_airport,ra_datetime,timestamp without time zone
+public,reservation_airport,ra_direction,text
+public,reservation_airport,ra_stopover_location,text
+public,reservation_airport,ra_stopover_wait_minutes,integer
+public,reservation_airport,ra_car_count,integer
+public,reservation_airport,ra_passenger_count,integer
+public,reservation_airport,ra_luggage_count,integer
+public,reservation_airport,ra_is_processed,boolean
+public,reservation_airport,ra_processed_at,timestamp with time zone
+public,reservation_airport,request_note,text
+public,reservation_cruise,reservation_id,uuid
+public,reservation_cruise,room_price_code,text
+public,reservation_cruise,checkin,date
+public,reservation_cruise,guest_count,integer
+public,reservation_cruise,unit_price,numeric
+public,reservation_cruise,boarding_assist,text
+public,reservation_cruise,car_price_code,text
+public,reservation_cruise,car_count,integer
+public,reservation_cruise,passenger_count,integer
+public,reservation_cruise,pickup_datetime,timestamp without time zone
+public,reservation_cruise,pickup_location,text
+public,reservation_cruise,dropoff_location,text
+public,reservation_cruise,room_total_price,numeric
+public,reservation_cruise,car_total_price,numeric
+public,reservation_cruise,request_note,text
+public,reservation_hotel,reservation_id,uuid
+public,reservation_hotel,schedule,text
+public,reservation_hotel,room_count,integer
+public,reservation_hotel,checkin_date,date
+public,reservation_hotel,breakfast_service,text
+public,reservation_hotel,hotel_category,text
+public,reservation_hotel,guest_count,integer
+public,reservation_hotel,total_price,numeric
+public,reservation_hotel,hotel_price_code,text
+public,reservation_hotel,request_note,text
+public,reservation_rentcar,reservation_id,uuid
+public,reservation_rentcar,rentcar_price_code,text
+public,reservation_rentcar,rentcar_count,integer
+public,reservation_rentcar,unit_price,numeric
+public,reservation_rentcar,car_count,integer
+public,reservation_rentcar,passenger_count,integer
+public,reservation_rentcar,pickup_datetime,timestamp without time zone
+public,reservation_rentcar,pickup_location,text
+public,reservation_rentcar,destination,text
+public,reservation_rentcar,via_location,text
+public,reservation_rentcar,via_waiting,text
+public,reservation_rentcar,luggage_count,integer
+public,reservation_rentcar,total_price,numeric
+public,reservation_rentcar,request_note,text
+public,reservation_tour,reservation_id,uuid
+public,reservation_tour,tour_price_code,text
+public,reservation_tour,tour_capacity,integer
+public,reservation_tour,pickup_location,text
+public,reservation_tour,dropoff_location,text
+public,reservation_tour,total_price,numeric
+public,reservation_tour,request_note,text
+public,reservation_vehicle_sht,reservation_id,uuid
+public,reservation_vehicle_sht,vehicle_number,text
+public,reservation_vehicle_sht,seat_number,text
+public,reservation_vehicle_sht,color_label,text
+public,room_price,room_code,text
+public,room_price,schedule,text
+public,room_price,room_category,text
+public,room_price,cruise,text
+public,room_price,room_type,text
+public,room_price,price,numeric
+public,room_price,start_date,date
+public,room_price,end_date,date
+public,room_price,payment,text
+public,tour,id,uuid
+public,tour,tour_code,character varying
+public,tour,tour_date,date
+public,tour,participant_count,integer
+public,tour,special_requests,text
+public,tour,base_price,numeric
+public,tour,created_at,timestamp with time zone
+public,tour,updated_at,timestamp with time zone
+public,tour_price,tour_code,text
+public,tour_price,tour_name,text
+public,tour_price,tour_capacity,integer
+public,tour_price,tour_vehicle,text
+public,tour_price,tour_type,text
+public,tour_price,price,numeric
+public,users,id,uuid
+public,users,reservation_date,date
+public,users,email,text
+public,users,name,text
+public,users,english_name,text
+public,users,nickname,text
+public,users,phone_number,text
+public,users,created_at,timestamp with time zone
+public,users,kakao_id,text
+public,users,role,text
+public,users,phone,character varying
+public,users,birth_date,date
+public,users,address,text
+public,users,emergency_contact,character varying
+public,users,emergency_phone,character varying
+public,users,passport_number,character varying
+public,users,passport_expiry,date
+public,users,status,character varying
+realtime,messages,topic,text
+realtime,messages,extension,text
+realtime,messages,payload,jsonb
+realtime,messages,event,text
+realtime,messages,private,boolean
+realtime,messages,updated_at,timestamp without time zone
+realtime,messages,inserted_at,timestamp without time zone
+realtime,messages,id,uuid
+realtime,schema_migrations,version,bigint
+realtime,schema_migrations,inserted_at,timestamp without time zone
+realtime,subscription,id,bigint
+realtime,subscription,subscription_id,uuid
+realtime,subscription,entity,regclass
+realtime,subscription,filters,ARRAY
+realtime,subscription,claims,jsonb
+realtime,subscription,claims_role,regrole
+realtime,subscription,created_at,timestamp without time zone
+storage,buckets,id,text
+storage,buckets,name,text
+storage,buckets,owner,uuid
+storage,buckets,created_at,timestamp with time zone
+storage,buckets,updated_at,timestamp with time zone
+storage,buckets,public,boolean
+storage,buckets,avif_autodetection,boolean
+storage,buckets,file_size_limit,bigint
+storage,buckets,allowed_mime_types,ARRAY
+storage,buckets,owner_id,text
+storage,buckets,type,USER-DEFINED
+storage,buckets_analytics,id,text
+storage,buckets_analytics,type,USER-DEFINED
+storage,buckets_analytics,format,text
+storage,buckets_analytics,created_at,timestamp with time zone
+storage,buckets_analytics,updated_at,timestamp with time zone
+storage,migrations,id,integer
+storage,migrations,name,character varying
+storage,migrations,hash,character varying
+storage,migrations,executed_at,timestamp without time zone
+storage,objects,id,uuid
+storage,objects,bucket_id,text
+storage,objects,name,text
+storage,objects,owner,uuid
+storage,objects,created_at,timestamp with time zone
+storage,objects,updated_at,timestamp with time zone
+storage,objects,last_accessed_at,timestamp with time zone
+storage,objects,metadata,jsonb
+storage,objects,path_tokens,ARRAY
+storage,objects,version,text
+storage,objects,owner_id,text
+storage,objects,user_metadata,jsonb
+storage,objects,level,integer
+storage,prefixes,bucket_id,text
+storage,prefixes,name,text
+storage,prefixes,level,integer
+storage,prefixes,created_at,timestamp with time zone
+storage,prefixes,updated_at,timestamp with time zone
+storage,s3_multipart_uploads,id,text
+storage,s3_multipart_uploads,in_progress_size,bigint
+storage,s3_multipart_uploads,upload_signature,text
+storage,s3_multipart_uploads,bucket_id,text
+storage,s3_multipart_uploads,key,text
+storage,s3_multipart_uploads,version,text
+storage,s3_multipart_uploads,owner_id,text
+storage,s3_multipart_uploads,created_at,timestamp with time zone
+storage,s3_multipart_uploads,user_metadata,jsonb
+storage,s3_multipart_uploads_parts,id,uuid
+storage,s3_multipart_uploads_parts,upload_id,text
+storage,s3_multipart_uploads_parts,size,bigint
+storage,s3_multipart_uploads_parts,part_number,integer
+storage,s3_multipart_uploads_parts,bucket_id,text
+storage,s3_multipart_uploads_parts,key,text
+storage,s3_multipart_uploads_parts,etag,text
+storage,s3_multipart_uploads_parts,owner_id,text
+storage,s3_multipart_uploads_parts,version,text
+storage,s3_multipart_uploads_parts,created_at,timestamp with time zone
+vault,decrypted_secrets,id,uuid
+vault,decrypted_secrets,name,text
+vault,decrypted_secrets,description,text
+vault,decrypted_secrets,secret,text
+vault,decrypted_secrets,decrypted_secret,text
+vault,decrypted_secrets,key_id,uuid
+vault,decrypted_secrets,nonce,bytea
+vault,decrypted_secrets,created_at,timestamp with time zone
+vault,decrypted_secrets,updated_at,timestamp with time zone
+vault,secrets,id,uuid
+vault,secrets,name,text
+vault,secrets,description,text
+vault,secrets,secret,text
+vault,secrets,key_id,uuid
+vault,secrets,nonce,bytea
+vault,secrets,created_at,timestamp with time zone
+vault,secrets,updated_at,timestamp with time zone
