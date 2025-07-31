@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import { getQuoteWithItems } from '@/lib/quoteUtils';
 import PageWrapper from '@/components/PageWrapper';
 import SectionBox from '@/components/SectionBox';

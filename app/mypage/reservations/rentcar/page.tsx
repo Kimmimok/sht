@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 
 
 export default function RentCarPage() {
@@ -67,6 +67,8 @@ export default function RentCarPage() {
         // 1. rentcar_price에서 구분별 rc_type_code 목록 조회
         const { data: priceData, error: priceError } = await supabase
           .from('rentcar_price')
+        let typeError = priceError;
+        let typeData = priceData;
           {/* 렌트카 서비스 카드들 - 원래 스타일로 복원 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
             <div className="bg-white/80 backdrop-blur rounded-lg p-4 hover:bg-white/90 transition-colors">
@@ -92,11 +94,9 @@ export default function RentCarPage() {
             </div>
           </div>
         if (typeError) {
-          // ...
           setTypeOptions([]);
           return;
         }
-
         setTypeOptions((typeData || []).map((t: any) => ({ code: t.code, name: t.name })));
       } catch (error) {
         // ...

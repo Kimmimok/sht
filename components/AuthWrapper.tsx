@@ -1,6 +1,6 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 
 interface UserProfile {
   id: string;

@@ -1,5 +1,5 @@
 // lib/updateCarPrices.ts
-import { supabase } from './supabase';
+import supabase from './supabase';
 
 export async function updateCarPrices() {
   try {

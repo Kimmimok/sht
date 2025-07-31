@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import supabase from './supabase';
 
 export type RoomDetailInput = {
   quote_id: string;

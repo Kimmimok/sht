@@ -4,11 +4,9 @@ import tsParser from '@typescript-eslint/parser';
 import reactPlugin from 'eslint-plugin-react';
 import prettierPlugin from 'eslint-plugin-prettier';
 
-export default [
-  {
-    ignores: ['badminton/', 'public/', 'node_modules/', 'out/', '.next/'],
-  },
-  js.configs.recommended,
+export default {
+  ignores: ['node_modules', '.next', 'dist', '*.config.js', '.env*'],
+  ...js.configs.recommended,
   {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
@@ -30,4 +28,4 @@ export default [
       'prettier/prettier': 'warn',
     },
   },
-];
+};

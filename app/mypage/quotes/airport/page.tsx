@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import { addAirportToQuote, getQuoteWithItems } from '@/lib/quoteUtils';
 import { AirportFormData, QuoteWithItems } from '@/lib/types';
 
-export default function AirportQuotePage() {
+function AirportQuoteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
@@ -290,5 +290,13 @@ export default function AirportQuotePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AirportQuotePage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64">로딩 중...</div>}>
+      <AirportQuoteContent />
+    </Suspense>
   );
 }

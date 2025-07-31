@@ -1,6 +1,6 @@
 import { getRoomPriceCode } from './getRoomPriceCode';
 import { getCarPriceCode } from './getCarPriceCode';
-import { supabase } from './supabase';
+import supabase from './supabase';
 
 export async function updateRoomAndCarPriceCodes(quoteId: string, checkin: string) {
   if (!quoteId) throw new Error('❌ quoteId 누락');
@@ -48,10 +48,11 @@ export async function updateRoomAndCarPriceCodes(quoteId: string, checkin: strin
           payment_code: detail.payment_code,
           room_code,
           room_category_code: category,
-          checkin,
+          checkin_date: checkin,
         });
       } catch (err) {
-        console.warn(`⚠️ room_price_code 조회 실패 (${room_code}, ${category}):`, err.message);
+        const e = err as any;
+        console.warn(`⚠️ room_price_code 조회 실패 (${room_code}, ${category}):`, e?.message ?? e);
       }
     }
 
@@ -70,7 +71,8 @@ export async function updateRoomAndCarPriceCodes(quoteId: string, checkin: strin
           car_category_code: detail.vehicle_category_code,
         });
       } catch (err) {
-        console.warn(`⚠️ car_price_code 조회 실패 (${vehicle_code}):`, err.message);
+        const e = err as any;
+        console.warn(`⚠️ car_price_code 조회 실패 (${vehicle_code}):`, e?.message ?? e);
       }
     }
 

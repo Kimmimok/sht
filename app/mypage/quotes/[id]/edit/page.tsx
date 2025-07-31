@@ -2,7 +2,7 @@
 import React from 'react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import QuoteForm from '@/components/QuoteForm'; // 재사용 가능한 입력 폼 컴포넌트
 
 export default function QuoteEditPage({ params }: { params: { id: string } }) {

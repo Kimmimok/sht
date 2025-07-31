@@ -1,14 +1,14 @@
 'use client';
-import React from 'react';
+import React, { Suspense } from 'react';
 
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import PageWrapper from '@/components/PageWrapper';
 import SectionBox from '@/components/SectionBox';
 import CodeSelect from '@/components/CodeSelect';
 
-export default function CruiseReservationPage() {
+function CruiseReservationContent() {
   const params = useSearchParams();
   const router = useRouter();
   const reservationId = params.get('reservation_id');
@@ -126,5 +126,13 @@ export default function CruiseReservationPage() {
         예약 저장
       </button>
     </PageWrapper>
+  );
+}
+
+export default function CruiseReservationPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64">로딩 중...</div>}>
+      <CruiseReservationContent />
+    </Suspense>
   );
 }

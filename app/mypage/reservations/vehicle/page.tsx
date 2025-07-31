@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCruiseStore } from '@/lib/useCruiseStore';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 
 export default function VehiclePage() {
   const router = useRouter();

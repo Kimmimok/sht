@@ -3,7 +3,7 @@ import React from 'react';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import PageWrapper from '@/components/PageWrapper';
 import SectionBox from '@/components/SectionBox';
 import Link from 'next/link';

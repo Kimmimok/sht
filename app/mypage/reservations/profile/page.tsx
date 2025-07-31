@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import { upsertUserProfile } from '@/lib/userUtils';
 import PageWrapper from '@/components/PageWrapper';
 import SectionBox from '@/components/SectionBox';
 
-export default function ReservationProfilePage() {
+function ReservationProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
@@ -200,5 +200,14 @@ export default function ReservationProfilePage() {
         </div>
       </SectionBox>
     </PageWrapper>
+  );
+}
+
+
+export default function ReservationProfilePage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64">로딩 중...</div>}>
+      <ReservationProfileContent />
+    </Suspense>
   );
 }

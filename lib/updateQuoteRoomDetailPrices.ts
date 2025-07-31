@@ -1,5 +1,5 @@
 // lib/updateQuoteRoomDetailPrices.ts
-import { supabase } from './supabase';
+import supabase from './supabase';
 import { getRoomPriceCode } from './getRoomPriceCode';
 import { getCarPriceCode } from './getCarPriceCode';
 
@@ -37,7 +37,7 @@ export async function updateRoomAndCarPriceCodes(quoteId: string, checkin: strin
       payment_code,
       room_code: detail.room_code,
       room_category_code: detail.category,
-      checkin,
+      checkin_date: checkin,
     });
 
     const car_price_code = await getCarPriceCode({

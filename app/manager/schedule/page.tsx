@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import ManagerLayout from '@/components/ManagerLayout';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import { 
   Calendar, 
   Clock,

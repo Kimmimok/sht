@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import SectionBox from '@/components/SectionBox';
 import RoomSelect from '@/components/RoomSelect';
 import { CarCategorySelect } from '@/components/CarSelectComponents';

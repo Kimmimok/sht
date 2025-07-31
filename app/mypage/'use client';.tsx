@@ -2,7 +2,7 @@
 import React from 'react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import { saveQuoteWithRooms } from '@/lib/saveQuoteWithRooms';
 import { updateQuoteRoomPrices } from '@/lib/updateQuoteRoomPrices';
 import { updateQuoteCarPrices } from '@/lib/updateQuoteCarPrices';

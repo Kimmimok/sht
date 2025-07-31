@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import { createQuote, getQuoteWithItems } from '@/lib/quoteUtils';
 import { Quote } from '@/lib/types';
 
@@ -16,7 +16,7 @@ const menuList = [
   { key: 'vehicle', label: '🚌 차량 예약', pathTemplate: '/mypage/reservations', description: '크루즈 전용 셔틀 차량 서비스' }
 ];
 
-export default function ReservationHomePage() {
+function ReservationHomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const existingQuoteId = searchParams.get('quoteId');
@@ -471,4 +471,12 @@ function getGradientClass(key: string, light?: boolean): string {
     return gradientsLight[key as keyof typeof gradientsLight] || 'from-gray-100 to-gray-200';
   }
   return gradientsDark[key as keyof typeof gradientsDark] || 'from-gray-500 to-gray-600';
+}
+
+export default function ReservationHomePage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64">로딩 중...</div>}>
+      <ReservationHomeContent />
+    </Suspense>
+  );
 }

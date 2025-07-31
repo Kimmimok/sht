@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import { getUserQuotes } from '@/lib/quoteUtils';
 import { Quote } from '@/lib/types';
 import { AuthWrapper } from '@/components/AuthWrapper';

@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import { addTourToQuote, getQuoteWithItems } from '@/lib/quoteUtils';
 import { TourFormData, QuoteWithItems } from '@/lib/types';
 
-export default function TourQuotePage() {
+function TourQuoteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
@@ -310,5 +310,13 @@ export default function TourQuotePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TourQuotePage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64">로딩 중...</div>}>
+      <TourQuoteContent />
+    </Suspense>
   );
 }

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import PageWrapper from '@/components/PageWrapper';
 import SectionBox from '@/components/SectionBox';
 
@@ -14,7 +14,7 @@ interface ReservationForm {
   special_requests: string;
 }
 
-export default function NewReservationPage() {
+function NewReservationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quote_id'); // quote_id로 수정
@@ -58,7 +58,7 @@ export default function NewReservationPage() {
       // 새 사용자 생성 (upsert 방식으로 중복 처리)
       const newUser = {
         id: authUser.id,
-        email: authUser.email,
+        email: authUser.email || '',
         name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || '사용자',
         role: 'member', // 기본값: member (고객)
         phone_number: authUser.user_metadata?.phone || '',
@@ -368,5 +368,13 @@ export default function NewReservationPage() {
         </div>
       </SectionBox>
     </PageWrapper>
+  );
+}
+
+export default function NewReservationPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64">로딩 중...</div>}>
+      <NewReservationContent />
+    </Suspense>
   );
 }

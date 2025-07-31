@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import PageWrapper from '@/components/PageWrapper';
 import SectionBox from '@/components/SectionBox';
 
@@ -22,7 +22,7 @@ interface RentcarReservationForm {
   request_note: string;
 }
 
-export default function RentcarReservationPage() {
+function RentcarReservationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
@@ -319,5 +319,14 @@ export default function RentcarReservationPage() {
         </SectionBox>
       </div>
     </PageWrapper>
+  );
+}
+
+
+export default function RentcarReservationPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64">로딩 중...</div>}>
+      <RentcarReservationContent />
+    </Suspense>
   );
 }

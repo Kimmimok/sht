@@ -2,7 +2,7 @@
 import React from 'react';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import AdminLayout from '@/components/AdminLayout';
 import { useRouter } from 'next/navigation';
 

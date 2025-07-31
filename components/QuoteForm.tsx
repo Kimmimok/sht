@@ -2,7 +2,7 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import CodeSelect from './CodeSelect';
 import QuoteRoomSection from './QuoteRoomSection';
 
@@ -101,11 +101,11 @@ export default function QuoteForm({
       if (!roomRow || roomErr) continue;
 
       for (const [category, count] of Object.entries(room.categoryCounts || {})) {
-        if (count > 0) {
+        if ((count as number) > 0) {
           await supabase.from('quote_room_detail').insert({
             quote_id: quoteId,
             category,
-            person_count: count,
+            person_count: count as number,
             passenger_type: category,
             car_count: 1,
           });

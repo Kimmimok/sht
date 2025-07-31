@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 
 export async function saveQuoteWithRooms({
   userId,
@@ -44,7 +44,7 @@ export async function saveQuoteWithRooms({
     .single();
 
   if (quoteError || !quote) {
-    throw new Error('❌ quote 저장 실패: ' + quoteError.message);
+    throw new Error('❌ quote 저장 실패: ' + (quoteError?.message ?? 'Unknown error'));
   }
 
   const quoteId = quote.id;

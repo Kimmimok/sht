@@ -2,7 +2,7 @@
 import React from 'react';
 // components/PaymentSelect.tsx
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 
 interface Props {
   scheduleCode: string;

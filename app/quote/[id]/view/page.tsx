@@ -3,7 +3,7 @@ import React from 'react';
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter, notFound } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 
 // Lucide 아이콘 가져오기
 import {

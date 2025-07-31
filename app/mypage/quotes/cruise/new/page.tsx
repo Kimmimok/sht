@@ -1,9 +1,9 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 
-export default function CruiseQuoteNewPage() {
+function CruiseQuoteNewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
@@ -815,5 +815,13 @@ export default function CruiseQuoteNewPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CruiseQuoteNewPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64">로딩 중...</div>}>
+      <CruiseQuoteNewContent />
+    </Suspense>
   );
 }

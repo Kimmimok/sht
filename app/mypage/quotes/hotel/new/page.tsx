@@ -1,10 +1,10 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import supabase from '@/lib/supabase'
 
-function NewHotelQuotePage() {
+function NewHotelQuoteContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const quoteId = searchParams.get('quoteId')
@@ -559,4 +559,10 @@ function NewHotelQuotePage() {
   )
 }
 
-export default NewHotelQuotePage
+export default function NewHotelQuotePage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64">로딩 중...</div>}>
+      <NewHotelQuoteContent />
+    </Suspense>
+  );
+}

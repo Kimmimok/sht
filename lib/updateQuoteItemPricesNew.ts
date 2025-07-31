@@ -1,5 +1,5 @@
 // lib/updateQuoteItemPricesNew.ts
-import { supabase } from './supabase';
+import supabase from './supabase';
 
 interface CruiseInfo {
   schedule: string;

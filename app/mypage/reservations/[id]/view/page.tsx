@@ -3,7 +3,7 @@ import React from 'react';
 
 import { useEffect, useState } from 'react';
 import { useParams, notFound } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 
 export default function QuoteViewPage() {
   const params = useParams();

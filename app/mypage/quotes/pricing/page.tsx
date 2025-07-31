@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import { getQuoteWithItems } from '@/lib/quoteUtils';
 import { Quote } from '@/lib/types';
 
-export default function QuotePricingPage() {
+function QuotePricingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
@@ -302,5 +302,14 @@ export default function QuotePricingPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+
+export default function QuotePricingPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64">로딩 중...</div>}>
+      <QuotePricingContent />
+    </Suspense>
   );
 }

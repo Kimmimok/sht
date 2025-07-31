@@ -2,7 +2,7 @@
 import React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import PageWrapper from '@/components/PageWrapper';
 import SectionBox from '@/components/SectionBox';
 
@@ -154,13 +154,16 @@ export default function ComprehensiveQuoteForm() {
     if (section === 'root') {
       setFormData((prev) => ({ ...prev, [field]: value }));
     } else {
-      setFormData((prev) => ({
-        ...prev,
-        [section]: {
-          ...prev[section as keyof QuoteFormData],
-          [field]: value,
-        },
-      }));
+      setFormData((prev) => {
+        const sectionObj = prev[section as keyof QuoteFormData];
+        return {
+          ...prev,
+          [section]: {
+            ...(typeof sectionObj === 'object' && sectionObj !== null ? sectionObj : {}),
+            [field]: value,
+          },
+        };
+      });
     }
   };
 

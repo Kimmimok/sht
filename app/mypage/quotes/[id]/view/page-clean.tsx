@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import PageWrapper from '@/components/PageWrapper';
 import SectionBox from '@/components/SectionBox';
 
@@ -28,10 +28,10 @@ interface QuoteData {
 }
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }
 
-export default function QuoteDetailPage({ params }: PageProps) {
+export default function QuoteDetailPage({ params: { id } }: { params: { id: string } }) {
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -47,15 +47,11 @@ export default function QuoteDetailPage({ params }: PageProps) {
           return;
         }
 
-        // params 해결
-        const resolvedParams = await params;
-        const quoteId = resolvedParams.id;
-
         // 견적 데이터 조회 (users 테이블 조인 없이, Supabase 인증만으로 접근)
         const { data: quoteData, error: quoteError } = await supabase
           .from('quote')
           .select('*')
-          .eq('id', quoteId)
+          .eq('id', id)
           .single();
 
         if (quoteError) {
@@ -74,7 +70,7 @@ export default function QuoteDetailPage({ params }: PageProps) {
     };
 
     loadQuoteData();
-  }, [params, router]);
+  }, [id, router]);
 
   if (loading) {
     return (

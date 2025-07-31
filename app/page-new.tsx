@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 
 interface UserProfile {
   id: string;
@@ -51,7 +51,7 @@ export default function HomePage() {
 
       const userProfile: UserProfile = {
         id: authUser.id,
-        email: authUser.email,
+        email: authUser.email || '',
         role: userRole as 'guest' | 'member' | 'manager' | 'admin',
         name: profile?.name || authUser.email?.split('@')[0] || '사용자'
       };

@@ -1,5 +1,5 @@
 // lib/updateQuoteRoomPrices.ts
-import { supabase } from './supabase';
+import supabase from './supabase';
 import { getRoomPriceCode } from './getRoomPriceCode';
 
 export async function updateQuoteRoomPrices(quoteId: string, checkin: string) {

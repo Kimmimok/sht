@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import supabase from './supabase';
 
 /**
  * 견적의 모든 아이템에 대해 가격을 계산하고 업데이트하는 함수

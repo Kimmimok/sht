@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import supabase from './supabase';
 
 // 사용자 프로필 생성/업데이트 함수
 export const upsertUserProfile = async (
