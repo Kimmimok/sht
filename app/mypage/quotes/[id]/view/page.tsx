@@ -1,55 +1,88 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import supabase from '@/lib/supabase';
 import PageWrapper from '@/components/PageWrapper';
 import SectionBox from '@/components/SectionBox';
+import supabase from '@/lib/supabase';
 
-export default function QuoteDetailView() {
+interface Quote {
+  id: number;
+  quote_number: string;
+  name: string;
+  total_price: number;
+  status: 'pending' | 'approved' | 'rejected';
+  cruise_name?: string;
+  departure_date?: string;
+  return_date?: string;
+  departure_port?: string;
+  created_at: string;
+  quote_items?: QuoteItem[];
+}
+
+interface QuoteItem {
+  id: number;
+  service_type: string;
+  service_ref_id: number;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  airport?: any;
+  hotel?: any;
+  rentcar?: any;
+  quote_room?: any;
+  quote_car?: any;
+}
+
+export default function QuoteDetailViewPage() {
   const router = useRouter();
   const params = useParams();
-  const quoteId = params.id as string;
-  
-  const [user, setUser] = useState<any>(null);
+  const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
-  const [quote, setQuote] = useState<any>(null);
-  const [quoteItems, setQuoteItems] = useState<any[]>([]);
-  const [showPrices, setShowPrices] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [userRole, setUserRole] = useState<string>('guest');
 
   useEffect(() => {
     checkAuth();
   }, []);
 
-  useEffect(() => {
-    if (user && quoteId) {
-      loadQuoteDetails();
-    }
-  }, [user, quoteId]);
-
   const checkAuth = async () => {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        console.log('❌ 사용자 인증 실패:', userError?.message);
+      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !authUser) {
+        alert('로그인이 필요합니다.');
         router.push('/login');
         return;
       }
 
-      console.log('✅ 사용자 인증 성공:', user.id);
-      setUser(user);
+      setUser(authUser);
+
+      // 사용자 역할 확인 (게스트는 users 테이블에 등록되지 않음)
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', authUser.id)
+        .single();
+
+      setUserRole(userData?.role || 'guest');
+      await loadQuoteDetails(authUser);
     } catch (error) {
-      console.error('❌ 인증 확인 오류:', error);
+      console.error('인증 확인 오류:', error);
+      alert('인증 확인 중 오류가 발생했습니다.');
       router.push('/login');
-    } finally {
-      setLoading(false);
     }
   };
 
-  const loadQuoteDetails = async () => {
+  const loadQuoteDetails = async (authUser: any) => {
     try {
-      console.log('🔄 견적 상세 데이터 로딩 시작...', quoteId);
-      
+      const quoteId = params.id;
+      if (!quoteId) {
+        alert('견적 ID가 필요합니다.');
+        router.push('/mypage/quotes');
+        return;
+      }
+
       // 견적 기본 정보 조회
       const { data: quoteData, error: quoteError } = await supabase
         .from('quote')
@@ -58,511 +91,328 @@ export default function QuoteDetailView() {
         .single();
 
       if (quoteError) {
-        console.error('❌ 견적 조회 실패:', quoteError);
+        console.error('견적 조회 오류:', quoteError);
         alert('견적을 찾을 수 없습니다.');
         router.push('/mypage/quotes');
         return;
       }
 
-      // 견적 소유권 확인 (견적자는 auth.uid로만 확인)
-      if (quoteData.user_id !== user.id) {
-        console.log('❌ 견적 소유권 없음');
-        alert('해당 견적에 접근할 권한이 없습니다.');
+      // 견적 소유권 확인 (guest는 auth.uid()로만 확인)
+      if (quoteData.user_id !== authUser.id) {
+        alert('접근 권한이 없습니다.');
         router.push('/mypage/quotes');
         return;
       }
 
-      // 견적 상태에 따라 가격 표시 여부 결정
-      const approvedStatuses = ['approved', 'confirmed', 'reserved'];
-      setShowPrices(approvedStatuses.includes(quoteData.status));
-
-      console.log('✅ 견적 데이터:', quoteData);
-      console.log('💰 가격 표시 여부:', approvedStatuses.includes(quoteData.status));
-      setQuote(quoteData);
-
-      // quote_item과 관련 서비스 데이터 조회
+      // 견적 항목 상세 조회
       const { data: itemsData, error: itemsError } = await supabase
         .from('quote_item')
         .select(`
           *,
-          airport:airport(*),
-          hotel:hotel(*),
-          rentcar:rentcar(*),
-          quote_room:quote_room(*, room_code:room_code(*)),
-          quote_car:quote_car(*, car_code:car_code(*))
+          airport(*),
+          hotel(*),
+          rentcar(*),
+          quote_room(*),
+          quote_car(*)
         `)
-        .eq('quote_id', quoteId)
-        .order('created_at');
+        .eq('quote_id', quoteId);
 
       if (itemsError) {
-        console.error('❌ 견적 아이템 조회 실패:', itemsError);
-        setQuoteItems([]);
-      } else {
-        console.log('✅ 견적 아이템:', itemsData);
-        setQuoteItems(itemsData || []);
+        console.error('견적 항목 조회 오류:', itemsError);
       }
 
+      setQuote({
+        ...quoteData,
+        quote_items: itemsData || []
+      });
     } catch (error) {
-      console.error('❌ 견적 상세 로드 실패:', error);
-      alert('견적 데이터를 불러오는데 실패했습니다.');
+      console.error('견적 상세 조회 오류:', error);
+      alert('견적 정보를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
     }
-  }; {
-      console.log('🔄 견적 데이터 로딩 시작...');
-      console.log('📋 필터:', filter, '검색어:', searchTerm || '없음');
-      
-      // 기본 쿼리 - users 조인 제거하고 단순하게 시작
-      let query = supabase
-        .from('quote')
-        .select('*')
-        .order('created_at', { ascending: false });
+  };
 
-      // 필터 적용
-      if (filter !== 'all') {
-        console.log('🔍 상태 필터 적용:', filter);
-        // pending을 submitted로도 매칭하고, 다양한 상태 처리
-        if (filter === 'pending') {
-          query = query.in('status', ['pending', 'submitted', 'draft']);
-        } else if (filter === 'approved') {
-          query = query.eq('status', 'approved');
-        } else if (filter === 'confirmed') {
-          query = query.in('status', ['confirmed', 'reserved']);
-        } else {
-          query = query.eq('status', filter);
-        }
-      }
+  const handleReservationRequest = async () => {
+    if (!quote || !user) return;
 
-      // 검색어 적용 (존재하는 필드만 검색)
-      if (searchTerm && searchTerm.trim()) {
-        console.log('🔍 검색어 적용:', searchTerm);
-        query = query.or(`id.ilike.%${searchTerm}%,user_id.ilike.%${searchTerm}%`);
-      }
-
-      const { data: quotesData, error: quotesError } = await query;
-      
-      console.log('� 견적 조회 결과:');
-      console.log('  - 견적 수:', quotesData?.length || 0);
-      console.log('  - 오류:', quotesError?.message || '없음');
-      
-      if (quotesError) {
-        console.error('❌ 견적 데이터 조회 실패:', quotesError);
-        setQuotes([]);
+    try {
+      // 견적이 승인되지 않은 경우 알림
+      if (quote.status !== 'approved') {
+        alert('승인된 견적만 예약할 수 있습니다.');
         return;
       }
 
-      // 사용자 정보를 별도로 조회
-      if (quotesData && quotesData.length > 0) {
-        console.log('👥 사용자 정보 추가 조회...');
-        const userIds = [...new Set(quotesData.map((q: any) => q.user_id))];
-        
-        const { data: usersData, error: usersError } = await supabase
+      // 게스트인 경우 자동으로 회원 등록
+      if (userRole === 'guest') {
+        const { data: existingUser } = await supabase
           .from('users')
-          .select('id, name, email, phone_number')
-          .in('id', userIds);
+          .select('id')
+          .eq('id', user.id)
+          .single();
 
-        if (usersError) {
-          console.warn('⚠️ 사용자 정보 조회 실패:', usersError.message);
+        if (!existingUser) {
+          const { error: insertError } = await supabase.from('users').insert({
+            id: user.id,
+            email: user.email,
+            role: 'member',
+            name: quote.name,
+            created_at: new Date().toISOString()
+          });
+
+          if (insertError) {
+            console.error('회원 등록 오류:', insertError);
+            alert('회원 등록 중 오류가 발생했습니다.');
+            return;
+          }
         }
-
-  const getStatusBadge = (status: string) => {
-    const badges = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      submitted: 'bg-yellow-100 text-yellow-800',
-      draft: 'bg-gray-100 text-gray-800',
-      approved: 'bg-green-100 text-green-800',
-      confirmed: 'bg-blue-100 text-blue-800',
-      reserved: 'bg-purple-100 text-purple-800',
-      rejected: 'bg-red-100 text-red-800'
-    };
-    const labels = {
-      pending: '검토중',
-      submitted: '제출됨',
-      draft: '임시저장',
-      approved: '승인됨',
-      confirmed: '확정됨',
-      reserved: '예약완료',
-      rejected: '거절됨'
-    };
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badges[status as keyof typeof badges] || 'bg-gray-100 text-gray-800'}`}>
-        {labels[status as keyof typeof labels] || status}
-      </span>
-    );
-  };
-
-      console.log('📝 업데이트 데이터:', updateData);
-      
-      const { data, error } = await supabase
-        .from('quote')
-        .update(updateData)
-        .eq('id', quoteId)
-        .select(); // 업데이트된 데이터를 반환받음
-
-      if (error) {
-        console.error('❌ Supabase 에러 상세:', error);
-        throw error;
       }
 
-      console.log('✅ 상태 업데이트 성공:', data);
-
-      const statusLabels: { [key: string]: string } = {
-        approved: '승인',
-        rejected: '거절'
-      };
-
-      alert(`견적이 ${statusLabels[status] || status}되었습니다.${status === 'approved' ? ' 고객이 예약 신청을 할 수 있습니다.' : ''}`);
-      setShowQuickActionModal(false);
-      setActionNote('');
-      setSelectedQuote(null);
-      await loadQuotes();
-    } catch (error: any) {
-      console.error('❌ 상태 업데이트 실패:', error);
-      console.error('❌ 에러 메시지:', error?.message);
-      console.error('❌ 에러 코드:', error?.code);
-      alert(`상태 업데이트에 실패했습니다.\n에러: ${error?.message || '알 수 없는 오류'}`);
+      // 예약 페이지로 이동
+      router.push(`/reservation/cruise/new?quote_id=${quote.id}`);
+    } catch (error) {
+      console.error('예약 요청 오류:', error);
+      alert('예약 요청 중 오류가 발생했습니다.');
     }
   };
 
-  const handleQuickAction = (quote: any, action: 'approve' | 'reject') => {
-    setSelectedQuote(quote);
-    setActionType(action);
-    setActionNote('');
-    setShowQuickActionModal(true);
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('ko-KR').format(price);
   };
 
-  const executeQuickAction = () => {
-    if (!selectedQuote) return;
-    
-    // 거절의 경우 사유가 필수
-    if (actionType === 'reject' && !actionNote.trim()) {
-      alert('거절 사유를 입력해주세요.');
-      return;
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pending': return '검토중';
+      case 'approved': return '승인됨';
+      case 'rejected': return '거부됨';
+      default: return status;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'text-yellow-600 bg-yellow-100';
+      case 'approved': return 'text-green-600 bg-green-100';
+      case 'rejected': return 'text-red-600 bg-red-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const renderServiceItem = (item: QuoteItem) => {
+    const { service_type } = item;
+    let serviceName = '';
+    let serviceDetails = '';
+
+    switch (service_type) {
+      case 'airport':
+        serviceName = '공항 서비스';
+        serviceDetails = item.airport ? `${item.airport.airport_name} - ${item.airport.service_type}` : '';
+        break;
+      case 'hotel':
+        serviceName = '호텔';
+        serviceDetails = item.hotel ? `${item.hotel.hotel_name}` : '';
+        break;
+      case 'rentcar':
+        serviceName = '렌터카';
+        serviceDetails = item.rentcar ? `${item.rentcar.car_model}` : '';
+        break;
+      case 'quote_room':
+        serviceName = '객실';
+        serviceDetails = item.quote_room ? `${item.quote_room.room_code}` : '';
+        break;
+      case 'quote_car':
+        serviceName = '차량';
+        serviceDetails = item.quote_car ? `${item.quote_car.car_code}` : '';
+        break;
+      default:
+        serviceName = service_type;
     }
 
-    // 승인의 경우 approved 상태로 변경 (고객이 예약 신청할 수 있도록)
-    const finalStatus = actionType === 'approve' ? 'approved' : 'rejected';
-    updateQuoteStatus(selectedQuote.id, finalStatus);
-  };
-
-  const getStatusBadge = (status: string) => {
-    const badges = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      submitted: 'bg-yellow-100 text-yellow-800',
-      draft: 'bg-gray-100 text-gray-800',
-      approved: 'bg-green-100 text-green-800',
-      confirmed: 'bg-blue-100 text-blue-800',
-      reserved: 'bg-purple-100 text-purple-800',
-      rejected: 'bg-red-100 text-red-800'
-    };
-    const labels = {
-      pending: '대기중',
-      submitted: '제출됨',
-      draft: '임시저장',
-      approved: '승인됨',
-      confirmed: '확정됨',
-      reserved: '예약완료',
-      rejected: '거절됨'
-    };
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badges[status as keyof typeof badges] || 'bg-gray-100 text-gray-800'}`}>
-        {labels[status as keyof typeof labels] || status}
-      </span>
+      <div key={item.id} className="border rounded-lg p-4 bg-gray-50">
+        <div className="flex justify-between items-start">
+          <div>
+            <h4 className="font-medium text-gray-900">{serviceName}</h4>
+            {serviceDetails && (
+              <p className="text-sm text-gray-600 mt-1">{serviceDetails}</p>
+            )}
+            <p className="text-sm text-gray-500 mt-1">수량: {item.quantity}</p>
+          </div>
+          {quote?.status === 'approved' && (
+            <div className="text-right">
+              <p className="text-sm text-gray-600">
+                단가: {formatPrice(item.unit_price)}원
+              </p>
+              <p className="font-medium text-gray-900">
+                소계: {formatPrice(item.total_price)}원
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
     );
   };
 
   if (loading) {
-    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-lg text-gray-600">로딩 중...</div>
-    </div>;
+    return (
+      <PageWrapper>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">견적 정보를 불러오는 중...</p>
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  if (!quote) {
+    return (
+      <PageWrapper>
+        <div className="text-center py-8">
+          <p className="text-gray-600">견적을 찾을 수 없습니다.</p>
+          <button
+            onClick={() => router.push('/mypage/quotes')}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            견적 목록으로 돌아가기
+          </button>
+        </div>
+      </PageWrapper>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
-              <h1 className="text-3xl font-bold text-gray-900">📋 견적 관리</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-500">매니저: {user?.email}</div>
-              <button
-                onClick={() => router.push('/manager/dashboard')}
-                className="p-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
-                title="대시보드로 이동"
-              >
-                📊
-              </button>
-            </div>
+    <PageWrapper>
+      <div className="max-w-4xl mx-auto">
+        {/* 헤더 */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">견적 상세보기</h1>
+            <p className="text-gray-600 mt-1">견적번호: {quote.quote_number}</p>
           </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* 필터 및 검색 */}
-        <div className="mb-6 flex flex-col sm:flex-row gap-4">
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-md text-sm font-medium ${
-                filter === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              전체
-            </button>
-            <button
-              onClick={() => setFilter('pending')}
-              className={`px-4 py-2 rounded-md text-sm font-medium ${
-                filter === 'pending'
-                  ? 'bg-yellow-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              검토 대기
-            </button>
-            <button
-              onClick={() => setFilter('approved')}
-              className={`px-4 py-2 rounded-md text-sm font-medium ${
-                filter === 'approved'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              승인됨
-            </button>
-            <button
-              onClick={() => setFilter('confirmed')}
-              className={`px-4 py-2 rounded-md text-sm font-medium ${
-                filter === 'confirmed'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              확정됨
-            </button>
-            <button
-              onClick={() => setFilter('rejected')}
-              className={`px-4 py-2 rounded-md text-sm font-medium ${
-                filter === 'rejected'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              거절됨
-            </button>
-          </div>
-          <div className="flex-1 max-w-md">
-            <input
-              type="text"
-              placeholder="제목, 설명, 고객명으로 검색..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+          <div className="flex gap-2">
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(quote.status)}`}>
+              {getStatusText(quote.status)}
+            </span>
           </div>
         </div>
 
-        {/* 견적 목록 */}
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <ul className="divide-y divide-gray-200">
-            {quotes.length === 0 ? (
-              <li className="px-6 py-8 text-center text-gray-500">
-                검색 조건에 맞는 견적이 없습니다.
-              </li>
-            ) : (
-              quotes.map((quote) => (
-                <li key={quote.id} className="px-6 py-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0">
-                        {getStatusBadge(quote.status || 'pending')}
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          견적 ID: {quote.id?.slice(0, 8)}...
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          고객: {quote.users?.name || quote.users?.email || '고객 정보 없음'}
-                          {quote.users?.phone_number && (
-                            <span className="ml-2 text-gray-500">
-                              📞 {quote.users.phone_number}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          출발일: {quote.departure_date ? new Date(quote.departure_date).toLocaleDateString() : '미정'} • 
-                          인원: 성인 {quote.adult_count || 0}명
-                          {quote.child_count > 0 && `, 아동 ${quote.child_count}명`}
-                          {quote.infant_count > 0 && `, 유아 ${quote.infant_count}명`}
-                        </div>
-                        <div className="text-xs text-gray-400 flex items-center space-x-4">
-                          <span>견적가: {quote.total_price?.toLocaleString() || '0'}원</span>
-                          <span>생성일: {new Date(quote.created_at).toLocaleDateString()}</span>
-                          {quote.manager_note && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                              📝 노트 있음
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => router.push(`/manager/quotes/${quote.id}`)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-                      >
-                        상세보기
-                      </button>
-                      {(quote.status === 'pending' || quote.status === 'submitted' || quote.status === 'draft') && (
-                        <>
-                          <button
-                            onClick={() => handleQuickAction(quote, 'approve')}
-                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
-                          >
-                            승인
-                          </button>
-                          <button
-                            onClick={() => handleQuickAction(quote, 'reject')}
-                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-                          >
-                            거절
-                          </button>
-                        </>
-                      )}
-                      {quote.status === 'approved' && (
-                        <div className="text-sm text-green-600 font-medium">
-                          ✅ 고객 예약 신청 대기중
-                        </div>
-                      )}
-                      {(quote.status === 'confirmed' || quote.status === 'reserved') && (
-                        <button
-                          onClick={() => router.push('/manager/reservations')}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-                        >
-                          예약관리
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
-
-        {/* 상태별 요약 */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {quotes.length}
-              </div>
-              <div className="text-sm text-gray-500">전체 견적</div>
+        {/* 기본 정보 */}
+        <SectionBox title="기본 정보">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                신청자명
+              </label>
+              <p className="text-gray-900">{quote.name}</p>
             </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">
-                {quotes.filter(q => ['pending', 'submitted', 'draft'].includes(q.status)).length}
-              </div>
-              <div className="text-sm text-gray-500">검토 대기</div>
-            </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {quotes.filter(q => q.status === 'approved').length}
-              </div>
-              <div className="text-sm text-gray-500">승인됨</div>
-            </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {quotes.filter(q => ['confirmed', 'reserved'].includes(q.status)).length}
-              </div>
-              <div className="text-sm text-gray-500">확정됨</div>
-            </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">
-                {quotes.filter(q => q.status === 'rejected').length}
-              </div>
-              <div className="text-sm text-gray-500">거절됨</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 빠른 액션 모달 */}
-      {showQuickActionModal && selectedQuote && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                견적 {actionType === 'approve' ? '승인' : '거절'}
-              </h3>
-              
-              <div className="mb-4 p-3 bg-gray-50 rounded-md">
-                <p className="text-sm font-medium text-gray-900">
-                  고객: {selectedQuote.users?.name || selectedQuote.users?.email || '정보 없음'}
-                </p>
-                <p className="text-sm text-gray-600">
-                  견적가: {selectedQuote.total_price?.toLocaleString() || '0'}원
-                </p>
-                <p className="text-xs text-gray-500">
-                  ID: {selectedQuote.id}
-                </p>
-              </div>
-
-              <p className="text-sm text-gray-600 mb-4">
-                {actionType === 'approve' && '이 견적을 승인하시겠습니까? 승인 후 고객이 예약 신청을 할 수 있습니다.'}
-                {actionType === 'reject' && '이 견적을 거절하시겠습니까? 거절 사유를 반드시 입력해주세요.'}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                작성일
+              </label>
+              <p className="text-gray-900">
+                {new Date(quote.created_at).toLocaleDateString('ko-KR')}
               </p>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {actionType === 'approve' && '승인 메모 (선택사항)'}
-                  {actionType === 'reject' && '거절 사유 (필수)'}
+            </div>
+            {quote.cruise_name && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  크루즈명
                 </label>
-                <textarea
-                  value={actionNote}
-                  onChange={(e) => setActionNote(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                  rows={3}
-                  placeholder={
-                    actionType === 'approve' ? '고객에게 전달할 추가 안내사항을 입력하세요...' :
-                    '거절 사유를 구체적으로 입력해주세요...'
-                  }
-                  required={actionType === 'reject'}
-                />
+                <p className="text-gray-900">{quote.cruise_name}</p>
               </div>
+            )}
+            {quote.departure_date && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  출발일
+                </label>
+                <p className="text-gray-900">
+                  {new Date(quote.departure_date).toLocaleDateString('ko-KR')}
+                </p>
+              </div>
+            )}
+            {quote.return_date && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  도착일
+                </label>
+                <p className="text-gray-900">
+                  {new Date(quote.return_date).toLocaleDateString('ko-KR')}
+                </p>
+              </div>
+            )}
+            {quote.departure_port && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  출발항구
+                </label>
+                <p className="text-gray-900">{quote.departure_port}</p>
+              </div>
+            )}
+          </div>
+        </SectionBox>
 
-              <div className="flex space-x-3">
-                <button
-                  onClick={executeQuickAction}
-                  disabled={actionType === 'reject' && !actionNote.trim()}
-                  className={`flex-1 font-medium py-2 px-4 rounded-md text-white ${
-                    actionType === 'approve' ? 'bg-green-600 hover:bg-green-700' :
-                    'bg-red-600 hover:bg-red-700'
-                  } disabled:bg-gray-300`}
-                >
-                  {actionType === 'approve' ? '승인하기' : '거절하기'}
-                </button>
-                <button
-                  onClick={() => setShowQuickActionModal(false)}
-                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-md"
-                >
-                  취소
-                </button>
+        {/* 견적 항목 */}
+        <SectionBox title="견적 항목">
+          {quote.quote_items && quote.quote_items.length > 0 ? (
+            <div className="space-y-4">
+              {quote.quote_items.map(renderServiceItem)}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-4">견적 항목이 없습니다.</p>
+          )}
+        </SectionBox>
+
+        {/* 총 금액 (승인된 경우에만 표시) */}
+        {quote.status === 'approved' && (
+          <SectionBox title="총 견적 금액">
+            <div className="bg-blue-50 p-6 rounded-lg">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-medium text-gray-900">총 금액</span>
+                <span className="text-2xl font-bold text-blue-600">
+                  {formatPrice(quote.total_price)}원
+                </span>
               </div>
             </div>
-          </div>
+          </SectionBox>
+        )}
+
+        {/* 액션 버튼 */}
+        <div className="flex gap-4 mt-8">
+          <button
+            onClick={() => router.push('/mypage/quotes')}
+            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+          >
+            목록으로 돌아가기
+          </button>
+          
+          {quote.status === 'approved' && (
+            <button
+              onClick={handleReservationRequest}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              예약하기
+            </button>
+          )}
         </div>
-      )}
-    </div>
+
+        {/* 상태별 안내 메시지 */}
+        {quote.status === 'pending' && (
+          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-yellow-800">
+              <strong>검토중:</strong> 견적이 검토 중입니다. 승인 후 가격 정보와 예약 기능을 이용하실 수 있습니다.
+            </p>
+          </div>
+        )}
+        
+        {quote.status === 'rejected' && (
+          <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-800">
+              <strong>거부됨:</strong> 견적이 거부되었습니다. 새로운 견적을 요청해 주세요.
+            </p>
+          </div>
+        )}
+      </div>
+    </PageWrapper>
   );
 }
