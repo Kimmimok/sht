@@ -1,63 +1,55 @@
 'use client';
+
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import supabase from '@/lib/supabase';
-import Link from 'next/link';
+import PageWrapper from '@/components/PageWrapper';
+import SectionBox from '@/components/SectionBox';
 
-interface QuoteDetail {
-  id: string;
-  title: string;
-  status: string;
-  total_price: number;
-  created_at: string;
-  submitted_at?: string;
-  approved_at?: string;
-  manager_note?: string;
-  items: QuoteItem[];
-}
-
-interface QuoteItem {
-  id: string;
-  service_type: string;
-  service_ref_id: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-  service_detail?: any;
-  price_info?: any;
-}
-
-export default function QuoteDetailPage({ params }: { params: { id: string } }) {
+export default function QuoteDetailView() {
   const router = useRouter();
-  const [quote, setQuote] = useState<QuoteDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const params = useParams();
+  const quoteId = params.id as string;
+  
   const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [quote, setQuote] = useState<any>(null);
+  const [quoteItems, setQuoteItems] = useState<any[]>([]);
+  const [showPrices, setShowPrices] = useState(false);
 
   useEffect(() => {
-    checkAuthAndLoadData();
-  }, [params.id]);
+    checkAuth();
+  }, []);
 
-  const checkAuthAndLoadData = async () => {
+  useEffect(() => {
+    if (user && quoteId) {
+      loadQuoteDetails();
+    }
+  }, [user, quoteId]);
+
+  const checkAuth = async () => {
     try {
-      // 1. 인증 확인
-      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
-      if (userError || !authUser) {
-        alert('로그인이 필요합니다.');
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        console.log('❌ 사용자 인증 실패:', userError?.message);
         router.push('/login');
         return;
       }
-      setUser(authUser);
 
-      // 2. 견적 데이터 로드
-      await loadQuoteDetail(params.id);
+      console.log('✅ 사용자 인증 성공:', user.id);
+      setUser(user);
     } catch (error) {
-      console.error('데이터 로드 오류:', error);
+      console.error('❌ 인증 확인 오류:', error);
+      router.push('/login');
+    } finally {
       setLoading(false);
     }
   };
 
-  const loadQuoteDetail = async (quoteId: string) => {
+  const loadQuoteDetails = async () => {
     try {
+      console.log('🔄 견적 상세 데이터 로딩 시작...', quoteId);
+      
       // 견적 기본 정보 조회
       const { data: quoteData, error: quoteError } = await supabase
         .from('quote')
@@ -65,869 +57,512 @@ export default function QuoteDetailPage({ params }: { params: { id: string } }) 
         .eq('id', quoteId)
         .single();
 
-      if (quoteError || !quoteData) {
+      if (quoteError) {
+        console.error('❌ 견적 조회 실패:', quoteError);
         alert('견적을 찾을 수 없습니다.');
         router.push('/mypage/quotes');
         return;
       }
 
-      // 견적 아이템들 조회
+      // 견적 소유권 확인 (견적자는 auth.uid로만 확인)
+      if (quoteData.user_id !== user.id) {
+        console.log('❌ 견적 소유권 없음');
+        alert('해당 견적에 접근할 권한이 없습니다.');
+        router.push('/mypage/quotes');
+        return;
+      }
+
+      // 견적 상태에 따라 가격 표시 여부 결정
+      const approvedStatuses = ['approved', 'confirmed', 'reserved'];
+      setShowPrices(approvedStatuses.includes(quoteData.status));
+
+      console.log('✅ 견적 데이터:', quoteData);
+      console.log('💰 가격 표시 여부:', approvedStatuses.includes(quoteData.status));
+      setQuote(quoteData);
+
+      // quote_item과 관련 서비스 데이터 조회
       const { data: itemsData, error: itemsError } = await supabase
         .from('quote_item')
-        .select('*')
-        .eq('quote_id', quoteId);
+        .select(`
+          *,
+          airport:airport(*),
+          hotel:hotel(*),
+          rentcar:rentcar(*),
+          quote_room:quote_room(*, room_code:room_code(*)),
+          quote_car:quote_car(*, car_code:car_code(*))
+        `)
+        .eq('quote_id', quoteId)
+        .order('created_at');
 
       if (itemsError) {
-        console.error('견적 아이템 조회 오류:', itemsError);
-        setQuote({ ...quoteData, items: [] });
+        console.error('❌ 견적 아이템 조회 실패:', itemsError);
+        setQuoteItems([]);
+      } else {
+        console.log('✅ 견적 아이템:', itemsData);
+        setQuoteItems(itemsData || []);
+      }
+
+    } catch (error) {
+      console.error('❌ 견적 상세 로드 실패:', error);
+      alert('견적 데이터를 불러오는데 실패했습니다.');
+    }
+  }; {
+      console.log('🔄 견적 데이터 로딩 시작...');
+      console.log('📋 필터:', filter, '검색어:', searchTerm || '없음');
+      
+      // 기본 쿼리 - users 조인 제거하고 단순하게 시작
+      let query = supabase
+        .from('quote')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // 필터 적용
+      if (filter !== 'all') {
+        console.log('🔍 상태 필터 적용:', filter);
+        // pending을 submitted로도 매칭하고, 다양한 상태 처리
+        if (filter === 'pending') {
+          query = query.in('status', ['pending', 'submitted', 'draft']);
+        } else if (filter === 'approved') {
+          query = query.eq('status', 'approved');
+        } else if (filter === 'confirmed') {
+          query = query.in('status', ['confirmed', 'reserved']);
+        } else {
+          query = query.eq('status', filter);
+        }
+      }
+
+      // 검색어 적용 (존재하는 필드만 검색)
+      if (searchTerm && searchTerm.trim()) {
+        console.log('🔍 검색어 적용:', searchTerm);
+        query = query.or(`id.ilike.%${searchTerm}%,user_id.ilike.%${searchTerm}%`);
+      }
+
+      const { data: quotesData, error: quotesError } = await query;
+      
+      console.log('� 견적 조회 결과:');
+      console.log('  - 견적 수:', quotesData?.length || 0);
+      console.log('  - 오류:', quotesError?.message || '없음');
+      
+      if (quotesError) {
+        console.error('❌ 견적 데이터 조회 실패:', quotesError);
+        setQuotes([]);
         return;
       }
 
-      // 각 아이템의 상세 정보 및 가격 정보 조회
-      const itemsWithDetails = await Promise.all(
-        (itemsData || []).map(async (item: any) => {
-          const serviceDetail = await getServiceDetail(item.service_type, item.service_ref_id);
-          const priceInfo = await getPriceInfo(item.service_type, serviceDetail);
-          
-          return {
-            ...item,
-            service_detail: serviceDetail,
-            price_info: priceInfo
-          };
-        })
-      );
+      // 사용자 정보를 별도로 조회
+      if (quotesData && quotesData.length > 0) {
+        console.log('👥 사용자 정보 추가 조회...');
+        const userIds = [...new Set(quotesData.map((q: any) => q.user_id))];
+        
+        const { data: usersData, error: usersError } = await supabase
+          .from('users')
+          .select('id, name, email, phone_number')
+          .in('id', userIds);
 
-      setQuote({
-        ...quoteData,
-        items: itemsWithDetails
-      });
-    } catch (error) {
-      console.error('견적 상세 조회 오류:', error);
-      alert('견적 정보를 불러오는 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
+        if (usersError) {
+          console.warn('⚠️ 사용자 정보 조회 실패:', usersError.message);
+        }
+
+  const getStatusBadge = (status: string) => {
+    const badges = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      submitted: 'bg-yellow-100 text-yellow-800',
+      draft: 'bg-gray-100 text-gray-800',
+      approved: 'bg-green-100 text-green-800',
+      confirmed: 'bg-blue-100 text-blue-800',
+      reserved: 'bg-purple-100 text-purple-800',
+      rejected: 'bg-red-100 text-red-800'
+    };
+    const labels = {
+      pending: '검토중',
+      submitted: '제출됨',
+      draft: '임시저장',
+      approved: '승인됨',
+      confirmed: '확정됨',
+      reserved: '예약완료',
+      rejected: '거절됨'
+    };
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badges[status as keyof typeof badges] || 'bg-gray-100 text-gray-800'}`}>
+        {labels[status as keyof typeof labels] || status}
+      </span>
+    );
   };
 
-  // 서비스 상세 정보 조회
-  const getServiceDetail = async (serviceType: string, serviceRefId: string) => {
-    try {
+      console.log('📝 업데이트 데이터:', updateData);
+      
       const { data, error } = await supabase
-        .from(serviceType)
-        .select('*')
-        .eq('id', serviceRefId)
-        .single();
+        .from('quote')
+        .update(updateData)
+        .eq('id', quoteId)
+        .select(); // 업데이트된 데이터를 반환받음
 
       if (error) {
-        console.error(`${serviceType} 서비스 조회 오류:`, error);
-        return null;
+        console.error('❌ Supabase 에러 상세:', error);
+        throw error;
       }
-      return data;
-    } catch (error) {
-      console.error(`${serviceType} 서비스 조회 중 오류:`, error);
-      return null;
+
+      console.log('✅ 상태 업데이트 성공:', data);
+
+      const statusLabels: { [key: string]: string } = {
+        approved: '승인',
+        rejected: '거절'
+      };
+
+      alert(`견적이 ${statusLabels[status] || status}되었습니다.${status === 'approved' ? ' 고객이 예약 신청을 할 수 있습니다.' : ''}`);
+      setShowQuickActionModal(false);
+      setActionNote('');
+      setSelectedQuote(null);
+      await loadQuotes();
+    } catch (error: any) {
+      console.error('❌ 상태 업데이트 실패:', error);
+      console.error('❌ 에러 메시지:', error?.message);
+      console.error('❌ 에러 코드:', error?.code);
+      alert(`상태 업데이트에 실패했습니다.\n에러: ${error?.message || '알 수 없는 오류'}`);
     }
   };
 
-  // 가격 정보 조회 (각 서비스별 price_code 테이블에서)
-  const getPriceInfo = async (serviceType: string, serviceDetail: any) => {
-    if (!serviceDetail) return null;
-
-    try {
-      let priceTableName = '';
-      let conditions: any = {};
-
-      switch (serviceType) {
-        case 'cruise':
-          priceTableName = 'room_price';
-          conditions = {
-            schedule_code: serviceDetail.schedule_code,
-            cruise_code: serviceDetail.cruise_code,
-            room_code: serviceDetail.rooms_detail?.[0]?.room_code
-          };
-          break;
-        
-        case 'rentcar':
-          priceTableName = 'rentcar_price';
-          conditions = {
-            rc_category_code: serviceDetail.rc_category_code,
-            rc_type_code: serviceDetail.rc_type_code,
-            rc_route_code: serviceDetail.rc_route_code,
-            rc_car_code: serviceDetail.rc_car_code
-          };
-          break;
-        
-        case 'hotel':
-          priceTableName = 'hotel_price';
-          conditions = {
-            hotel_name: serviceDetail.hotel_name,
-            room_name: serviceDetail.room_name,
-            room_type: serviceDetail.room_type
-          };
-          break;
-        
-        case 'tour':
-          priceTableName = 'tour_price';
-          conditions = {
-            tour_code: serviceDetail.tour_code
-          };
-          break;
-        
-        case 'airport':
-          priceTableName = 'airport_price';
-          conditions = {
-            service_type: serviceDetail.service_type,
-            route: serviceDetail.route
-          };
-          break;
-        
-        default:
-          console.log(`⚠️ 알 수 없는 서비스 타입: ${serviceType}`);
-          return null;
-      }
-
-      if (!priceTableName) {
-        console.log(`⚠️ ${serviceType}에 대한 가격 테이블이 정의되지 않음`);
-        return null;
-      }
-
-      let query = supabase.from(priceTableName).select('*');
-      
-      // 조건 추가 (null이 아닌 값만)
-      Object.entries(conditions).forEach(([key, value]) => {
-        if (value !== null && value !== undefined && value !== '') {
-          query = query.eq(key, value);
-        }
-      });
-
-      console.log(`🔍 ${priceTableName} 테이블에서 가격 정보 조회:`, conditions);
-      
-      const { data: priceData, error: priceError } = await query.limit(5);
-
-      if (priceError) {
-        console.error(`❌ ${priceTableName} 가격 조회 오류:`, priceError);
-        return null;
-      }
-
-      if (!priceData || priceData.length === 0) {
-        console.log(`⚠️ ${priceTableName}에서 매칭되는 가격 정보 없음:`, conditions);
-        return null;
-      }
-
-      // 첫 번째 매칭 결과 반환
-      const selectedPrice = priceData[0];
-      console.log(`✅ ${priceTableName} 가격 정보 조회 성공:`, selectedPrice);
-      
-      return selectedPrice;
-    } catch (error) {
-      console.error(`❌ ${serviceType} 가격 정보 조회 중 오류:`, error);
-      return null;
-    }
+  const handleQuickAction = (quote: any, action: 'approve' | 'reject') => {
+    setSelectedQuote(quote);
+    setActionType(action);
+    setActionNote('');
+    setShowQuickActionModal(true);
   };
 
-  // 예약하기 함수 - 프로필 페이지로 이동
-  const handleReservation = async () => {
-    if (!quote?.id) {
-      alert('견적 정보가 없습니다.');
+  const executeQuickAction = () => {
+    if (!selectedQuote) return;
+    
+    // 거절의 경우 사유가 필수
+    if (actionType === 'reject' && !actionNote.trim()) {
+      alert('거절 사유를 입력해주세요.');
       return;
     }
-    
-    try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        alert('로그인이 필요합니다.');
-        router.push('/login');
-        return;
-      }
-      
-      // 기존 사용자 정보 확인
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      // 사용자가 이미 등록되어 있고 필수 정보가 모두 있는 경우
-      if (existingUser && existingUser.name && existingUser.english_name) {
-        console.log('✅ 기존 등록 사용자:', existingUser);
-        // 바로 예약 홈으로 이동
-        router.push(`/mypage/reservations?quoteId=${quote.id}`);
-        return;
-      }
-      
-      // 사용자 정보가 부족한 경우 프로필 입력 페이지로 이동
-      console.log('⚠️ 사용자 정보 부족, 프로필 입력 페이지로 이동:', existingUser);
-      router.push(`/mypage/reservations/profile?quoteId=${quote.id}`);
-      
-    } catch (error) {
-      console.error('❌ 인증 처리 오류:', error);
-      alert('인증 처리 중 오류가 발생했습니다.');
-    }
+
+    // 승인의 경우 approved 상태로 변경 (고객이 예약 신청할 수 있도록)
+    const finalStatus = actionType === 'approve' ? 'approved' : 'rejected';
+    updateQuoteStatus(selectedQuote.id, finalStatus);
   };
 
-  // 견적 제출 함수
-  const submitQuote = async (quoteId: string) => {
-    if (!confirm('견적을 제출하시겠습니까? 제출 후에는 수정할 수 없습니다.')) return;
-
-    try {
-      const { error } = await supabase
-        .from('quote')
-        .update({ 
-          status: 'submitted',
-          submitted_at: new Date().toISOString()
-        })
-        .eq('id', quoteId);
-
-      if (error) {
-        alert('제출 실패: ' + error.message);
-        return;
-      }
-
-      alert('견적이 제출되었습니다!');
-      window.location.reload();
-    } catch (error) {
-      console.error('견적 제출 오류:', error);
-      alert('견적 제출 중 오류가 발생했습니다.');
-    }
+  const getStatusBadge = (status: string) => {
+    const badges = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      submitted: 'bg-yellow-100 text-yellow-800',
+      draft: 'bg-gray-100 text-gray-800',
+      approved: 'bg-green-100 text-green-800',
+      confirmed: 'bg-blue-100 text-blue-800',
+      reserved: 'bg-purple-100 text-purple-800',
+      rejected: 'bg-red-100 text-red-800'
+    };
+    const labels = {
+      pending: '대기중',
+      submitted: '제출됨',
+      draft: '임시저장',
+      approved: '승인됨',
+      confirmed: '확정됨',
+      reserved: '예약완료',
+      rejected: '거절됨'
+    };
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badges[status as keyof typeof badges] || 'bg-gray-100 text-gray-800'}`}>
+        {labels[status as keyof typeof labels] || status}
+      </span>
+    );
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-4xl mb-4">⏳</div>
-          <p>견적 정보를 불러오는 중...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!quote) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-4xl mb-4">❌</div>
-          <p>견적을 찾을 수 없습니다.</p>
-          <Link href="/mypage/quotes">
-            <button className="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
-              견적 목록으로 돌아가기
-            </button>
-          </Link>
-        </div>
-      </div>
-    );
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-lg text-gray-600">로딩 중...</div>
+    </div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4">
-        {/* 헤더 - 매니저 스타일 */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">견적 상세보기</h1>
-              <div className="flex items-center space-x-4 mt-2">
-                <span className="text-sm text-gray-500">견적 ID: {quote.id}</span>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  quote.status === 'approved' ? 'bg-green-100 text-green-800' :
-                  quote.status === 'submitted' ? 'bg-blue-100 text-blue-800' :
-                  quote.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {quote.status === 'draft' ? '작성중' :
-                   quote.status === 'submitted' ? '제출됨' :
-                   quote.status === 'approved' ? '승인됨' :
-                   quote.status === 'rejected' ? '거절됨' : quote.status}
-                </span>
-              </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* 헤더 */}
+      <div className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div className="flex items-center">
+              <h1 className="text-3xl font-bold text-gray-900">📋 견적 관리</h1>
             </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold text-blue-600">
-                {quote.total_price?.toLocaleString() || 0}원
-              </div>
-              <div className="text-sm text-gray-500 mt-1">총 견적 금액</div>
-            </div>
-          </div>
-
-          {/* 견적 기본 정보 그리드 - 매니저 스타일 */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="text-sm font-medium text-blue-800">생성일</div>
-              <div className="text-lg font-semibold text-blue-900">
-                {new Date(quote.created_at).toLocaleDateString()}
-              </div>
-            </div>
-            {quote.submitted_at && (
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="text-sm font-medium text-green-800">제출일</div>
-                <div className="text-lg font-semibold text-green-900">
-                  {new Date(quote.submitted_at).toLocaleDateString()}
-                </div>
-              </div>
-            )}
-            {quote.approved_at && (
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <div className="text-sm font-medium text-purple-800">승인일</div>
-                <div className="text-lg font-semibold text-purple-900">
-                  {new Date(quote.approved_at).toLocaleDateString()}
-                </div>
-              </div>
-            )}
-            <div className="bg-yellow-50 p-4 rounded-lg">
-              <div className="text-sm font-medium text-yellow-800">서비스 개수</div>
-              <div className="text-lg font-semibold text-yellow-900">
-                {quote.items.length}개
-              </div>
-            </div>
-          </div>
-
-          {quote.manager_note && (
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
-              <div className="flex">
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-yellow-800">매니저 메모</p>
-                  <p className="text-sm text-yellow-700 mt-1">{quote.manager_note}</p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 서비스 아이템들 - 매니저 스타일 */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">포함 서비스</h2>
-          
-          {quote.items.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              등록된 서비스가 없습니다.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {quote.items.map((item, index) => (
-                <ServiceItemCard 
-                  key={item.id} 
-                  item={item} 
-                  index={index + 1} 
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* 총 금액 - 매니저 스타일 */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex justify-between items-center">
-            <span className="text-xl font-bold text-gray-900">총 견적 금액</span>
-            <span className="text-3xl font-bold text-blue-600">
-              {quote.total_price?.toLocaleString() || 0}원
-            </span>
-          </div>
-        </div>
-
-        {/* 액션 버튼들 */}
-        <div className="flex justify-between mt-6">
-          <Link href="/mypage/quotes">
-            <button className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600">
-              목록
-            </button>
-          </Link>
-          
-          <div className="space-x-3">
-            {quote.status === 'draft' && (
-              <>
-                <Link href={`/mypage/quotes/new?quoteId=${quote.id}`}>
-                  <button className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600">
-                    수정
-                  </button>
-                </Link>
-                <button 
-                  onClick={() => submitQuote(quote.id)}
-                  className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600"
-                >
-                  제출
-                </button>
-              </>
-            )}
-            {quote.status === 'approved' && (
-              <button 
-                onClick={handleReservation}
-                className="bg-indigo-500 text-white px-6 py-3 rounded-lg hover:bg-indigo-600"
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-500">매니저: {user?.email}</div>
+              <button
+                onClick={() => router.push('/manager/dashboard')}
+                className="p-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
+                title="대시보드로 이동"
               >
-                🎫 예약하기
+                📊
               </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* 필터 및 검색 */}
+        <div className="mb-6 flex flex-col sm:flex-row gap-4">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-4 py-2 rounded-md text-sm font-medium ${
+                filter === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              전체
+            </button>
+            <button
+              onClick={() => setFilter('pending')}
+              className={`px-4 py-2 rounded-md text-sm font-medium ${
+                filter === 'pending'
+                  ? 'bg-yellow-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              검토 대기
+            </button>
+            <button
+              onClick={() => setFilter('approved')}
+              className={`px-4 py-2 rounded-md text-sm font-medium ${
+                filter === 'approved'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              승인됨
+            </button>
+            <button
+              onClick={() => setFilter('confirmed')}
+              className={`px-4 py-2 rounded-md text-sm font-medium ${
+                filter === 'confirmed'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              확정됨
+            </button>
+            <button
+              onClick={() => setFilter('rejected')}
+              className={`px-4 py-2 rounded-md text-sm font-medium ${
+                filter === 'rejected'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              거절됨
+            </button>
+          </div>
+          <div className="flex-1 max-w-md">
+            <input
+              type="text"
+              placeholder="제목, 설명, 고객명으로 검색..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* 견적 목록 */}
+        <div className="bg-white shadow overflow-hidden sm:rounded-md">
+          <ul className="divide-y divide-gray-200">
+            {quotes.length === 0 ? (
+              <li className="px-6 py-8 text-center text-gray-500">
+                검색 조건에 맞는 견적이 없습니다.
+              </li>
+            ) : (
+              quotes.map((quote) => (
+                <li key={quote.id} className="px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        {getStatusBadge(quote.status || 'pending')}
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          견적 ID: {quote.id?.slice(0, 8)}...
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          고객: {quote.users?.name || quote.users?.email || '고객 정보 없음'}
+                          {quote.users?.phone_number && (
+                            <span className="ml-2 text-gray-500">
+                              📞 {quote.users.phone_number}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          출발일: {quote.departure_date ? new Date(quote.departure_date).toLocaleDateString() : '미정'} • 
+                          인원: 성인 {quote.adult_count || 0}명
+                          {quote.child_count > 0 && `, 아동 ${quote.child_count}명`}
+                          {quote.infant_count > 0 && `, 유아 ${quote.infant_count}명`}
+                        </div>
+                        <div className="text-xs text-gray-400 flex items-center space-x-4">
+                          <span>견적가: {quote.total_price?.toLocaleString() || '0'}원</span>
+                          <span>생성일: {new Date(quote.created_at).toLocaleDateString()}</span>
+                          {quote.manager_note && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                              📝 노트 있음
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => router.push(`/manager/quotes/${quote.id}`)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+                      >
+                        상세보기
+                      </button>
+                      {(quote.status === 'pending' || quote.status === 'submitted' || quote.status === 'draft') && (
+                        <>
+                          <button
+                            onClick={() => handleQuickAction(quote, 'approve')}
+                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
+                          >
+                            승인
+                          </button>
+                          <button
+                            onClick={() => handleQuickAction(quote, 'reject')}
+                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+                          >
+                            거절
+                          </button>
+                        </>
+                      )}
+                      {quote.status === 'approved' && (
+                        <div className="text-sm text-green-600 font-medium">
+                          ✅ 고객 예약 신청 대기중
+                        </div>
+                      )}
+                      {(quote.status === 'confirmed' || quote.status === 'reserved') && (
+                        <button
+                          onClick={() => router.push('/manager/reservations')}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+                        >
+                          예약관리
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              ))
             )}
-          </div>
+          </ul>
         </div>
-      </div>
-    </div>
-  );
-}
 
-// 서비스 아이템 카드 컴포넌트 - 매니저 스타일
-function ServiceItemCard({ item, index }: { item: QuoteItem; index: number }) {
-  const getServiceIcon = (serviceType: string) => {
-    switch (serviceType) {
-      case 'cruise': return '🚢';
-      case 'hotel': return '🏨';
-      case 'airport': return '✈️';
-      case 'tour': return '🎯';
-      case 'rentcar': return '🚗';
-      default: return '📋';
-    }
-  };
-
-  const getServiceName = (serviceType: string) => {
-    switch (serviceType) {
-      case 'cruise': return '크루즈';
-      case 'hotel': return '호텔';
-      case 'airport': return '공항 서비스';
-      case 'tour': return '투어';
-      case 'rentcar': return '렌트카';
-      default: return '서비스';
-    }
-  };
-
-  const getStatusColor = (serviceType: string) => {
-    switch (serviceType) {
-      case 'cruise': return 'bg-blue-50 border-blue-200';
-      case 'hotel': return 'bg-pink-50 border-pink-200';
-      case 'airport': return 'bg-yellow-50 border-yellow-200';
-      case 'tour': return 'bg-purple-50 border-purple-200';
-      case 'rentcar': return 'bg-green-50 border-green-200';
-      default: return 'bg-gray-50 border-gray-200';
-    }
-  };
-
-  return (
-    <div className={`border rounded-lg p-4 ${getStatusColor(item.service_type)}`}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center space-x-3">
-          <span className="text-2xl">{getServiceIcon(item.service_type)}</span>
-          <div>
-            <h3 className="font-bold text-lg text-gray-900">
-              {index}. {getServiceName(item.service_type)}
-            </h3>
-            <div className="flex items-center space-x-4 text-sm text-gray-600">
-              <span>수량: {item.quantity}개</span>
-              <span>서비스 ID: {item.service_ref_id}</span>
+        {/* 상태별 요약 */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {quotes.length}
+              </div>
+              <div className="text-sm text-gray-500">전체 견적</div>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-600">
+                {quotes.filter(q => ['pending', 'submitted', 'draft'].includes(q.status)).length}
+              </div>
+              <div className="text-sm text-gray-500">검토 대기</div>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {quotes.filter(q => q.status === 'approved').length}
+              </div>
+              <div className="text-sm text-gray-500">승인됨</div>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {quotes.filter(q => ['confirmed', 'reserved'].includes(q.status)).length}
+              </div>
+              <div className="text-sm text-gray-500">확정됨</div>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-600">
+                {quotes.filter(q => q.status === 'rejected').length}
+              </div>
+              <div className="text-sm text-gray-500">거절됨</div>
             </div>
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-xl font-bold text-gray-900">
-            {item.total_price?.toLocaleString() || 0}원
-          </div>
-          {item.unit_price > 0 && (
-            <div className="text-sm text-gray-500">
-              단가: {item.unit_price.toLocaleString()}원
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* 서비스 상세 정보 */}
-      {item.service_detail && (
-        <ServiceDetailDisplay 
-          serviceType={item.service_type}
-          detail={item.service_detail}
-          priceInfo={item.price_info}
-        />
+      {/* 빠른 액션 모달 */}
+      {showQuickActionModal && selectedQuote && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                견적 {actionType === 'approve' ? '승인' : '거절'}
+              </h3>
+              
+              <div className="mb-4 p-3 bg-gray-50 rounded-md">
+                <p className="text-sm font-medium text-gray-900">
+                  고객: {selectedQuote.users?.name || selectedQuote.users?.email || '정보 없음'}
+                </p>
+                <p className="text-sm text-gray-600">
+                  견적가: {selectedQuote.total_price?.toLocaleString() || '0'}원
+                </p>
+                <p className="text-xs text-gray-500">
+                  ID: {selectedQuote.id}
+                </p>
+              </div>
+
+              <p className="text-sm text-gray-600 mb-4">
+                {actionType === 'approve' && '이 견적을 승인하시겠습니까? 승인 후 고객이 예약 신청을 할 수 있습니다.'}
+                {actionType === 'reject' && '이 견적을 거절하시겠습니까? 거절 사유를 반드시 입력해주세요.'}
+              </p>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {actionType === 'approve' && '승인 메모 (선택사항)'}
+                  {actionType === 'reject' && '거절 사유 (필수)'}
+                </label>
+                <textarea
+                  value={actionNote}
+                  onChange={(e) => setActionNote(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  rows={3}
+                  placeholder={
+                    actionType === 'approve' ? '고객에게 전달할 추가 안내사항을 입력하세요...' :
+                    '거절 사유를 구체적으로 입력해주세요...'
+                  }
+                  required={actionType === 'reject'}
+                />
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={executeQuickAction}
+                  disabled={actionType === 'reject' && !actionNote.trim()}
+                  className={`flex-1 font-medium py-2 px-4 rounded-md text-white ${
+                    actionType === 'approve' ? 'bg-green-600 hover:bg-green-700' :
+                    'bg-red-600 hover:bg-red-700'
+                  } disabled:bg-gray-300`}
+                >
+                  {actionType === 'approve' ? '승인하기' : '거절하기'}
+                </button>
+                <button
+                  onClick={() => setShowQuickActionModal(false)}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium py-2 px-4 rounded-md"
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
-}
-
-// 서비스별 상세 정보 표시 컴포넌트
-function ServiceDetailDisplay({ serviceType, detail, priceInfo }: { 
-  serviceType: string; 
-  detail: any; 
-  priceInfo: any; 
-}) {
-  switch (serviceType) {
-    case 'cruise':
-      return (
-        <div className="bg-blue-50 rounded-lg p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <span className="text-sm font-medium text-blue-800">크루즈 정보</span>
-              <p className="text-blue-700 font-semibold">{detail.cruise_name || detail.cruise_code}</p>
-              <p className="text-sm text-blue-600">
-                {detail.departure_date} ~ {detail.return_date}
-              </p>
-              {detail.schedule_code && (
-                <p className="text-xs text-blue-500">스케줄: {detail.schedule_code}</p>
-              )}
-            </div>
-            <div>
-              <span className="text-sm font-medium text-blue-800">인원 구성</span>
-              <p className="text-blue-700">
-                성인 {detail.adult_count || 0}명, 아동 {detail.child_count || 0}명, 유아 {detail.infant_count || 0}명
-              </p>
-              <p className="text-sm text-blue-600">
-                총 {(detail.adult_count || 0) + (detail.child_count || 0) + (detail.infant_count || 0)}명
-              </p>
-            </div>
-            <div>
-              <span className="text-sm font-medium text-blue-800">객실 정보</span>
-              {detail.rooms_detail && detail.rooms_detail.length > 0 ? (
-                detail.rooms_detail.map((room: any, idx: number) => (
-                  <div key={idx} className="text-blue-700">
-                    <p className="font-medium">{room.room_code}</p>
-                    <p className="text-sm text-blue-600">
-                      {Object.entries(room.categoryCounts || {}).map(([category, count]) => 
-                        `${category}: ${count}명`
-                      ).join(', ')}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <p className="text-blue-700">객실 정보 없음</p>
-              )}
-            </div>
-          </div>
-          {priceInfo && (
-            <div className="mt-4 pt-3 border-t border-blue-200">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <span className="text-sm font-medium text-blue-800">가격 코드 정보</span>
-                  <p className="text-sm text-blue-600">
-                    스케줄: {priceInfo.schedule_code} | 크루즈: {priceInfo.cruise_code}
-                  </p>
-                  {priceInfo.room_code && (
-                    <p className="text-sm text-blue-600">객실: {priceInfo.room_code}</p>
-                  )}
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-blue-800">결제 정보</span>
-                  <p className="text-sm text-blue-600">
-                    결제코드: {priceInfo.payment_code || 'N/A'}
-                  </p>
-                  {priceInfo.base_price && (
-                    <p className="text-sm text-blue-600">
-                      기본가격: {priceInfo.base_price.toLocaleString()}원
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-
-    case 'rentcar':
-      return (
-        <div className="bg-green-50 rounded-lg p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <span className="text-sm font-medium text-green-800">렌트카 정보</span>
-              <p className="text-green-700 font-semibold">{detail.rc_car_code || '차량 정보'}</p>
-              <p className="text-sm text-green-600">
-                {detail.pickup_date} ~ {detail.return_date}
-              </p>
-              {detail.rental_days && (
-                <p className="text-xs text-green-500">{detail.rental_days}일간</p>
-              )}
-            </div>
-            <div>
-              <span className="text-sm font-medium text-green-800">차량 분류</span>
-              <p className="text-green-700">
-                구분: {detail.rc_category_code || 'N/A'}
-              </p>
-              <p className="text-green-700">
-                분류: {detail.rc_type_code || 'N/A'}
-              </p>
-              <p className="text-sm text-green-600">
-                경로: {detail.rc_route_code || 'N/A'}
-              </p>
-            </div>
-            <div>
-              <span className="text-sm font-medium text-green-800">추가 옵션</span>
-              {detail.insurance_type && (
-                <p className="text-green-700">보험: {detail.insurance_type}</p>
-              )}
-              {detail.driver_age && (
-                <p className="text-sm text-green-600">운전자 연령: {detail.driver_age}세</p>
-              )}
-              {detail.pickup_location && (
-                <p className="text-sm text-green-600">픽업: {detail.pickup_location}</p>
-              )}
-            </div>
-          </div>
-          {priceInfo && (
-            <div className="mt-4 pt-3 border-t border-green-200">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <span className="text-sm font-medium text-green-800">가격 코드 정보</span>
-                  <p className="text-sm text-green-600">
-                    카테고리: {priceInfo.rc_category_code} | 타입: {priceInfo.rc_type_code}
-                  </p>
-                  <p className="text-sm text-green-600">
-                    경로: {priceInfo.rc_route_code} | 차량: {priceInfo.rc_car_code}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-green-800">요금 정보</span>
-                  {priceInfo.price && (
-                    <p className="text-sm text-green-600">
-                      기간별 가격: {priceInfo.price.toLocaleString()}원
-                    </p>
-                  )}
-                  {priceInfo.base_price && (
-                    <p className="text-sm text-green-600">
-                      기본 요금: {priceInfo.base_price.toLocaleString()}원
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-
-    case 'hotel':
-      return (
-        <div className="bg-pink-50 rounded-lg p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <span className="text-sm font-medium text-pink-800">호텔 정보</span>
-              <p className="text-pink-700 font-semibold">{detail.hotel_name || '호텔명'}</p>
-              <p className="text-sm text-pink-600">
-                {detail.checkin_date} ~ {detail.checkout_date}
-              </p>
-              {detail.nights && (
-                <p className="text-xs text-pink-500">{detail.nights}박</p>
-              )}
-            </div>
-            <div>
-              <span className="text-sm font-medium text-pink-800">객실 정보</span>
-              <p className="text-pink-700 font-medium">
-                {detail.room_name || '객실명'}
-              </p>
-              <p className="text-pink-700">
-                타입: {detail.room_type || 'N/A'}
-              </p>
-              <p className="text-sm text-pink-600">
-                투숙객: {detail.guest_count || 1}명
-              </p>
-            </div>
-            <div>
-              <span className="text-sm font-medium text-pink-800">추가 정보</span>
-              {detail.bed_type && (
-                <p className="text-pink-700">침대: {detail.bed_type}</p>
-              )}
-              {detail.meal_plan && (
-                <p className="text-pink-700">식사: {detail.meal_plan}</p>
-              )}
-              {detail.view_type && (
-                <p className="text-sm text-pink-600">뷰: {detail.view_type}</p>
-              )}
-            </div>
-          </div>
-          {priceInfo && (
-            <div className="mt-4 pt-3 border-t border-pink-200">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <span className="text-sm font-medium text-pink-800">가격 코드 정보</span>
-                  <p className="text-sm text-pink-600">
-                    호텔: {priceInfo.hotel_name} | 객실: {priceInfo.room_name}
-                  </p>
-                  <p className="text-sm text-pink-600">
-                    타입: {priceInfo.room_type}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-pink-800">요금 정보</span>
-                  {priceInfo.price && (
-                    <p className="text-sm text-pink-600">
-                      1박 요금: {priceInfo.price.toLocaleString()}원
-                    </p>
-                  )}
-                  {priceInfo.base_price && (
-                    <p className="text-sm text-pink-600">
-                      기본 요금: {priceInfo.base_price.toLocaleString()}원
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-
-    case 'tour':
-      return (
-        <div className="bg-purple-50 rounded-lg p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <span className="text-sm font-medium text-purple-800">투어 정보</span>
-              <p className="text-purple-700 font-semibold">{detail.tour_code || detail.tour_name}</p>
-              <p className="text-sm text-purple-600">
-                날짜: {detail.tour_date}
-              </p>
-              {detail.duration && (
-                <p className="text-xs text-purple-500">소요시간: {detail.duration}</p>
-              )}
-            </div>
-            <div>
-              <span className="text-sm font-medium text-purple-800">참가 정보</span>
-              <p className="text-purple-700">
-                참가자: {detail.participant_count || 1}명
-              </p>
-              {detail.guide_language && (
-                <p className="text-sm text-purple-600">
-                  가이드 언어: {detail.guide_language}
-                </p>
-              )}
-              {detail.meeting_point && (
-                <p className="text-sm text-purple-600">
-                  집결지: {detail.meeting_point}
-                </p>
-              )}
-            </div>
-            <div>
-              <span className="text-sm font-medium text-purple-800">투어 옵션</span>
-              {detail.meal_included && (
-                <p className="text-purple-700">식사 포함: {detail.meal_included}</p>
-              )}
-              {detail.transport_included && (
-                <p className="text-purple-700">교통 포함: {detail.transport_included}</p>
-              )}
-              {detail.difficulty_level && (
-                <p className="text-sm text-purple-600">난이도: {detail.difficulty_level}</p>
-              )}
-            </div>
-          </div>
-          {detail.special_requests && (
-            <div className="mt-3 pt-3 border-t border-purple-200">
-              <span className="text-sm font-medium text-purple-800">특별 요청</span>
-              <p className="text-sm text-purple-600">{detail.special_requests}</p>
-            </div>
-          )}
-          {priceInfo && (
-            <div className="mt-4 pt-3 border-t border-purple-200">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <span className="text-sm font-medium text-purple-800">가격 코드 정보</span>
-                  <p className="text-sm text-purple-600">
-                    투어 코드: {priceInfo.tour_code}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-purple-800">요금 정보</span>
-                  {priceInfo.price && (
-                    <p className="text-sm text-purple-600">
-                      1인 요금: {priceInfo.price.toLocaleString()}원
-                    </p>
-                  )}
-                  {priceInfo.base_price && (
-                    <p className="text-sm text-purple-600">
-                      기본 요금: {priceInfo.base_price.toLocaleString()}원
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-
-    case 'airport':
-      return (
-        <div className="bg-yellow-50 rounded-lg p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <span className="text-sm font-medium text-yellow-800">공항 서비스</span>
-              <p className="text-yellow-700 font-semibold">{detail.service_type || '공항 서비스'}</p>
-              <p className="text-sm text-yellow-600">
-                경로: {detail.route || 'N/A'}
-              </p>
-              {detail.service_date && (
-                <p className="text-xs text-yellow-500">서비스일: {detail.service_date}</p>
-              )}
-            </div>
-            <div>
-              <span className="text-sm font-medium text-yellow-800">차량 정보</span>
-              <p className="text-yellow-700 font-medium">
-                {detail.car_type || '차량 정보'}
-              </p>
-              <p className="text-sm text-yellow-600">
-                승차 인원: {detail.passenger_count || 1}명
-              </p>
-              {detail.luggage_count && (
-                <p className="text-sm text-yellow-600">
-                  수하물: {detail.luggage_count}개
-                </p>
-              )}
-            </div>
-            <div>
-              <span className="text-sm font-medium text-yellow-800">추가 정보</span>
-              {detail.pickup_time && (
-                <p className="text-yellow-700">픽업시간: {detail.pickup_time}</p>
-              )}
-              {detail.pickup_location && (
-                <p className="text-yellow-700">픽업장소: {detail.pickup_location}</p>
-              )}
-              {detail.flight_number && (
-                <p className="text-sm text-yellow-600">항공편: {detail.flight_number}</p>
-              )}
-            </div>
-          </div>
-          {priceInfo && (
-            <div className="mt-4 pt-3 border-t border-yellow-200">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <span className="text-sm font-medium text-yellow-800">가격 코드 정보</span>
-                  <p className="text-sm text-yellow-600">
-                    서비스: {priceInfo.service_type} | 경로: {priceInfo.route}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-sm font-medium text-yellow-800">요금 정보</span>
-                  {priceInfo.price && (
-                    <p className="text-sm text-yellow-600">
-                      서비스 요금: {priceInfo.price.toLocaleString()}원
-                    </p>
-                  )}
-                  {priceInfo.base_price && (
-                    <p className="text-sm text-yellow-600">
-                      기본 요금: {priceInfo.base_price.toLocaleString()}원
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-
-    default:
-      return (
-        <div className="bg-gray-50 rounded-lg p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <span className="text-sm font-medium text-gray-800">서비스 정보</span>
-              <p className="text-gray-700">서비스 타입: {serviceType}</p>
-              <p className="text-sm text-gray-600">
-                상세 정보 표시 준비 중...
-              </p>
-            </div>
-            <div>
-              <span className="text-sm font-medium text-gray-800">원본 데이터</span>
-              <div className="text-xs text-gray-500 max-h-20 overflow-y-auto">
-                <pre>{JSON.stringify(detail, null, 2)}</pre>
-              </div>
-            </div>
-          </div>
-          {priceInfo && (
-            <div className="mt-4 pt-3 border-t border-gray-200">
-              <span className="text-sm font-medium text-gray-800">가격 정보</span>
-              <div className="text-xs text-gray-500 max-h-16 overflow-y-auto">
-                <pre>{JSON.stringify(priceInfo, null, 2)}</pre>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-  }
 }
