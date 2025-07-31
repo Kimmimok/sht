@@ -7,25 +7,27 @@ import prettierPlugin from 'eslint-plugin-prettier';
 export default {
   ignores: ['node_modules', '.next', 'dist', '*.config.js', '.env*'],
   ...js.configs.recommended,
-  {
-    files: ['**/*.ts', '**/*.tsx'],
-    languageOptions: {
-      parser: tsParser,
-      parserOptions: {
-        project: './tsconfig.json',
-        ecmaVersion: 'latest',
-        sourceType: 'module',
+  overrides: [
+    {
+      files: ['**/*.ts', '**/*.tsx'],
+      languageOptions: {
+        parser: tsParser,
+        parserOptions: {
+          project: './tsconfig.json',
+          ecmaVersion: 'latest',
+          sourceType: 'module',
+        },
+      },
+      plugins: {
+        '@typescript-eslint': tsPlugin,
+        react: reactPlugin,
+        prettier: prettierPlugin,
+      },
+      rules: {
+        ...tsPlugin.configs.recommended.rules,
+        ...reactPlugin.configs.recommended.rules,
+        'prettier/prettier': 'warn',
       },
     },
-    plugins: {
-      '@typescript-eslint': tsPlugin,
-      react: reactPlugin,
-      prettier: prettierPlugin,
-    },
-    rules: {
-      ...tsPlugin.configs.recommended.rules,
-      ...reactPlugin.configs.recommended.rules,
-      'prettier/prettier': 'warn',
-    },
-  },
+  ],
 };

@@ -41,11 +41,15 @@ export default function AdminReservationsPage() {
           .eq('id', userData.user.id)
           .single();
 
-        if (userInfo?.role !== 'admin') {
-          alert('관리자 권한이 필요합니다.');
+        // 관리자 권한 엄격 검증
+        if (!userInfo || userInfo.role !== 'admin') {
+          console.error('권한 확인 실패:', { userInfo, userId: userData.user.id });
+          alert('관리자 권한이 필요합니다. 현재 권한: ' + (userInfo?.role || '없음'));
           router.push('/');
           return;
         }
+
+        console.log('✅ 관리자 권한 확인됨:', userInfo.role);
 
         // 모든 예약 조회
         const { data: reservationsData, error } = await supabase
@@ -70,8 +74,13 @@ export default function AdminReservationsPage() {
           return;
         }
 
-        setReservations(reservationsData || []);
-        setFilteredReservations(reservationsData || []);
+        // users 필드가 배열일 경우 첫 번째 객체로 변환
+        const normalizedReservations = (reservationsData || []).map((r: any) => ({
+          ...r,
+          users: Array.isArray(r.users) ? r.users[0] : r.users,
+        }));
+        setReservations(normalizedReservations);
+        setFilteredReservations(normalizedReservations);
       } catch (error) {
         console.error('예약 조회 오류:', error);
         setReservations([]);

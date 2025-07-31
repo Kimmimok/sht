@@ -39,14 +39,13 @@ export default function HomePage() {
 
       let userRole = 'guest'; // 기본값: 견적자 (users 테이블에 없는 경우)
       
-      if (profile) {
-        // users 테이블에 등록된 경우 (예약자)
-        userRole = profile.role || 'member';
-      }
-
-      // 관리자 이메일 강제 설정 (임시)
-      if (authUser.email === 'admin@example.com' || authUser.email?.includes('admin')) {
-        userRole = 'admin';
+      if (profile && profile.role) {
+        // users 테이블에 등록되고 role이 있는 경우
+        userRole = profile.role;
+        console.log('✅ 등록된 사용자 권한:', userRole);
+      } else {
+        // users 테이블에 없거나 role이 없는 경우 = 견적자
+        console.log('👁️ 견적자(게스트) - users 테이블 미등록');
       }
 
       const userProfile: UserProfile = {

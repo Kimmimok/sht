@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, Suspense } from 'react'
+import React, { useState, useEffect, Suspense, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import supabase from '@/lib/supabase'
 
@@ -10,11 +10,11 @@ function NewHotelQuoteContent() {
   const quoteId = searchParams.get('quoteId')
 
   const [loading, setLoading] = useState(false)
-  const [quote, setQuote] = useState(null)
-  const [hotelNameOptions, setHotelNameOptions] = useState([])
-  const [roomNameOptions, setRoomNameOptions] = useState([])
-  const [roomTypeOptions, setRoomTypeOptions] = useState([])
-  const [filteredHotels, setFilteredHotels] = useState([])
+  const [quote, setQuote] = useState<any>(null)
+  const [hotelNameOptions, setHotelNameOptions] = useState<string[]>([])
+  const [roomNameOptions, setRoomNameOptions] = useState<string[]>([])
+  const [roomTypeOptions, setRoomTypeOptions] = useState<string[]>([])
+  const [filteredHotels, setFilteredHotels] = useState<any[]>([])
 
   // 선택된 값들
   const [selectedHotelName, setSelectedHotelName] = useState('')
@@ -100,7 +100,7 @@ function NewHotelQuoteContent() {
   }, [selectedHotelName, selectedRoomName, selectedRoomType, formData.checkin_date, formData.checkout_date])
 
   // 요일 계산 함수
-  const getWeekdayFromDate = useCallback((dateString) => {
+  const getWeekdayFromDate = useCallback((dateString: string) => {
     const date = new Date(dateString)
     const weekdays = ['일', '월', '화', '수', '목', '금', '토']
     return weekdays[date.getDay()]
@@ -122,7 +122,7 @@ function NewHotelQuoteContent() {
       if (error) throw error
       
       // 중복 제거
-      const uniqueHotelNames = [...new Set(data.map((item) => item.hotel_name).filter(Boolean))]
+      const uniqueHotelNames = [...new Set(data.map((item: any) => item.hotel_name).filter(Boolean))]
       setHotelNameOptions(uniqueHotelNames)
       
       console.log('🏨 필터링된 호텔명 옵션:', uniqueHotelNames)
@@ -131,7 +131,7 @@ function NewHotelQuoteContent() {
     }
   }, [formData.checkin_date, formData.checkout_date, getWeekdayFromDate])
 
-  const loadRoomNameOptions = useCallback(async (hotelName) => {
+  const loadRoomNameOptions = useCallback(async (hotelName: string) => {
     try {
       const checkinWeekday = getWeekdayFromDate(formData.checkin_date)
 
@@ -146,7 +146,7 @@ function NewHotelQuoteContent() {
 
       if (error) throw error
       
-      const uniqueRoomNames = [...new Set(data.map((item) => item.room_name).filter(Boolean))]
+      const uniqueRoomNames = [...new Set(data.map((item: any) => item.room_name).filter(Boolean))]
       setRoomNameOptions(uniqueRoomNames)
       
       console.log('🏨 필터링된 객실명 옵션:', uniqueRoomNames)
@@ -155,7 +155,7 @@ function NewHotelQuoteContent() {
     }
   }, [formData.checkin_date, formData.checkout_date, getWeekdayFromDate])
 
-  const loadRoomTypeOptions = useCallback(async (hotelName, roomName) => {
+  const loadRoomTypeOptions = useCallback(async (hotelName: string, roomName: string) => {
     try {
       const checkinWeekday = getWeekdayFromDate(formData.checkin_date)
 
@@ -171,7 +171,7 @@ function NewHotelQuoteContent() {
 
       if (error) throw error
       
-      const uniqueRoomTypes = [...new Set(data.map((item) => item.room_type).filter(Boolean))]
+      const uniqueRoomTypes = [...new Set(data.map((item: any) => item.room_type).filter(Boolean))]
       setRoomTypeOptions(uniqueRoomTypes)
       
       console.log('🏨 필터링된 객실 타입 옵션:', uniqueRoomTypes)
@@ -205,7 +205,7 @@ function NewHotelQuoteContent() {
     }
   }, [formData.checkin_date, formData.checkout_date, selectedHotelName, selectedRoomName, selectedRoomType, getWeekdayFromDate])
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     
     if (!formData.checkin_date || !formData.checkout_date) {

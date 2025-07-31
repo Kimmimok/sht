@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import supabase from '@/lib/supabase';
+import { upgradeGuestToMember } from '@/lib/userRoleUtils';
 
 interface QuoteDetail {
   id: string;
@@ -69,6 +70,28 @@ export default function QuoteDetailPage() {
       router.push('/login');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleReservation = async () => {
+    if (!user || !quote?.id) return;
+    
+    try {
+      // 1. 게스트를 멤버로 승격 시도
+      const upgradeResult = await upgradeGuestToMember(user.id, user.email);
+      
+      if (!upgradeResult.success && upgradeResult.error) {
+        console.error('권한 업그레이드 실패:', upgradeResult.error);
+        alert('예약 권한 설정 중 오류가 발생했습니다.');
+        return;
+      }
+
+      // 2. 예약 페이지로 이동
+      router.push(`/reserve/new/${quote.id}`);
+      
+    } catch (error) {
+      console.error('예약 처리 중 오류:', error);
+      alert('예약 처리 중 오류가 발생했습니다.');
     }
   };
 
@@ -860,7 +883,7 @@ export default function QuoteDetailPage() {
             {/* 예약하기 버튼 - 페이지 하단 */}
             <div className="flex justify-center mt-10">
               <button
-                onClick={() => router.push(`/reserve/new/${quote.id}`)}
+                onClick={handleReservation}
                 className="bg-blue-500 text-white px-10 py-4 rounded-lg text-lg hover:bg-blue-700 transition-colors font-bold shadow-lg"
               >
                 🚢 예약하기

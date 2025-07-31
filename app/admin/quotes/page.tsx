@@ -8,6 +8,7 @@ import AdminLayout from '@/components/AdminLayout';
 
 interface Quote {
   id: number;
+  title?: string;
   user_id: string;
   cruise_code: string;
   schedule_code: string;
@@ -15,8 +16,6 @@ interface Quote {
   created_at: string;
   total_price?: number;
   users?: { email: string };
-  cruise_info?: { name: string };
-  schedule_info?: { name: string };
 }
 
 export default function AdminQuotesPage() {
@@ -62,9 +61,7 @@ export default function AdminQuotesPage() {
             status,
             created_at,
             total_price,
-            users!inner(email),
-            cruise_info(name),
-            schedule_info(name)
+            users!inner(email)
           `)
           .order('created_at', { ascending: false });
 
@@ -74,8 +71,14 @@ export default function AdminQuotesPage() {
           return;
         }
 
-        setQuotes(quotesData || []);
-        setFilteredQuotes(quotesData || []);
+        // users만 배열로 반환될 수 있으므로 변환
+        const normalizedQuotes = (quotesData || []).map((q: any) => ({
+          ...q,
+          users: Array.isArray(q.users) ? q.users[0] : q.users,
+        }));
+
+        setQuotes(normalizedQuotes);
+        setFilteredQuotes(normalizedQuotes);
       } catch (error) {
         console.error('견적 조회 오류:', error);
       } finally {
@@ -99,7 +102,7 @@ export default function AdminQuotesPage() {
       filtered = filtered.filter(quote =>
         quote.users?.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
         quote.id.toString().includes(searchTerm) ||
-        quote.cruise_info?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+        quote.cruise_code.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -248,10 +251,10 @@ export default function AdminQuotesPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {quote.cruise_info?.name || quote.cruise_code}
+                          {quote.cruise_code}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {quote.schedule_info?.name || quote.schedule_code}
+                          {quote.schedule_code}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
