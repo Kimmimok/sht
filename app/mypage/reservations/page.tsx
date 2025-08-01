@@ -30,7 +30,7 @@ function ReservationHomeContent() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(false);
 
-  // 기존 견적 로드 함수
+  // 기존 예약 로드 함수
   const loadExistingQuote = async (quoteId: string) => {
     try {
       const quoteData = await getQuoteWithItems(quoteId);
@@ -39,7 +39,7 @@ function ReservationHomeContent() {
         setQuoteId(quoteId);
       }
     } catch (error) {
-      console.error('견적 로드 오류:', error);
+      console.error('예약 로드 오류:', error);
     }
   };
 
@@ -73,10 +73,10 @@ function ReservationHomeContent() {
       setInitialized(true);
       loadUserProfile(); // 사용자 프로필 로드
       if (existingQuoteId) {
-        // URL에 quoteId가 있으면 해당 견적 로드
+        // URL에 quoteId가 있으면 해당 예약 로드
         loadExistingQuote(existingQuoteId);
       }
-      // 자동 견적 생성 제거
+      // 자동 예약 생성 제거
     }
   }, [existingQuoteId, initialized]);
 
@@ -90,21 +90,21 @@ function ReservationHomeContent() {
     return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
-  // 견적 제목 입력 시작
+  // 예약 제목 입력 시작
   const handleStartQuoteCreation = () => {
     setShowTitleInput(true);
   };
 
-  // 견적 제목 입력 취소
+  // 예약 제목 입력 취소
   const handleCancelTitleInput = () => {
     setShowTitleInput(false);
     setQuoteTitle('');
   };
 
-  // 새로운 견적 생성 (제목과 함께)
+  // 새로운 예약 생성 (제목과 함께)
   const handleCreateNewQuote = async () => {
     if (!quoteTitle.trim()) {
-      alert('견적 제목을 입력해주세요.');
+      alert('예약 제목을 입력해주세요.');
       return;
     }
 
@@ -125,11 +125,11 @@ function ReservationHomeContent() {
         // URL도 업데이트
         router.replace(`/mypage/quotes/new?quoteId=${newQuote.id}`);
       } else {
-        alert('견적 생성에 실패했습니다.');
+        alert('예약 생성에 실패했습니다.');
       }
     } catch (e) {
-      console.error('견적 생성 오류:', e);
-      alert('견적 생성 중 오류가 발생했습니다.');
+      console.error('예약 생성 오류:', e);
+      alert('예약 생성 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -138,7 +138,7 @@ function ReservationHomeContent() {
   // 서비스 선택 시 프로필 확인 후 이동
   const handleServiceSelect = (service: typeof menuList[0]) => {
     if (!quoteId && !existingQuoteId) {
-      alert('먼저 견적 제목을 입력하고 견적을 생성해주세요!');
+      alert('먼저 예약 제목을 입력하고 예약을 생성해주세요!');
       setShowTitleInput(true);
       return;
     }
@@ -187,50 +187,50 @@ function ReservationHomeContent() {
             <div>
               <h1 className="text-4xl font-bold mb-2">🎫 예약 홈</h1>
               <p className="text-lg opacity-90">
-                {existingQuoteId ? '견적을 바탕으로 예약을 진행하세요.' : '새로운 견적을 작성하여 예약을 시작하세요.'}
+                {existingQuoteId ? '예약을 바탕으로 예약을 진행하세요.' : '새로운 예약을 작성하여 예약을 시작하세요.'}
               </p>
               {existingQuoteId && (
                 <div className="mt-3 p-3 bg-blue-100 rounded-lg">
-                  <p className="text-sm text-blue-800">견적 ID: {existingQuoteId}</p>
-                  <p className="text-sm text-blue-700">이 견적을 바탕으로 예약을 진행합니다.</p>
+                  <p className="text-sm text-blue-800">예약 ID: {existingQuoteId}</p>
+                  <p className="text-sm text-blue-700">이 예약을 바탕으로 예약을 진행합니다.</p>
                 </div>
               )}
             </div>
             
             <div className="flex gap-3">
-              {/* 견적 확인 버튼 */}
+              {/* 예약 확인 버튼 */}
               {(quoteId || existingQuoteId) && (
                 <button
                   onClick={() => router.push(`/mypage/quotes/${quoteId || existingQuoteId}/view`)}
                   className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
                 >
-                  📋 견적 확인
+                  📋 예약 확인
                 </button>
               )}
               
-              {/* 새로운 견적 버튼 - 기존 견적이 없을 때만 표시 */}
+              {/* 새로운 예약 버튼 - 기존 예약이 없을 때만 표시 */}
               {!existingQuoteId && !showTitleInput ? (
                 <button
                   onClick={handleStartQuoteCreation}
                   disabled={loading}
                   className="bg-gradient-to-r from-blue-400 to-sky-500 text-white px-6 py-3 rounded-lg font-semibold shadow hover:from-blue-500 hover:to-sky-600 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  ➕ 새 견적 작성
+                  ➕ 새 예약 작성
                 </button>
               ) : null}
             </div>
           </div>
           
-      {/* 견적 상태 표시 */}
+      {/* 예약 상태 표시 */}
       {(quoteId || existingQuoteId) && quote ? (
         <div className="bg-white/70 backdrop-blur rounded-lg p-6 mb-6">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                ✅ 예약 진행할 견적
+                ✅ 예약 진행할 예약
               </h3>
               <div className="text-sm text-gray-600 space-y-1">
-                <p>견적 제목: <span className="font-semibold text-blue-600">{quote.title}</span></p>
+                <p>예약 제목: <span className="font-semibold text-blue-600">{quote.title}</span></p>
                 <p>상태: <span className="text-blue-600 font-medium">{quote.status === 'draft' ? '작성 중' : quote.status === 'approved' ? '승인됨' : quote.status}</span></p>
                 <p>생성 시간: {new Date(quote.created_at).toLocaleString('ko-KR')}</p>
               </div>
@@ -293,23 +293,23 @@ function ReservationHomeContent() {
         <div className="bg-white/70 backdrop-blur rounded-lg p-6 mb-6">
           <div className="text-left">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">
-              {showTitleInput ? '📝 행복 여행 이름 짓기' : '📝 새 견적을 작성하여 예약을 시작하세요'}
+              {showTitleInput ? '📝 행복 여행 이름 짓기' : '📝 새 예약을 작성하여 예약을 시작하세요'}
             </h3>
             <p className="text-gray-600 mb-4">
               {showTitleInput
                 ? (<><span>행복 여행의 이름을 지어 주세요.<br/>예) "하롱베이 3박4일", "가족여행 패키지", "허니문 크루즈" 등</span></>)
-                : (<span>"새 견적 작성" 버튼을 클릭하여 견적을 생성하고, 원하는 서비스를 선택해주세요.</span>)}
+                : (<span>"새 예약 작성" 버튼을 클릭하여 예약을 생성하고, 원하는 서비스를 선택해주세요.</span>)}
             </p>
             <div className="text-blue-600 text-sm">
               {showTitleInput
-                ? (<p>💡 제목은 나중에 견적 목록에서 구분하는데 도움이 됩니다</p>)
-                : (<p>💡 한 번의 견적에 여러 서비스를 추가하여 예약할 수 있습니다</p>)}
+                ? (<p>💡 제목은 나중에 예약 목록에서 구분하는데 도움이 됩니다</p>)
+                : (<p>💡 한 번의 예약에 여러 서비스를 추가하여 예약할 수 있습니다</p>)}
             </div>
           </div>
         </div>
       )}
       
-      {/* 견적 제목 입력창과 버튼을 카드 아래에 위치 */}
+      {/* 예약 제목 입력창과 버튼을 카드 아래에 위치 */}
       {showTitleInput && (
         <div className="flex items-center justify-center gap-2 mb-1">
           <input
@@ -343,7 +343,7 @@ function ReservationHomeContent() {
       )}
         </div>
       </div>
-      {/* 서비스 메뉴 그리드 및 하단 안내, 기존 견적 확인 버튼 등 기존 코드 */}
+      {/* 서비스 메뉴 그리드 및 하단 안내, 기존 예약 확인 버튼 등 기존 코드 */}
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {menuList.map((menu, index) => {
@@ -421,13 +421,13 @@ function ReservationHomeContent() {
             </div>
           </div>
         </div>
-        {/* 기존 견적 확인 버튼 */}
+        {/* 기존 예약 확인 버튼 */}
         <div className="mt-8 text-center">
           <button
             onClick={() => router.push('/mypage/quotes')}
             className="bg-gradient-to-r from-gray-600 to-gray-700 text-white px-8 py-3 rounded-lg hover:from-gray-700 hover:to-gray-800 transition-all duration-200 shadow-lg"
           >
-            📋 기존 견적 목록 보기
+            📋 기존 예약 목록 보기
           </button>
         </div>
       </div>

@@ -65,9 +65,8 @@ export default function MyPage() {
 
   const quickActions = [
     { icon: '📝', label: '새 견적 작성', href: '/mypage/quotes/new' },
-    { icon: '📊', label: '종합 견적', href: '/mypage/quotes/comprehensive' },
     { icon: '📋', label: '내 견적 목록', href: '/mypage/quotes' },
-    { icon: '�', label: '새 예약 신청', href: '/reservation/comprehensive/new' },
+    { icon: '�', label: '새 예약 신청', href: '/mypage/reservations' },
     { icon: '📂', label: '내 예약 목록', href: '/mypage/reservations' },
   ];
 

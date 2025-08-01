@@ -580,13 +580,10 @@ export default function QuoteDetailPage() {
                                 <td className="px-2 py-1 border-blue-200 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '원' : '-'}</td>
                               </tr>
                               <tr className="bg-gray-100">
-                                <td className="px-2 py-1 font-medium border-blue-200 border">성인수</td>
+                                <td className="px-2 py-1 font-medium border-blue-200 border">인원수</td>
                                 <td className="px-2 py-1 border-blue-200 border">{room.roomInfo?.adult_count}명</td>
                               </tr>
-                              <tr className="bg-gray-100">
-                                <td className="px-2 py-1 font-medium border-blue-200 border">아동수</td>
-                                <td className="px-2 py-1 border-blue-200 border">{room.roomInfo?.child_count || 0}명</td>
-                              </tr>
+                            
                               <tr className="bg-gray-100">
                                 <td className="px-2 py-1 font-medium border-blue-200 border">추가수</td>
                                 <td className="px-2 py-1 border-blue-200 border">{room.roomInfo?.extra_count || 0}명</td>

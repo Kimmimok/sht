@@ -220,19 +220,7 @@ export default function ConfirmedQuotesPage() {
                         🎫 예약하기
                       </button>
                       
-                      <button
-                        onClick={() => router.push(`/mypage/quotes/${quote.id}/edit`)}
-                        className="bg-amber-500 text-white px-6 py-2 rounded-lg hover:bg-amber-600 transition-colors font-medium"
-                      >
-                        ✏️ 수정 요청
-                      </button>
                       
-                      <button
-                        onClick={() => router.push(`/mypage/quotes/new?baseQuoteId=${quote.id}`)}
-                        className="bg-purple-500 text-white px-6 py-2 rounded-lg hover:bg-purple-600 transition-colors font-medium"
-                      >
-                        📋 복사하여 새 견적
-                      </button>
                     </div>
                   </div>
                 </div>
