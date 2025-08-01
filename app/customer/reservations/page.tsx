@@ -189,7 +189,7 @@ export default function CustomerReservations() {
                           <div>
                             <span className="font-medium">총 금액:</span>
                             <span className="ml-2 font-bold text-green-600 text-lg">
-                              {reservation.total_price?.toLocaleString() || reservation.quote?.total_price?.toLocaleString() || '미정'}원
+                              {reservation.total_price?.toLocaleString() || reservation.quote?.total_price?.toLocaleString() || '미정'}동
                             </span>
                           </div>
                         </div>
@@ -254,3 +254,4 @@ export default function CustomerReservations() {
     </div>
   );
 }
+

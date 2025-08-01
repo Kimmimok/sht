@@ -29,7 +29,7 @@ async function testPriceCalculation() {
 
     console.log('📋 기존 견적 목록:');
     quotes.forEach((quote, index) => {
-      console.log(`  ${index + 1}. ${quote.id.substring(0, 8)}... (${quote.status}) - ${quote.title || '제목 없음'} - ${quote.total_price || 0}원`);
+      console.log(`  ${index + 1}. ${quote.id.substring(0, 8)}... (${quote.status}) - ${quote.title || '제목 없음'} - ${quote.total_price || 0}동`);
     });
 
     // 2. 첫 번째 견적의 아이템 확인
@@ -86,7 +86,7 @@ async function testPriceCalculation() {
             if (priceError || !priceData || priceData.length === 0) {
               console.log(`  ❌ room_price 데이터 없음`);
             } else {
-              console.log(`  💰 가격: ${priceData[0].price}원`);
+              console.log(`  💰 가격: ${priceData[0].price}동`);
             }
           }
           
@@ -112,7 +112,7 @@ async function testPriceCalculation() {
             if (priceError || !priceData || priceData.length === 0) {
               console.log(`  ❌ car_price 데이터 없음`);
             } else {
-              console.log(`  💰 가격: ${priceData[0].price}원`);
+              console.log(`  💰 가격: ${priceData[0].price}동`);
             }
           }
         }
@@ -132,3 +132,4 @@ async function testPriceCalculation() {
 }
 
 testPriceCalculation();
+

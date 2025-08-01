@@ -12,7 +12,7 @@ export default function SectionBox({
   children: React.ReactNode;
 }) {
   return (
-    <div className="p-4 bg-gray-50 border rounded mb-4">
+    <div className="p-4 bg-gray-25 border rounded mb-4">
       {(title || icon) && (
         <h3 className="font-semibold mb-3 flex items-center gap-2">
           {icon}

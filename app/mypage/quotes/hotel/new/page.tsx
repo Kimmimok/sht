@@ -472,7 +472,7 @@ function NewHotelQuoteContent() {
                           </div>
                           <div className="text-right">
                             <p className="text-lg font-bold text-blue-600">
-                              {parseInt(hotel.price || '0').toLocaleString()}원
+                              {parseInt(hotel.price || '0').toLocaleString()}동
                             </p>
                             <p className="text-sm text-gray-500">1박 기준</p>
                           </div>
@@ -483,10 +483,10 @@ function NewHotelQuoteContent() {
                 </div>
               )}
 
-              {/* 투숙 인원 */}
+              {/* 투숙 인동 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  👥 투숙 인원 *
+                  👥 투숙 인동 *
                 </label>
                 <input
                   type="number"
@@ -522,8 +522,8 @@ function NewHotelQuoteContent() {
                     <div><strong>체크아웃:</strong> {new Date(formData.checkout_date).toLocaleDateString('ko-KR')}</div>
                     <div><strong>호텔:</strong> {selectedHotelName}</div>
                     <div><strong>객실:</strong> {selectedRoomName} - {selectedRoomType}</div>
-                    <div><strong>투숙 인원:</strong> {formData.guest_count}명</div>
-                    <div><strong>1박 요금:</strong> {parseInt(selectedHotel?.price || '0').toLocaleString()}원</div>
+                    <div><strong>투숙 인동:</strong> {formData.guest_count}명</div>
+                    <div><strong>1박 요금:</strong> {parseInt(selectedHotel?.price || '0').toLocaleString()}동</div>
                     {selectedHotelCode && (
                       <div className="pt-2 border-t border-green-200">
                         <strong>🔍 선택된 호텔 코드:</strong> <span className="bg-yellow-100 px-2 py-1 rounded font-mono text-sm">{selectedHotelCode}</span>
@@ -566,3 +566,4 @@ export default function NewHotelQuotePage() {
     </Suspense>
   );
 }
+

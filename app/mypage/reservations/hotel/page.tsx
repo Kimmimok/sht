@@ -244,7 +244,7 @@ export default function HotelPage() {
               <option value="">{rooms.length === 0 ? '호텔을 먼저 선택하세요' : '객실을 선택하세요'}</option>
               {rooms.map((room, idx) => (
                 <option key={idx} value={room.room_type}>
-                  {room.room_name} ({room.room_type}) - {room.price ? `${room.price.toLocaleString()}원` : '가격 문의'}
+                  {room.room_name} ({room.room_type}) - {room.price ? `${room.price.toLocaleString()}동` : '가격 문의'}
                 </option>
               ))}
             </select>
@@ -338,3 +338,4 @@ export default function HotelPage() {
     </div>
   );
 }
+

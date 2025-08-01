@@ -137,9 +137,10 @@ export const calculateDemoStats = () => {
     reservations: reservationStats,
     recentActivity: quotes.slice(0, 5).map(q => ({
       type: '견적',
-      description: `견적 ${q.status} 처리 - ${q.total_price.toLocaleString()}원`,
+      description: `견적 ${q.status} 처리 - ${q.total_price.toLocaleString()}동`,
       time: q.created_at,
       status: q.status
     }))
   };
 };
+

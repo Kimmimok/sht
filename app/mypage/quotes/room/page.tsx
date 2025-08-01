@@ -230,9 +230,9 @@ export default function QuoteFormPage() {
         {rooms.map(r => <option key={r.code} value={r.code}>{r.name}</option>)}
       </select>
 
-      {renderCountSelector('성인 인원', 'adult_count')}
-      {renderCountSelector('아동 인원', 'child_count')}
-      {renderCountSelector('유아 인원', 'infant_count')}
+      {renderCountSelector('성인 인동', 'adult_count')}
+      {renderCountSelector('아동 인동', 'child_count')}
+      {renderCountSelector('유아 인동', 'infant_count')}
       {renderCountSelector('엑스트라 성인', 'extra_adult_count')}
       {renderCountSelector('엑스트라 아동', 'extra_child_count')}
 
@@ -260,3 +260,4 @@ export default function QuoteFormPage() {
     </div>
   );
 }
+

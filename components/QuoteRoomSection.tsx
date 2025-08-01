@@ -52,7 +52,7 @@ export default function QuoteRoomSection({
       />
 
       <div className="mt-3">
-        <p className="text-sm font-medium mb-1">👥 인원 구성</p>
+        <p className="text-sm font-medium mb-1">👥 인동 구성</p>
         {categories.map((cat) => (
           <CategoryInputRow
             key={cat}
@@ -65,3 +65,4 @@ export default function QuoteRoomSection({
     </div>
   );
 }
+

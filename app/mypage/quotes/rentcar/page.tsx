@@ -507,16 +507,16 @@ export default function RentCarPage() {
             />
           </div>
 
-          {/* 승차인원 */}
+          {/* 승차인동 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">👥 승차인원</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">👥 승차인동</label>
             <input
               type="number"
               min={1}
               value={form.rc_passenger_count}
               onChange={e => setForm({ ...form, rc_passenger_count: Number(e.target.value) })}
               className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              placeholder="승차 인원"
+              placeholder="승차 인동"
             />
           </div>
 
@@ -557,3 +557,4 @@ export default function RentCarPage() {
     </div>
   );
 }
+

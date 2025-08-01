@@ -3,8 +3,20 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import supabase from '@/lib/supabase';
-import { getUserQuotes } from '@/lib/quoteUtils';
-import { Quote } from '@/lib/types';
+import PageWrapper from '@/components/PageWrapper';
+import SectionBox from '@/components/SectionBox';
+import Link from 'next/link';
+
+interface Quote {
+  id: string;
+  cruise_code: string;
+  schedule_code: string;
+  created_at: string;
+  status: string;
+  checkin: string;
+  total_price: number;
+  user_id: string;
+}
 
 export default function QuotesPage() {
   const router = useRouter();
@@ -28,9 +40,25 @@ export default function QuotesPage() {
 
       setUser(user);
 
-      // 사용자의 견적 목록 조회
-      const userQuotes = await getUserQuotes(user.id);
-      setQuotes(userQuotes);
+      // 사용자의 견적 목록 조회 - 더 상세한 정보 포함
+      const { data: quotesData, error: quotesError } = await supabase
+        .from('quote')
+        .select(`
+          id,
+          cruise_code,
+          schedule_code,
+          created_at,
+          status,
+          checkin,
+          total_price,
+          user_id
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (quotesError) throw quotesError;
+
+      setQuotes(quotesData || []);
     } catch (error) {
       console.error('견적 목록 로드 오류:', error);
     } finally {
@@ -40,8 +68,10 @@ export default function QuotesPage() {
 
   const getStatusLabel = (status: string): string => {
     const labels: { [key: string]: string } = {
-      draft: '작성 중',
-      submitted: '제출됨',
+      draft: '작성중',
+      pending: '대기중',
+      processing: '처리중',
+      confirmed: '확정됨',
       approved: '승인됨',
       rejected: '거절됨',
       completed: '완료됨'
@@ -51,148 +81,139 @@ export default function QuotesPage() {
 
   const getStatusColor = (status: string): string => {
     const colors: { [key: string]: string } = {
-      draft: 'bg-gray-100 text-gray-800',
-      submitted: 'bg-blue-100 text-blue-800',
-      approved: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800',
-      completed: 'bg-purple-100 text-purple-800'
+      draft: 'bg-gray-25 text-gray-600',
+      pending: 'bg-yellow-25 text-yellow-600',
+      processing: 'bg-blue-25 text-blue-600',
+      confirmed: 'bg-green-25 text-green-600',
+      approved: 'bg-green-25 text-green-600',
+      rejected: 'bg-red-25 text-red-600',
+      completed: 'bg-purple-25 text-purple-600'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status] || 'bg-gray-25 text-gray-600';
+  };
+
+  // 견적 제목 생성 함수
+  const getQuoteTitle = (quote: Quote) => {
+    const date = quote.checkin ? new Date(quote.checkin).toLocaleDateString() : '날짜 미정';
+    const cruiseCode = quote.cruise_code || '크루즈 미정';
+    return `${date} | ${cruiseCode}`;
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
-          <p className="mt-4 text-gray-600">견적 목록을 불러오는 중...</p>
+      <PageWrapper>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-300"></div>
+          <p className="ml-4 text-gray-600">견적 목록을 불러오는 중...</p>
         </div>
-      </div>
+      </PageWrapper>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <div className="bg-gradient-to-br from-blue-200 via-purple-200 to-indigo-100 text-gray-900">
-        <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">📋 내 견적 목록</h1>
-            <p className="text-lg opacity-90">
-              작성한 견적들을 확인하고 관리하세요.
-            </p>
-          </div>
-        </div>
-        {/* 확정/새 견적 버튼을 전체 필터 버튼 위에 가로로 배치 */}
-        <div className="flex gap-3 mb-4">
-          <button
-            onClick={() => router.push('/mypage/quotes/confirmed')}
-            className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-600 hover:to-emerald-600 transition-all"
-          >
-            ✅ 확정
-          </button>
-          <button
-            onClick={() => router.push('/mypage/quotes/new')}
-            className="bg-gradient-to-r from-blue-500 to-sky-500 text-white px-6 py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-sky-600 transition-all"
-          >
-            ➕ 새 견적
-          </button>
-        </div>
-      </div>
-          
-          {/* 빠른 필터 버튼들 */}
-          <div className="flex gap-3 mb-4">
-            <button className="bg-white/80 text-gray-700 px-4 py-2 rounded-lg font-medium border border-gray-300 hover:bg-white transition-all">
-              📋 전체
-            </button>
+    <PageWrapper>
+      <div className="max-w-4xl mx-auto space-y-6">
+        <SectionBox title="📋 내 견적 목록">
+          {/* 액션 버튼들 */}
+          <div className="mb-6 flex gap-3 flex-wrap">
+            <Link href="/mypage/quotes/new">
+              <button className="bg-blue-300 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-400 transition-all">
+                ➕ 새 견적 작성
+              </button>
+            </Link>
+            <Link href="/mypage/quotes/confirmed">
+              <button className="bg-green-300 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-400 transition-all">
+                ✅ 확정 견적 보기
+              </button>
+            </Link>
+            <Link href="/mypage/reservations/list">
+              <button className="bg-purple-300 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-400 transition-all">
+                🎫 예약 목록 보기
+              </button>
+            </Link>
             <button 
-              onClick={() => router.push('/mypage/quotes/processing')}
-              className="bg-orange-100 text-orange-700 px-4 py-2 rounded-lg font-medium border border-orange-300 hover:bg-orange-200 transition-all"
+              onClick={() => {
+                setLoading(true);
+                loadUserAndQuotes();
+              }}
+              className="bg-orange-300 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-400 transition-all"
             >
-              🔄 처리중
+              🔄 새로고침
             </button>
-            <button 
-              onClick={() => router.push('/mypage/quotes/confirmed')}
-              className="bg-green-100 text-green-700 px-4 py-2 rounded-lg font-medium border border-green-300 hover:bg-green-200 transition-all"
-            >
-              ✅ 확정됨
-            </button>
-           
           </div>
-        </div>
-      </div>
 
-      {/* 견적 목록 */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
+          <div className="mb-4">
+            <p className="text-gray-600">총 {quotes.length}건의 견적이 있습니다.</p>
+          </div>
+
           {quotes.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+            <div className="text-center py-12">
               <div className="text-6xl mb-4">📝</div>
               <h3 className="text-xl font-semibold text-gray-600 mb-2">아직 작성한 견적이 없습니다</h3>
               <p className="text-gray-500 mb-6">첫 번째 견적을 작성해보세요!</p>
-              <button
-                onClick={() => router.push('/mypage/quotes/new')}
-                className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                견적 작성하기
-              </button>
+              <Link href="/mypage/quotes/new">
+                <button className="bg-blue-300 text-white px-6 py-3 rounded-lg hover:bg-blue-400 transition-colors">
+                  견적 작성하기
+                </button>
+              </Link>
             </div>
           ) : (
             <div className="space-y-4">
               {quotes.map((quote) => (
                 <div
                   key={quote.id}
-                  className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow border border-gray-200"
+                  className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-100 p-6"
                 >
-                  <div className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-800">
-                            {quote.title || '제목 없음'}
-                          </h3>
-                          <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(quote.status)}`}>
-                            {getStatusLabel(quote.status)}
-                          </span>
-                        </div>
-                        
-                        <div className="text-sm text-gray-600 space-y-1">
-                          <p>견적명: <span className="font-semibold text-blue-600">{quote.title}</span></p>
-                          <p>생성일: {new Date(quote.created_at).toLocaleDateString('ko-KR')}</p>
-                          <p>총 금액: <span className="font-semibold text-blue-600">{quote.total_price > 0 ? `${quote.total_price.toLocaleString()}원` : '견적 대기'}</span></p>
-                          {quote.description && (
-                            <p className="text-gray-700 mt-2">{quote.description}</p>
-                          )}
-                        </div>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-800">
+                          {getQuoteTitle(quote)}
+                        </h3>
+                        <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(quote.status)}`}>
+                          {getStatusLabel(quote.status)}
+                        </span>
                       </div>
+                      
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <p>생성일: {new Date(quote.created_at).toLocaleDateString('ko-KR')}</p>
+                        <p>일정 코드: <span className="font-medium">{quote.schedule_code || '미정'}</span></p>
+                        <p>총 금액: <span className="font-semibold text-blue-600">
+                          {quote.total_price > 0 ? `${quote.total_price.toLocaleString()}동` : '견적 대기'}
+                        </span></p>
+                      </div>
+                    </div>
 
-                      <div className="flex flex-col gap-2 ml-4">
-                        <button
-                          onClick={() => router.push(`/mypage/quotes/${quote.id}/view`)}
-                          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm"
-                        >
+                    <div className="flex flex-col gap-2 ml-4">
+                      <Link href={`/mypage/quotes/${quote.id}/view`}>
+                        <button className="bg-blue-300 text-white px-4 py-2 rounded-lg hover:bg-blue-400 transition-colors text-sm">
                           상세 보기
                         </button>
-                        
-                        {quote.status === 'draft' && (
-                          <button
-                            onClick={() => router.push(`/mypage/quotes/new?quoteId=${quote.id}`)}
-                            className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors text-sm"
-                          >
-                            계속 작성
+                      </Link>
+                      
+                      {(quote.status === 'draft' || quote.status === 'pending') && (
+                        <Link href={`/mypage/quotes/${quote.id}/edit`}>
+                          <button className="bg-green-300 text-white px-4 py-2 rounded-lg hover:bg-green-400 transition-colors text-sm">
+                            수정하기
                           </button>
-                        )}
-                      </div>
+                        </Link>
+                      )}
+
+                      {quote.status === 'confirmed' && (
+                        <Link href={`/mypage/reservations/new?quoteId=${quote.id}`}>
+                          <button className="bg-orange-300 text-white px-4 py-2 rounded-lg hover:bg-orange-400 transition-colors text-sm">
+                            예약하기
+                          </button>
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </SectionBox>
       </div>
-    </div>
+    </PageWrapper>
   );
 }

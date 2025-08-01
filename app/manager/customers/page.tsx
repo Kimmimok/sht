@@ -74,7 +74,7 @@ export default function CustomerManagement() {
       let query = supabase
         .from('users')
         .select('*')
-        .in('role', ['member', 'guest', 'user']); // 다양한 role 지원
+        .in('role', ['member', 'guest', 'user']); // 다양한 role 지동
 
       // 검색어 적용
       if (searchTerm && searchTerm.trim()) {
@@ -447,3 +447,4 @@ export default function CustomerManagement() {
     </div>
   );
 }
+

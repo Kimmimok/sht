@@ -42,7 +42,7 @@ export default function QuotePreview({ quote }: { quote: any }) {
               {room.quote_room_detail.map((detail: any) => (
                 <li key={detail.id}>
                   {detail.category_info?.name || detail.category} – {detail.person_count}명 · 💰{' '}
-                  {detail.room_total_price?.toLocaleString()}원
+                  {detail.room_total_price?.toLocaleString()}동
                 </li>
               ))}
             </ul>
@@ -51,10 +51,10 @@ export default function QuotePreview({ quote }: { quote: any }) {
 
         <hr className="my-4" />
 
-        <p>🛏️ 객실 총액: {quote.quote_price_summary?.total_room_price?.toLocaleString()}원</p>
-        <p>🚐 차량 총액: {quote.quote_price_summary?.total_car_price?.toLocaleString()}원</p>
+        <p>🛏️ 객실 총액: {quote.quote_price_summary?.total_room_price?.toLocaleString()}동</p>
+        <p>🚐 차량 총액: {quote.quote_price_summary?.total_car_price?.toLocaleString()}동</p>
         <p className="font-bold text-lg mt-2">
-          💰 최종 금액: {quote.quote_price_summary?.final_total?.toLocaleString()}원
+          💰 최종 금액: {quote.quote_price_summary?.final_total?.toLocaleString()}동
         </p>
       </div>
 
@@ -67,3 +67,4 @@ export default function QuotePreview({ quote }: { quote: any }) {
     </>
   );
 }
+

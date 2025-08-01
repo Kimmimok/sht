@@ -154,7 +154,7 @@ async function createTestData() {
     if (roomPriceError) {
       console.error('❌ 객실 가격 생성 실패:', roomPriceError);
     } else {
-      console.log(`✅ 객실 가격 생성 성공: ${roomPrice.price}원`);
+      console.log(`✅ 객실 가격 생성 성공: ${roomPrice.price}동`);
     }
 
     // 8. 가격 데이터 생성 (car_price)
@@ -174,7 +174,7 @@ async function createTestData() {
     if (carPriceError) {
       console.error('❌ 차량 가격 생성 실패:', carPriceError);
     } else {
-      console.log(`✅ 차량 가격 생성 성공: ${carPrice.price}원`);
+      console.log(`✅ 차량 가격 생성 성공: ${carPrice.price}동`);
     }
 
     console.log('\n🎉 테스트 데이터 생성 완료!');
@@ -193,3 +193,4 @@ async function createTestData() {
 }
 
 createTestData();
+

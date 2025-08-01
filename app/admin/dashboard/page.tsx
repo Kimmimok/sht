@@ -186,7 +186,7 @@ export default function AdminDashboard() {
             <div className="bg-white rounded-xl shadow-lg p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm">회원</p>
+                  <p className="text-gray-600 text-sm">회동</p>
                   <p className="text-2xl font-bold text-green-500">{systemStats.users.members}</p>
                 </div>
                 <div className="text-3xl text-green-400">🎫</div>
@@ -267,8 +267,8 @@ export default function AdminDashboard() {
                  onClick={() => router.push('/admin/backup')}>
               <div className="text-center">
                 <div className="text-4xl mb-4">💾</div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">백업/복원</h3>
-                <p className="text-gray-600 text-sm">데이터 백업 및 복원</p>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">백업/복동</h3>
+                <p className="text-gray-600 text-sm">데이터 백업 및 복동</p>
               </div>
             </div>
 
@@ -314,3 +314,4 @@ export default function AdminDashboard() {
     </AuthWrapper>
   );
 }
+

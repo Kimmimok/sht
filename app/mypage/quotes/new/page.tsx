@@ -149,7 +149,7 @@ function QuoteManagementContent() {
             </div>
           </div>
           
-      {/* 견적 상태 표시 및 입력창 카드 내부 복원 */}
+      {/* 견적 상태 표시 및 입력창 카드 내부 복동 */}
       {quoteId && quote ? (
         <div className="bg-white/70 backdrop-blur rounded-lg p-6 mb-6">
           <div className="flex items-center justify-between">
@@ -266,7 +266,7 @@ function QuoteManagementContent() {
                 <p className="text-sm text-gray-600">언제든지 전문 상담사와 상담 가능</p>
               </div>
               <div className="p-4 bg-green-50 rounded-lg">
-                <h3 className="font-semibold text-green-700 mb-2">💎 회원 특가</h3>
+                <h3 className="font-semibold text-green-700 mb-2">💎 회동 특가</h3>
                 <p className="text-sm text-gray-600">회원님만을 위한 특별 할인 혜택</p>
               </div>
               <div className="p-4 bg-purple-50 rounded-lg">
@@ -336,3 +336,4 @@ export default function QuoteManagementPage() {
     </Suspense>
   );
 }
+

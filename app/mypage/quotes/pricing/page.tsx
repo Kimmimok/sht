@@ -32,7 +32,7 @@ function QuotePricingContent() {
 
     // 가격 계산 시뮬레이션
     const priceTimer = setTimeout(() => {
-      setCalculatedPrice(Math.floor(Math.random() * 500000) + 200000); // 20만원 ~ 70만원
+      setCalculatedPrice(Math.floor(Math.random() * 500000) + 200000); // 20만동 ~ 70만동
     }, 60000);
 
     // 2분 후 검증 완료 단계로 이동
@@ -144,7 +144,7 @@ function QuotePricingContent() {
                   <div className="text-center">
                     <span className="text-gray-600 font-medium text-lg">예상 견적 금액:</span>
                     <div className="text-3xl font-bold text-green-600 mt-2">
-                      {calculatedPrice.toLocaleString()}원
+                      {calculatedPrice.toLocaleString()}동
                     </div>
                     <p className="text-sm text-gray-500 mt-1">* 최종 검증 후 확정됩니다</p>
                   </div>
@@ -313,3 +313,4 @@ export default function QuotePricingPage() {
     </Suspense>
   );
 }
+

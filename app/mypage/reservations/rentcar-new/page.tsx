@@ -160,7 +160,7 @@ function RentcarReservationContent() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    단가 (원)
+                    단가 (동)
                   </label>
                   <input
                     type="number"
@@ -179,7 +179,7 @@ function RentcarReservationContent() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    탑승 인원 수
+                    탑승 인동 수
                   </label>
                   <input
                     type="number"
@@ -216,7 +216,7 @@ function RentcarReservationContent() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    총 금액 (원)
+                    총 금액 (동)
                   </label>
                   <input
                     type="number"
@@ -330,3 +330,4 @@ export default function RentcarReservationPage() {
     </Suspense>
   );
 }
+

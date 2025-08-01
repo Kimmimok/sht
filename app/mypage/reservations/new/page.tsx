@@ -96,7 +96,7 @@ export default function QuoteManagementPage() {
                 <p className="text-sm text-gray-600">언제든지 전문 상담사와 상담 가능</p>
               </div>
               <div className="p-4 bg-green-50 rounded-lg">
-                <h3 className="font-semibold text-green-700 mb-2">💎 회원 특가</h3>
+                <h3 className="font-semibold text-green-700 mb-2">💎 회동 특가</h3>
                 <p className="text-sm text-gray-600">회원님만을 위한 특별 할인 혜택</p>
               </div>
               <div className="p-4 bg-purple-50 rounded-lg">
@@ -159,3 +159,4 @@ function getGradientClass(key: string, light?: boolean): string {
   }
   return gradientsDark[key as keyof typeof gradientsDark] || 'from-gray-500 to-gray-600';
 }
+

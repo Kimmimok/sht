@@ -245,7 +245,7 @@ export default function CruisePage() {
     }));
   };
 
-  // 추가 인원 구분 추가 함수
+  // 추가 인동 구분 추가 함수
   const addAdditionalCategory = (roomIdx: number) => {
     const newRooms = [...form.rooms];
     if (!newRooms[roomIdx].additional_categories) {
@@ -258,14 +258,14 @@ export default function CruisePage() {
     setForm({ ...form, rooms: newRooms });
   };
 
-  // 추가 인원 구분 삭제 함수
+  // 추가 인동 구분 삭제 함수
   const removeAdditionalCategory = (roomIdx: number, categoryIdx: number) => {
     const newRooms = [...form.rooms];
     newRooms[roomIdx].additional_categories.splice(categoryIdx, 1);
     setForm({ ...form, rooms: newRooms });
   };
 
-  // 인원 구분 필터링 - 객실과 동일한 방식으로 5개 조건 적용
+  // 인동 구분 필터링 - 객실과 동일한 방식으로 5개 조건 적용
   useEffect(() => {
     const fetchFilteredCategories = async () => {
       if (form.schedule_code && form.cruise_code && form.checkin && form.payment_code) {
@@ -283,10 +283,10 @@ export default function CruisePage() {
 
         const uniqueCategoryCodes = [...new Set(filteredCategories?.filter(Boolean))];
         
-        console.log('필터링된 인원 구분 코드:', uniqueCategoryCodes); // 디버깅용
+        console.log('필터링된 인동 구분 코드:', uniqueCategoryCodes); // 디버깅용
         
         if (uniqueCategoryCodes.length > 0) {
-          // 임시 하드코딩된 인원 구분 매핑 (추후 DB에서 가져오도록 수정 예정)
+          // 임시 하드코딩된 인동 구분 매핑 (추후 DB에서 가져오도록 수정 예정)
           const categoryMap = {
             'C1': '성인',
             'C2': '아동',
@@ -307,10 +307,10 @@ export default function CruisePage() {
             name: categoryMap[code as keyof typeof categoryMap] || code
           }));
           
-          console.log('인원 구분 정보:', categoryInfos); // 디버깅용
+          console.log('인동 구분 정보:', categoryInfos); // 디버깅용
           setCategories(categoryInfos || []);
         } else {
-          console.log('인원 구분 코드가 없음 - 조건들:', {
+          console.log('인동 구분 코드가 없음 - 조건들:', {
             schedule_code: form.schedule_code,
             cruise_code: form.cruise_code,
             checkin: form.checkin,
@@ -320,7 +320,7 @@ export default function CruisePage() {
           setCategories([]);
         }
       } else {
-        console.log('인원 구분 조건 불충족:', {
+        console.log('인동 구분 조건 불충족:', {
           schedule_code: form.schedule_code,
           cruise_code: form.cruise_code,
           checkin: form.checkin,
@@ -332,7 +332,7 @@ export default function CruisePage() {
     fetchFilteredCategories();
   }, [form.schedule_code, form.cruise_code, form.checkin, form.payment_code]);
 
-  // 인원 선택 렌더러
+  // 인동 선택 렌더러
   const renderCountSelector = (label: string, field: string) => (
     <div className="mb-4">
       <label className="block text-sm font-medium text-blue-700 mb-2">{label}</label>
@@ -646,7 +646,7 @@ export default function CruisePage() {
             </div>
           </div>
 
-          {/* 객실 선택 영역 - 여러 객실 지원 */}
+          {/* 객실 선택 영역 - 여러 객실 지동 */}
           {form.rooms.map((room, idx) => (
             <div key={idx} className="mb-6 p-4 rounded-lg border border-blue-100 bg-blue-50">
               <div className="flex items-center justify-between mb-2">
@@ -678,14 +678,14 @@ export default function CruisePage() {
                 <option value="">객실을 선택하세요</option>
                 {rooms.map(r => <option key={r.code} value={r.code}>{r.name}</option>)}
               </select>
-              {/* 인원 선택 - 각 객실별 */}
+              {/* 인동 선택 - 각 객실별 */}
               <div className="bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg p-4 border border-blue-100">
-                <h3 className="text-blue-700 text-base font-semibold mb-2">👥 인원 선택</h3>
-                {/* 인원 구분 선택 및 인원수 드롭다운 - 모바일 최적화 */}
+                <h3 className="text-blue-700 text-base font-semibold mb-2">👥 인동 선택</h3>
+                {/* 인동 구분 선택 및 인원수 드롭다운 - 모바일 최적화 */}
                 <div className="flex gap-2 mb-2">
-                  {/* 인원 구분 드롭다운 */}
+                  {/* 인동 구분 드롭다운 */}
                   <div className="flex-1">
-                    <label className="block text-sm font-medium text-blue-700 mb-1">인원 구분</label>
+                    <label className="block text-sm font-medium text-blue-700 mb-1">인동 구분</label>
                     <select
                       value={room.category || '성인'}
                       onChange={e => {
@@ -714,7 +714,7 @@ export default function CruisePage() {
                         } else {
                           newRooms[idx].adult_count = count;
                         }
-                        // 인원수 입력시 자동으로 추가 인원 구분 슬롯 생성
+                        // 인원수 입력시 자동으로 추가 인동 구분 슬롯 생성
                         if (count > 0 && (!newRooms[idx].additional_categories || newRooms[idx].additional_categories.length === 0)) {
                           newRooms[idx].additional_categories = [{ category: '', count: 0 }];
                         }
@@ -729,12 +729,12 @@ export default function CruisePage() {
                   </div>
                 </div>
                 
-                {/* 추가 인원 구분 입력창들 - 모바일 최적화 */}
+                {/* 추가 인동 구분 입력창들 - 모바일 최적화 */}
                 {room.additional_categories?.map((addCat, catIdx) => {
                   const usedCategories = [room.category, ...room.additional_categories.map(ac => ac.category)];
                   const availableCategories = categories.filter(cat => !usedCategories.includes(cat.code) || cat.code === addCat.category);
 
-                  // 첫 번째 빈 추가 인원 구분 슬롯에만 '아동' 자동 표기
+                  // 첫 번째 빈 추가 인동 구분 슬롯에만 '아동' 자동 표기
                   let defaultCategory = '';
                   if (!addCat.category) {
                     // '아동'이 이미 사용 중인지 확인
@@ -750,7 +750,7 @@ export default function CruisePage() {
 
                   return (
                     <div key={catIdx} className="flex gap-2 mt-2 items-center">
-                      {/* 인원 구분 드롭다운 - 50% */}
+                      {/* 인동 구분 드롭다운 - 50% */}
                       <div className="flex-1 min-w-0">
                         <select
                           value={addCat.category || defaultCategory}
@@ -775,7 +775,7 @@ export default function CruisePage() {
                             const newRooms = [...form.rooms];
                             const count = Number(e.target.value);
                             newRooms[idx].additional_categories[catIdx].count = count;
-                            // 숫자 입력시 자동으로 다음 인원 구분 슬롯 추가
+                            // 숫자 입력시 자동으로 다음 인동 구분 슬롯 추가
                             if (count > 0 && catIdx === newRooms[idx].additional_categories.length - 1) {
                               newRooms[idx].additional_categories.push({ category: '', count: 0 });
                             }
@@ -802,7 +802,7 @@ export default function CruisePage() {
                   );
                 })}
 
-                {/* 현재 선택된 인원 구분 요약 */}
+                {/* 현재 선택된 인동 구분 요약 */}
                 {(room.category || room.additional_categories?.length > 0) && (
                   <div className="mt-3">
                     <label className="block text-base font-bold text-red-600 mb-1">승선 인원수 요약</label>
@@ -928,7 +928,7 @@ export default function CruisePage() {
             </div>
           </div>
 
-          {/* 기존 단일 인원 선택 박스 제거됨. 객실별 인원 선택 UI만 남김 */}
+          {/* 기존 단일 인동 선택 박스 제거됨. 객실별 인동 선택 UI만 남김 */}
 
                    {/* 제출 버튼 */}
           <div className="flex gap-4">
@@ -951,3 +951,4 @@ export default function CruisePage() {
     </div>
   );
 }
+

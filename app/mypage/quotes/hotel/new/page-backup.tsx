@@ -407,7 +407,7 @@ export default function NewHotelPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-bold text-blue-600">
-                        {parseInt(hotel.price || '0').toLocaleString()}원
+                        {parseInt(hotel.price || '0').toLocaleString()}동
                       </p>
                       <p className="text-sm text-gray-500">1박 기준</p>
                     </div>
@@ -424,7 +424,7 @@ export default function NewHotelPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  투숙 인원
+                  투숙 인동
                 </label>
                 <input
                   type="number"
@@ -464,10 +464,10 @@ export default function NewHotelPage() {
               {selectedHotel && (
                 <>
                   <div><strong>호텔 코드:</strong> {selectedHotel.hotel_code}</div>
-                  <div><strong>1박 요금:</strong> {parseInt(selectedHotel.price || '0').toLocaleString()}원</div>
+                  <div><strong>1박 요금:</strong> {parseInt(selectedHotel.price || '0').toLocaleString()}동</div>
                 </>
               )}
-              <div><strong>투숙 인원:</strong> {formData.guest_count}명</div>
+              <div><strong>투숙 인동:</strong> {formData.guest_count}명</div>
               {formData.special_requests && (
                 <div><strong>특별 요청:</strong> {formData.special_requests}</div>
               )}
@@ -861,3 +861,4 @@ export default function NewHotelPage() {
     </div>
   );
 }
+

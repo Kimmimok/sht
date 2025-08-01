@@ -23,7 +23,7 @@ export default function AirportPage() {
     stopover_place: '',   // 경유지
     stopover_wait_time: '', // 경유지 대기시간
     car_count: '',        // 차량수
-    passenger_count: '',  // 승차인원
+    passenger_count: '',  // 승차인동
     luggage_count: '',    // 캐리어수
     fast_track: false     // 패스트트랙
   });
@@ -200,9 +200,9 @@ export default function AirportPage() {
               className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
             />
           </div>
-          {/* 승차인원 */}
+          {/* 승차인동 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">승차인원</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">승차인동</label>
             <input
               type="number"
               value={form.passenger_count}
@@ -279,3 +279,4 @@ export default function AirportPage() {
     </div>
   );
 }
+

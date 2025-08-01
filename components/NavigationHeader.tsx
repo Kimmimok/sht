@@ -67,7 +67,7 @@ export function NavigationHeader() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white text-xl font-bold">
+            <div className="w-10 h-10 bg-blue-300 rounded-full flex items-center justify-center text-white text-xl font-bold">
               S
             </div>
             <h1 className="text-xl font-bold text-gray-900 hidden sm:block text-left">스테이하롱 크루즈</h1>

@@ -2,7 +2,7 @@
 export interface Quote {
   id: string;
   user_id: string;
-  status: 'draft' | 'submitted' | 'approved' | 'rejected' | 'completed';
+  status: 'draft' | 'submitted' | 'approved' | 'rejected' | 'completed' | 'confirmed';
   title?: string;
   description?: string;
   total_price: number;

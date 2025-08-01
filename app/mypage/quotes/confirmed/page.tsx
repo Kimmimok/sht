@@ -32,7 +32,7 @@ export default function ConfirmedQuotesPage() {
       // 확정된 견적만 조회
       const allQuotes = await getUserQuotes(user.id);
       const confirmed = allQuotes.filter(quote => 
-        quote.status === 'approved' || quote.status === 'completed'
+        quote.status === 'approved' || quote.status === 'completed' || quote.status === 'confirmed'
       );
       setConfirmedQuotes(confirmed);
     } catch (error) {
@@ -45,17 +45,19 @@ export default function ConfirmedQuotesPage() {
   const getStatusLabel = (status: string): string => {
     const labels: { [key: string]: string } = {
       approved: '승인됨',
-      completed: '완료됨'
+      completed: '완료됨',
+      confirmed: '확정됨'
     };
     return labels[status] || status;
   };
 
   const getStatusColor = (status: string): string => {
     const colors: { [key: string]: string } = {
-      approved: 'bg-green-100 text-green-800',
-      completed: 'bg-blue-100 text-blue-800'
+      approved: 'bg-green-25 text-green-600',
+      completed: 'bg-blue-25 text-blue-600',
+      confirmed: 'bg-green-25 text-green-600'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status] || 'bg-gray-25 text-gray-600';
   };
 
   const handleReservation = (quoteId: string) => {
@@ -77,24 +79,24 @@ export default function ConfirmedQuotesPage() {
     <AuthWrapper>
       <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
-      <div className="bg-gradient-to-br from-green-200 via-emerald-200 to-teal-100 text-gray-900">
+      <div className="bg-gradient-to-br from-green-100 via-emerald-100 to-teal-50 text-gray-700">
         <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">✅ 확정 견적</h1>
-        <p className="text-lg opacity-90">
+        <p className="text-lg opacity-80">
           승인되어 예약 가능한 견적들을 확인하세요.
         </p>
         {/* 버튼을 아래쪽에 세로로 배치 */}
         <div className="flex gap-3 mt-6">
           <button
             onClick={() => router.push('/mypage/quotes/new')}
-            className="bg-gradient-to-r from-blue-500 to-sky-500 text-white px-6 py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-sky-600 transition-all"
+            className="bg-gradient-to-r from-blue-300 to-sky-300 text-white px-6 py-3 rounded-lg font-semibold hover:from-blue-400 hover:to-sky-400 transition-all"
           >
             ➕ 새 견적 작성
           </button>
           <button
             onClick={() => router.push('/mypage/quotes')}
-            className="bg-gray-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-600 transition-all"
+            className="bg-gray-300 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-400 transition-all"
           >
             📋 전체 견적
           </button>
@@ -117,7 +119,7 @@ export default function ConfirmedQuotesPage() {
               </p>
               <button
                 onClick={() => router.push('/mypage/quotes/new')}
-                className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition-colors"
+                className="bg-green-300 text-white px-6 py-3 rounded-lg hover:bg-green-400 transition-colors"
               >
                 첫 견적 작성하기
               </button>
@@ -140,7 +142,7 @@ export default function ConfirmedQuotesPage() {
                           <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(quote.status)}`}>
                             {getStatusLabel(quote.status)}
                           </span>
-                          <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-green-50 text-green-700">
+                          <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-green-25 text-green-600">
                             💰 예약 가능
                           </span>
                         </div>
@@ -161,7 +163,7 @@ export default function ConfirmedQuotesPage() {
                           <div>
                             <span className="font-medium">총 금액:</span>
                             <span className="ml-2 font-bold text-green-600 text-lg">
-                              {quote.total_price > 0 ? `${quote.total_price.toLocaleString()}원` : '금액 협의'}
+                              {quote.total_price > 0 ? `${quote.total_price.toLocaleString()}동` : '금액 협의'}
                             </span>
                           </div>
                         </div>
@@ -195,7 +197,7 @@ export default function ConfirmedQuotesPage() {
                               </span>
                               {item.price > 0 && (
                                 <span className="text-sm text-blue-600">
-                                  ({item.price.toLocaleString()}원)
+                                  ({item.price.toLocaleString()}동)
                                 </span>
                               )}
                             </div>
@@ -208,14 +210,14 @@ export default function ConfirmedQuotesPage() {
                     <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
                       <button
                         onClick={() => router.push(`/mypage/quotes/${quote.id}/view`)}
-                        className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors font-medium"
+                        className="bg-blue-300 text-white px-6 py-2 rounded-lg hover:bg-blue-400 transition-colors font-medium"
                       >
                         📋 상세 보기
                       </button>
                       
                       <button
                         onClick={() => handleReservation(quote.id)}
-                        className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors font-medium"
+                        className="bg-green-300 text-white px-6 py-2 rounded-lg hover:bg-green-400 transition-colors font-medium"
                       >
                         🎫 예약하기
                       </button>
@@ -233,9 +235,9 @@ export default function ConfirmedQuotesPage() {
       {/* 하단 안내 */}
       <div className="container mx-auto px-4 pb-8">
         <div className="max-w-6xl mx-auto">
-          <div className="bg-gradient-to-r from-green-100 to-teal-100 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-green-800 mb-3">💡 확정 견적 안내</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-green-700">
+          <div className="bg-gradient-to-r from-green-50 to-teal-50 rounded-xl p-6">
+            <h3 className="text-lg font-semibold text-green-600 mb-3">💡 확정 견적 안내</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-green-600">
               <div className="flex items-center space-x-2">
                 <span>✅</span>
                 <span>확정된 견적은 즉시 예약 가능합니다</span>

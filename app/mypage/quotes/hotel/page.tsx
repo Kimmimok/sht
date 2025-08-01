@@ -436,9 +436,9 @@ export default function HotelPage() {
             </div>
           </div>
 
-          {/* 👥 인원 수 */}
+          {/* 👥 인동 수 */}
           <div>
-            <label className="block text-sm font-medium text-black mb-2">👥 인원 수</label>
+            <label className="block text-sm font-medium text-black mb-2">👥 인동 수</label>
             <div className="flex gap-2">
               {[1, 2, 3, 4, 5, 6].map(n => (
                 <button
@@ -504,3 +504,4 @@ export default function HotelPage() {
     </div>
   );
 }
+

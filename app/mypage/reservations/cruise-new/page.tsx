@@ -156,7 +156,7 @@ function CruiseReservationContent() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    투숙 인원 수
+                    투숙 인동 수
                   </label>
                   <input
                     type="number"
@@ -169,7 +169,7 @@ function CruiseReservationContent() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    단가 (원)
+                    단가 (동)
                   </label>
                   <input
                     type="number"
@@ -181,7 +181,7 @@ function CruiseReservationContent() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    승선 지원 서비스
+                    승선 지동 서비스
                   </label>
                   <select
                     value={formData.boarding_assist}
@@ -191,12 +191,12 @@ function CruiseReservationContent() {
                     <option value="">선택하세요</option>
                     <option value="필요">필요</option>
                     <option value="불필요">불필요</option>
-                    <option value="휠체어">휠체어 지원</option>
+                    <option value="휠체어">휠체어 지동</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    객실 총 금액 (원)
+                    객실 총 금액 (동)
                   </label>
                   <input
                     type="number"
@@ -238,7 +238,7 @@ function CruiseReservationContent() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    탑승 인원 수
+                    탑승 인동 수
                   </label>
                   <input
                     type="number"
@@ -283,7 +283,7 @@ function CruiseReservationContent() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    차량 총 금액 (원)
+                    차량 총 금액 (동)
                   </label>
                   <input
                     type="number"
@@ -333,3 +333,4 @@ function CruiseReservationContent() {
     </PageWrapper>
   );
 }
+

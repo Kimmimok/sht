@@ -136,7 +136,7 @@ function QuoteVerificationContent() {
                   <div className="text-center bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6">
                     <h4 className="text-xl font-semibold text-gray-800 mb-3">✨ 최종 견적 금액</h4>
                     <div className="text-4xl font-bold text-green-600 mb-2">
-                      {finalPrice.toLocaleString()}원
+                      {finalPrice.toLocaleString()}동
                     </div>
                     <p className="text-sm text-green-600">
                       🎯 모든 검증을 완료한 확정 가격입니다
@@ -376,3 +376,4 @@ export default function QuoteVerificationPage() {
     </Suspense>
   );
 }
+

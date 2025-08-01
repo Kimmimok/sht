@@ -24,7 +24,7 @@ async function checkQuoteStatus() {
     
     console.log(`📋 최근 견적 ${quotes.length}건:`);
     quotes.forEach((quote, index) => {
-      console.log(`${index + 1}. ID: ${quote.id.slice(0, 8)}... | 상태: ${quote.status} | 가격: ${quote.total_price?.toLocaleString() || 0}원 | 생성일: ${new Date(quote.created_at).toLocaleDateString()}`);
+      console.log(`${index + 1}. ID: ${quote.id.slice(0, 8)}... | 상태: ${quote.status} | 가격: ${quote.total_price?.toLocaleString() || 0}동 | 생성일: ${new Date(quote.created_at).toLocaleDateString()}`);
     });
     
     // 상태별 통계
@@ -54,3 +54,4 @@ async function checkQuoteStatus() {
 }
 
 checkQuoteStatus();
+

@@ -142,7 +142,7 @@ export default function ManagerDashboard() {
             .slice(0, 5)
             .map(q => ({
               type: '견적',
-              description: `견적 ${q.status} 처리 - ${(q.total_price || 0).toLocaleString()}원`,
+              description: `견적 ${q.status} 처리 - ${(q.total_price || 0).toLocaleString()}동`,
               time: q.created_at,
               status: q.status
             }))
@@ -387,19 +387,19 @@ export default function ManagerDashboard() {
             <div className="text-center">
               <p className="text-gray-600 text-sm">총 수익</p>
               <p className="text-2xl font-bold text-green-600">
-                {(stats.revenue?.total ?? 0).toLocaleString()}원
+                {(stats.revenue?.total ?? 0).toLocaleString()}동
               </p>
             </div>
             <div className="text-center">
               <p className="text-gray-600 text-sm">이번 달</p>
               <p className="text-2xl font-bold text-blue-600">
-                {(stats.revenue?.thisMonth ?? 0).toLocaleString()}원
+                {(stats.revenue?.thisMonth ?? 0).toLocaleString()}동
               </p>
             </div>
             <div className="text-center">
               <p className="text-gray-600 text-sm">지난 달</p>
               <p className="text-2xl font-bold text-gray-600">
-                {(stats.revenue?.lastMonth ?? 0).toLocaleString()}원
+                {(stats.revenue?.lastMonth ?? 0).toLocaleString()}동
               </p>
             </div>
           </div>
@@ -409,3 +409,4 @@ export default function ManagerDashboard() {
     </AuthWrapper>
   );
 }
+

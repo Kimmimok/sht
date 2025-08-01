@@ -602,7 +602,7 @@ export default function ComprehensiveReservationForm() {
                   </select>
                 </div>
                 <div className="mt-4">
-                  <label className="block text-sm font-medium mb-2">인원 구성</label>
+                  <label className="block text-sm font-medium mb-2">인동 구성</label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {['성인', '아동', '유아'].map((category) => (
                       <div key={category}>
@@ -660,7 +660,7 @@ export default function ComprehensiveReservationForm() {
                   </select>
                 </div>
                 <div className="mt-4">
-                  <label className="block text-sm font-medium mb-2">이용 인원</label>
+                  <label className="block text-sm font-medium mb-2">이용 인동</label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {['성인', '아동', '유아'].map((category) => (
                       <div key={category}>
@@ -723,7 +723,7 @@ export default function ComprehensiveReservationForm() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">이용인원</label>
+                  <label className="block text-sm font-medium mb-2">이용인동</label>
                   <input
                     type="number"
                     min="1"
@@ -834,3 +834,4 @@ export default function ComprehensiveReservationForm() {
     </div>
   );
 }
+

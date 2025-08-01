@@ -63,7 +63,7 @@ function NewReservationContent() {
         role: 'member', // 기본값: member (고객)
         phone_number: authUser.user_metadata?.phone || '',
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString() // updated_at 컬럼 복원
+        updated_at: new Date().toISOString() // updated_at 컬럼 복동
       };
 
       const { data: newUserData, error: insertError } = await supabase
@@ -272,7 +272,7 @@ function NewReservationContent() {
           <div className="text-right">
             <h3 className="text-lg font-medium mb-3">총 견적 금액</h3>
             <p className="text-3xl font-bold text-blue-600">
-              {quote.total_price?.toLocaleString() || 0}원
+              {quote.total_price?.toLocaleString() || 0}동
             </p>
           </div>
         </div>
@@ -378,3 +378,4 @@ export default function NewReservationPage() {
     </Suspense>
   );
 }
+

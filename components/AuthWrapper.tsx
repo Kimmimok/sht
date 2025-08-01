@@ -133,7 +133,7 @@ export function AuthWrapper({ children, requiredRole, allowedRoles }: AuthWrappe
           <p className="text-gray-600 mb-6">이 페이지에 접근할 권한이 없습니다.</p>
           <button
             onClick={() => router.push('/')}
-            className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
+            className="bg-blue-300 text-white px-6 py-3 rounded-lg hover:bg-blue-400 transition-colors"
           >
             홈으로 돌아가기
           </button>

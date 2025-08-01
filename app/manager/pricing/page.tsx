@@ -628,7 +628,7 @@ export default function PricingManagement() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">가격 (원)</label>
+                <label className="block text-sm font-medium text-gray-700">가격 (동)</label>
                 <input
                   type="number"
                   name="price"
@@ -823,3 +823,4 @@ export default function PricingManagement() {
     </div>
   );
 }
+

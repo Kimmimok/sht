@@ -143,7 +143,7 @@ export default function HomePage() {
             { name: '시스템 설정', path: '/admin/settings', icon: '⚙️' },
             { name: '데이터베이스', path: '/admin/database', icon: '🗄️' },
             { name: '로그 관리', path: '/admin/logs', icon: '📋' },
-            { name: '백업/복원', path: '/admin/backup', icon: '💾' },
+            { name: '백업/복동', path: '/admin/backup', icon: '💾' },
           ]
         }
       ];
@@ -359,7 +359,7 @@ export default function HomePage() {
             <div>
               <h4 className="text-xl font-bold mb-4">🌟 특별 혜택</h4>
               <div className="text-gray-300 space-y-2">
-                <p>✅ 네이버 카페 회원 특가</p>
+                <p>✅ 네이버 카페 회동 특가</p>
                 <p>🛡️ 100% 안전 보장</p>
                 <p>🔄 무료 일정 변경</p>
                 <p>💎 프리미엄 서비스</p>
@@ -377,3 +377,4 @@ export default function HomePage() {
     </div>
   );
 }
+

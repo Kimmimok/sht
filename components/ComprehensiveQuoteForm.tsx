@@ -179,7 +179,7 @@ export default function ComprehensiveQuoteForm({
               <h3 className="text-lg font-semibold">🏨 객실 정보</h3>
               <button
                 onClick={handleAddRoom}
-                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                className="bg-green-300 text-white px-4 py-2 rounded hover:bg-green-400"
                 disabled={rooms.length >= 3}
               >
                 ➕ 객실 추가
@@ -204,13 +204,13 @@ export default function ComprehensiveQuoteForm({
           <div className="flex gap-3 pt-6">
             <button
               onClick={handleSubmit}
-              className="btn bg-blue-500 text-white px-6 py-3"
+              className="btn bg-blue-300 text-white px-6 py-3 hover:bg-blue-400"
             >
               💾 {mode === 'new' ? '견적 저장' : '견적 수정'}
             </button>
             <button
               onClick={() => router.push('/mypage/quotes')}
-              className="btn bg-gray-500 text-white px-6 py-3"
+              className="btn bg-gray-300 text-white px-6 py-3 hover:bg-gray-400"
             >
               📝 목록으로
             </button>

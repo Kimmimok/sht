@@ -120,7 +120,7 @@ function TourReservationContent() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    참가 인원 수
+                    참가 인동 수
                   </label>
                   <input
                     type="number"
@@ -133,7 +133,7 @@ function TourReservationContent() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    총 금액 (원)
+                    총 금액 (동)
                   </label>
                   <input
                     type="number"
@@ -237,3 +237,4 @@ export default function TourReservationPage() {
     </Suspense>
   );
 }
+

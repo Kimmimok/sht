@@ -171,7 +171,7 @@ export default function CustomerDashboard() {
                onClick={() => router.push('/customer/support')}>
             <div className="text-center">
               <div className="text-4xl mb-4">💬</div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">고객 지원</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">고객 지동</h3>
               <p className="text-gray-600 text-sm">문의 및 지원을 받으세요</p>
             </div>
           </div>
@@ -212,3 +212,4 @@ export default function CustomerDashboard() {
     </AuthWrapper>
   );
 }
+

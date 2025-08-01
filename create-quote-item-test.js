@@ -74,9 +74,9 @@ async function createQuoteItemTestData() {
         console.error('❌ room_price 생성 실패:', roomPriceError);
         return;
       }
-      console.log(`✅ room_price 생성: ${newRoomPrice.price}원`);
+      console.log(`✅ room_price 생성: ${newRoomPrice.price}동`);
     } else {
-      console.log(`✅ room_price 존재: ${existingRoomPrice[0].price}원`);
+      console.log(`✅ room_price 존재: ${existingRoomPrice[0].price}동`);
     }
 
     // car_price 확인/생성
@@ -104,9 +104,9 @@ async function createQuoteItemTestData() {
         console.error('❌ car_price 생성 실패:', carPriceError);
         return;
       }
-      console.log(`✅ car_price 생성: ${newCarPrice.price}원`);
+      console.log(`✅ car_price 생성: ${newCarPrice.price}동`);
     } else {
-      console.log(`✅ car_price 존재: ${existingCarPrice[0].price}원`);
+      console.log(`✅ car_price 존재: ${existingCarPrice[0].price}동`);
     }
 
     // 3. 테스트용 견적 선택 (기존 견적 사용)
@@ -197,3 +197,4 @@ async function createQuoteItemTestData() {
 }
 
 createQuoteItemTestData();
+

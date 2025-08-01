@@ -81,7 +81,7 @@ export default function AdminQuoteDetailPage() {
       <p>체크인: {quote.checkin}</p>
       <p>할인율: {quote.discount_rate}%</p>
       <hr />
-      <h2 className="font-semibold">📌 인원/금액</h2>
+      <h2 className="font-semibold">📌 인동/금액</h2>
       <ul className="space-y-1">
         {details.map((d) => (
           <li key={d.id} className="text-sm">
@@ -99,3 +99,4 @@ export default function AdminQuoteDetailPage() {
     </div>
   );
 }
+

@@ -244,7 +244,7 @@ export async function updateQuoteItemPrices(quoteId: string, cruiseInfo?: Cruise
       return false;
     }
 
-    console.log('✅ 가격 계산 완료. 총액:', totalQuotePrice.toLocaleString(), '원');
+    console.log('✅ 가격 계산 완료. 총액:', totalQuotePrice.toLocaleString(), '동');
     return true;
 
   } catch (error) {
@@ -254,3 +254,4 @@ export async function updateQuoteItemPrices(quoteId: string, cruiseInfo?: Cruise
 }
 
 export default updateQuoteItemPrices;
+

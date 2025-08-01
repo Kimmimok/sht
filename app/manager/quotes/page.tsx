@@ -364,12 +364,12 @@ export default function QuoteManagement() {
                         </div>
                         <div className="text-sm text-gray-500">
                           출발일: {quote.departure_date ? new Date(quote.departure_date).toLocaleDateString() : '미정'} • 
-                          인원: 성인 {quote.adult_count || 0}명
+                          인동: 성인 {quote.adult_count || 0}명
                           {quote.child_count > 0 && `, 아동 ${quote.child_count}명`}
                           {quote.infant_count > 0 && `, 유아 ${quote.infant_count}명`}
                         </div>
                         <div className="text-xs text-gray-400 flex items-center space-x-4">
-                          <span>견적가: {quote.total_price?.toLocaleString() || '0'}원</span>
+                          <span>견적가: {quote.total_price?.toLocaleString() || '0'}동</span>
                           <span>생성일: {new Date(quote.created_at).toLocaleDateString()}</span>
                           {quote.manager_note && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -482,7 +482,7 @@ export default function QuoteManagement() {
                   고객: {selectedQuote.users?.name || selectedQuote.users?.email || '정보 없음'}
                 </p>
                 <p className="text-sm text-gray-600">
-                  견적가: {selectedQuote.total_price?.toLocaleString() || '0'}원
+                  견적가: {selectedQuote.total_price?.toLocaleString() || '0'}동
                 </p>
                 <p className="text-xs text-gray-500">
                   ID: {selectedQuote.id}
@@ -537,3 +537,4 @@ export default function QuoteManagement() {
     </div>
   );
 }
+

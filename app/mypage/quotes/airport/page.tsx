@@ -265,7 +265,7 @@ function AirportQuoteContent() {
                 onChange={(e) => handleInputChange('special_requests', e.target.value)}
                 rows={4}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="짐의 수량, 장애인 지원, 아이 카시트 필요 여부 등을 입력해주세요..."
+                placeholder="짐의 수량, 장애인 지동, 아이 카시트 필요 여부 등을 입력해주세요..."
               />
             </div>
 
@@ -300,3 +300,4 @@ export default function AirportQuotePage() {
     </Suspense>
   );
 }
+

@@ -264,9 +264,9 @@ function AirportReservationContent() {
               </div>
             </div>
 
-            {/* 차량 및 인원 정보 */}
+            {/* 차량 및 인동 정보 */}
             <div className="bg-purple-50 rounded-lg p-6">
-              <h3 className="text-lg font-bold text-purple-900 mb-4">차량 및 인원 정보</h3>
+              <h3 className="text-lg font-bold text-purple-900 mb-4">차량 및 인동 정보</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -283,7 +283,7 @@ function AirportReservationContent() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    탑승 인원 수
+                    탑승 인동 수
                   </label>
                   <input
                     type="number"
@@ -319,7 +319,7 @@ function AirportReservationContent() {
                 onChange={(e) => handleInputChange('request_note', e.target.value)}
                 rows={4}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                placeholder="특별 서비스, 휠체어 지원, 어린이 카시트 등 요청사항을 입력해주세요..."
+                placeholder="특별 서비스, 휠체어 지동, 어린이 카시트 등 요청사항을 입력해주세요..."
               />
             </div>
 
@@ -355,3 +355,4 @@ export default function AirportReservationPage() {
     </Suspense>
   );
 }
+

@@ -69,7 +69,7 @@ export default function RentCarPage() {
           .from('rentcar_price')
         let typeError = priceError;
         let typeData = priceData;
-          {/* 렌트카 서비스 카드들 - 원래 스타일로 복원 */}
+          {/* 렌트카 서비스 카드들 - 원래 스타일로 복동 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
             <div className="bg-white/80 backdrop-blur rounded-lg p-4 hover:bg-white/90 transition-colors">
               <div className="flex items-center mb-2">
@@ -484,16 +484,16 @@ export default function RentCarPage() {
             />
           </div>
 
-          {/* 승차인원 */}
+          {/* 승차인동 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">👥 승차인원</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">👥 승차인동</label>
             <input
               type="number"
               min={1}
               value={form.rc_passenger_count}
               onChange={e => setForm({ ...form, rc_passenger_count: Number(e.target.value) })}
               className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              placeholder="승차 인원"
+              placeholder="승차 인동"
             />
           </div>
 
@@ -534,3 +534,4 @@ export default function RentCarPage() {
     </div>
   );
 }
+
