@@ -36,7 +36,7 @@ export default function QuoteDetailPage() {
   const router = useRouter();
   const params = useParams();
   const quoteId = params.id as string;
-  
+
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState<QuoteDetail | null>(null);
@@ -75,20 +75,93 @@ export default function QuoteDetailPage() {
 
   const handleReservation = async () => {
     if (!user || !quote?.id) return;
-    
+
     try {
       // 1. 게스트를 멤버로 승격 시도
       const upgradeResult = await upgradeGuestToMember(user.id, user.email);
-      
+
       if (!upgradeResult.success && upgradeResult.error) {
         console.error('권한 업그레이드 실패:', upgradeResult.error);
         alert('예약 권한 설정 중 오류가 발생했습니다.');
         return;
       }
 
-      // 2. 예약 페이지로 이동
-      router.push(`/reserve/new/${quote.id}`);
-      
+      // 2. 견적 데이터에서 서비스 코드 수집
+      const serviceData = {
+        quote_id: quote.id,
+        user_id: user.id,
+        departure_date: quote.departure_date,
+        return_date: quote.return_date,
+        adult_count: quote.adult_count,
+        child_count: quote.child_count,
+        infant_count: quote.infant_count,
+        cruise_name: quote.cruise_name,
+        // 각 서비스별 코드 정보
+        services: {
+          cruise: quote.cruise?.map(item => ({
+            id: item.id,
+            service_ref_id: item.service_ref_id,
+            cruise_code: item.cruise_code,
+            schedule_code: item.schedule_code,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.total_price
+          })) || [],
+          rentcar: quote.rentcar?.map(item => ({
+            id: item.id,
+            service_ref_id: item.service_ref_id,
+            car_code: item.car_code,
+            pickup_date: item.pickup_date,
+            return_date: item.return_date,
+            pickup_location: item.pickup_location,
+            return_location: item.return_location,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.total_price
+          })) || [],
+          airport: quote.airport?.map(item => ({
+            id: item.id,
+            service_ref_id: item.service_ref_id,
+            airport_code: item.airport_code,
+            airport_name: item.airport_name,
+            service_type: item.service_type,
+            service_date: item.service_date,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.total_price
+          })) || [],
+          hotel: quote.hotel?.map(item => ({
+            id: item.id,
+            service_ref_id: item.service_ref_id,
+            hotel_code: item.hotel_code,
+            hotel_name: item.hotel_name,
+            checkin_date: item.checkin_date,
+            checkout_date: item.checkout_date,
+            room_type: item.room_type,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.total_price
+          })) || [],
+          tour: quote.tour?.map(item => ({
+            id: item.id,
+            service_ref_id: item.service_ref_id,
+            tour_code: item.tour_code,
+            tour_name: item.tour_name,
+            tour_date: item.tour_date,
+            duration_hours: item.duration_hours,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.total_price
+          })) || []
+        }
+      };
+
+      // 3. localStorage에 견적 데이터 저장
+      localStorage.setItem('reservationQuoteData', JSON.stringify(serviceData));
+
+      // 4. 예약 페이지로 이동 (견적 ID 포함)
+      router.push(`/mypage/quotes/${quote.id}/reserve`);
+
     } catch (error) {
       console.error('예약 처리 중 오류:', error);
       alert('예약 처리 중 오류가 발생했습니다.');
@@ -98,7 +171,7 @@ export default function QuoteDetailPage() {
   const loadQuoteDetail = async () => {
     try {
       console.log('📋 견적 상세 정보 로딩 시작...', quoteId);
-      
+
       // 견적 기본 정보 조회
       const { data: quoteData, error: quoteError } = await supabase
         .from('quote')
@@ -123,7 +196,7 @@ export default function QuoteDetailPage() {
           .select('id, name, email, phone_number')
           .eq('id', quoteData.user_id)
           .single();
-        
+
         if (userError) {
           console.warn('⚠️ 사용자 정보 조회 실패:', userError);
         } else {
@@ -142,32 +215,32 @@ export default function QuoteDetailPage() {
           .from('quote_room')
           .select(`*`)
           .eq('quote_id', quoteId),
-        
+
         // quote_item을 통한 각 서비스별 데이터 조회 (조인 없이 먼저 시도)
         supabase
           .from('quote_item')
           .select('*')
           .eq('quote_id', quoteId)
           .eq('service_type', 'rentcar'),
-        
+
         supabase
           .from('quote_item')
           .select('*')
           .eq('quote_id', quoteId)
           .eq('service_type', 'cruise'),
-        
+
         supabase
           .from('quote_item')
           .select('*')
           .eq('quote_id', quoteId)
           .eq('service_type', 'airport'),
-        
+
         supabase
           .from('quote_item')
           .select('*')
           .eq('quote_id', quoteId)
           .eq('service_type', 'hotel'),
-        
+
         supabase
           .from('quote_item')
           .select('*')
@@ -185,7 +258,7 @@ export default function QuoteDetailPage() {
       });
 
       // 결과 처리 및 상세 로깅 (견적 룸 테이블 제거됨)
-      
+
       // quote_item 데이터에서 서비스별로 분류
       const carItems = serviceQueries[0].status === 'fulfilled' ? (serviceQueries[0].value.data || []) : [];
       const cruiseItems = serviceQueries[1].status === 'fulfilled' ? (serviceQueries[1].value.data || []) : [];
@@ -208,7 +281,7 @@ export default function QuoteDetailPage() {
         pickup_location: item.options?.pickup_location || '미정',
         return_location: item.options?.return_location || '미정'
       }));
-      
+
       const cruiseData = cruiseItems.map((item: any) => ({
         id: item.id,
         service_ref_id: item.service_ref_id,
@@ -222,7 +295,7 @@ export default function QuoteDetailPage() {
         return_date: item.options?.return_date || null,
         departure_port: item.options?.departure_port || '미정'
       }));
-      
+
       const airportData = airportItems.map((item: any) => ({
         id: item.id,
         service_ref_id: item.service_ref_id,
@@ -234,7 +307,7 @@ export default function QuoteDetailPage() {
         service_type: item.options?.service_type || '공항 서비스',
         flight_number: item.options?.flight_number || '미정'
       }));
-      
+
       const hotelData = hotelItems.map((item: any) => ({
         id: item.id,
         service_ref_id: item.service_ref_id,
@@ -247,7 +320,7 @@ export default function QuoteDetailPage() {
         check_in_date: item.options?.check_in_date || null,
         check_out_date: item.options?.check_out_date || null
       }));
-      
+
       const tourData = tourItems.map((item: any) => ({
         id: item.id,
         service_ref_id: item.service_ref_id,
@@ -305,14 +378,14 @@ export default function QuoteDetailPage() {
   const loadDetailedServices = async () => {
     try {
       console.log('🔍 상세 서비스 정보 로드 시작...', quoteId);
-      
+
       const { data: quoteItems, error } = await supabase
         .from('quote_item')
         .select('*')
         .eq('quote_id', quoteId);
 
       if (error) throw error;
-      
+
       console.log('📋 Quote Items 로드됨:', quoteItems);
 
       const detailed: any = {
@@ -334,7 +407,7 @@ export default function QuoteDetailPage() {
               .select('*')
               .eq('id', item.service_ref_id)
               .single();
-            
+
             if (roomData) {
               console.log('✅ 객실 정보:', roomData);
               // room_price 테이블에서 모든 가격 정보 조회
@@ -342,7 +415,7 @@ export default function QuoteDetailPage() {
                 .from('room_price')
                 .select('*')
                 .eq('room_code', roomData.room_code);
-                
+
               detailed.rooms.push({
                 ...item,
                 roomInfo: roomData,
@@ -355,14 +428,14 @@ export default function QuoteDetailPage() {
               .select('*')
               .eq('id', item.service_ref_id)
               .single();
-              
+
             if (carData) {
               console.log('✅ 차량 정보:', carData);
               const { data: priceData } = await supabase
                 .from('car_price')
                 .select('*')
                 .eq('car_code', carData.car_code);
-                
+
               detailed.cars.push({
                 ...item,
                 carInfo: carData,
@@ -375,14 +448,14 @@ export default function QuoteDetailPage() {
               .select('*')
               .eq('id', item.service_ref_id)
               .single();
-              
+
             if (airportData) {
               console.log('✅ 공항 정보:', airportData);
               const { data: priceData } = await supabase
                 .from('airport_price')
                 .select('*')
                 .eq('airport_code', airportData.airport_code);
-                
+
               detailed.airports.push({
                 ...item,
                 airportInfo: airportData,
@@ -395,14 +468,14 @@ export default function QuoteDetailPage() {
               .select('*')
               .eq('id', item.service_ref_id)
               .single();
-              
+
             if (hotelData) {
               console.log('✅ 호텔 정보:', hotelData);
               const { data: priceData } = await supabase
                 .from('hotel_price')
                 .select('*')
                 .eq('hotel_code', hotelData.hotel_code);
-                
+
               detailed.hotels.push({
                 ...item,
                 hotelInfo: hotelData,
@@ -415,14 +488,14 @@ export default function QuoteDetailPage() {
               .select('*')
               .eq('id', item.service_ref_id)
               .single();
-              
+
             if (rentcarData) {
               console.log('✅ 렌트카 정보:', rentcarData);
               const { data: priceData } = await supabase
                 .from('rent_price')
                 .select('*')
                 .eq('rent_code', rentcarData.rentcar_code);
-                
+
               detailed.rentcars.push({
                 ...item,
                 rentcarInfo: rentcarData,
@@ -435,14 +508,14 @@ export default function QuoteDetailPage() {
               .select('*')
               .eq('id', item.service_ref_id)
               .single();
-              
+
             if (tourData) {
               console.log('✅ 투어 정보:', tourData);
               const { data: priceData } = await supabase
                 .from('tour_price')
                 .select('*')
                 .eq('tour_code', tourData.tour_code);
-                
+
               detailed.tours.push({
                 ...item,
                 tourInfo: tourData,
@@ -583,7 +656,7 @@ export default function QuoteDetailPage() {
                                 <td className="px-2 py-1 font-medium border-blue-100 border">인원수</td>
                                 <td className="px-2 py-1 border-blue-100 border">{room.roomInfo?.adult_count}명</td>
                               </tr>
-                            
+
                               <tr className="bg-gray-50">
                                 <td className="px-2 py-1 font-medium border-blue-100 border">추가수</td>
                                 <td className="px-2 py-1 border-blue-100 border">{room.roomInfo?.extra_count || 0}명</td>
@@ -852,11 +925,11 @@ export default function QuoteDetailPage() {
                             {car.car_model || '차량 정보 없음'}
                           </h3>
                           <p className="text-sm text-gray-500 mt-1">
-                            픽업일: {car.pickup_date ? new Date(car.pickup_date).toLocaleDateString() : '미정'} | 
+                            픽업일: {car.pickup_date ? new Date(car.pickup_date).toLocaleDateString() : '미정'} |
                             반납일: {car.return_date ? new Date(car.return_date).toLocaleDateString() : '미정'}
                           </p>
                           <p className="text-sm text-gray-500">
-                            픽업장소: {car.pickup_location || '미정'} | 
+                            픽업장소: {car.pickup_location || '미정'} |
                             반납장소: {car.return_location || '미정'}
                           </p>
                           <div className="mt-2">

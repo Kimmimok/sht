@@ -27,11 +27,10 @@ export default function QuotesPage() {
 
       setUser(user);
 
-      // 사용자의 견적 목록 조회 - 현재 로그인한 사용자의 견적만 조회
+      // 사용자의 견적 목록 조회 - RLS 정책에 따라 인증된 사용자만 조회 가능
       const { data: userQuotes, error: quotesError } = await supabase
         .from('quote')
         .select('*')
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       console.log('견적 조회 결과:', { userQuotes, quotesError });
@@ -102,7 +101,7 @@ export default function QuotesPage() {
               <div>
                 <h1 className="text-xl font-bold mb-2">📋 내 견적 목록</h1>
                 <p className="text-lg opacity-90">
-                  {user?.email}님이 작성한 견적들을 확인하고 관리하세요.
+                  작성한 견적들을 확인하고 관리하세요.
                 </p>
               </div>
               <button

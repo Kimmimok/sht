@@ -26,6 +26,18 @@ export default function AdminQuotesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  const getQuoteTitle = (quote: Quote) => {
+    // title 필드가 있으면 우선 사용
+    if (quote.title && quote.title.trim()) {
+      return quote.title;
+    }
+    
+    // title이 없으면 크루즈 코드와 일정 코드로 생성
+    const cruiseCode = quote.cruise_code || '크루즈 미정';
+    const scheduleCode = quote.schedule_code || '';
+    return scheduleCode ? `${cruiseCode} | ${scheduleCode}` : cruiseCode;
+  };
+
   useEffect(() => {
     const fetchQuotes = async () => {
       try {
@@ -240,7 +252,7 @@ export default function AdminQuotesPage() {
                     <tr key={quote.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <div className="text-sm font-medium text-gray-900">{quote.title || `#${quote.id}`}</div>
+                          <div className="text-sm font-medium text-gray-900">{getQuoteTitle(quote)}</div>
                           <div className="text-sm text-gray-500">
                             {new Date(quote.created_at).toLocaleDateString()}
                           </div>
@@ -279,16 +291,16 @@ export default function AdminQuotesPage() {
                           {quote.total_price ? `₩${quote.total_price.toLocaleString()}` : '-'}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                      <td className="px-6 py-4 whitespace-nowrap text-xs font-medium space-x-1">
                         <button
                           onClick={() => router.push(`/admin/quotes/${quote.id}`)}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-blue-600 hover:text-blue-900 px-1 py-0.5"
                         >
                           보기
                         </button>
                         <button
                           onClick={() => deleteQuote(quote.id)}
-                          className="text-red-600 hover:text-red-900"
+                          className="text-red-600 hover:text-red-900 px-1 py-0.5"
                         >
                           삭제
                         </button>

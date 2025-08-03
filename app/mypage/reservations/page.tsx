@@ -85,7 +85,7 @@ function ReservationHomeContent() {
     const handleFocus = () => {
       loadUserProfile();
     };
-    
+
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
   }, []);
@@ -116,7 +116,7 @@ function ReservationHomeContent() {
         router.push('/login');
         return;
       }
-      
+
       const newQuote = await createQuote(user.id, quoteTitle.trim());
       if (newQuote) {
         setQuoteId(newQuote.id);
@@ -150,9 +150,9 @@ function ReservationHomeContent() {
       router.push(`/mypage/reservations/profile?quoteId=${currentQuoteId}`);
       return;
     }
-    
+
     const currentQuoteId = quoteId || existingQuoteId;
-    
+
     // 새로운 서비스 폼 페이지로 이동
     switch (service.key) {
       case 'cruise':
@@ -189,158 +189,152 @@ function ReservationHomeContent() {
               <p className="text-lg opacity-90">
                 {existingQuoteId ? '예약을 바탕으로 예약을 진행하세요.' : '새로운 예약을 작성하여 예약을 시작하세요.'}
               </p>
-              {existingQuoteId && (
-                <div className="mt-3 p-3 bg-blue-100 rounded-lg">
-                  <p className="text-sm text-blue-800">예약 ID: {existingQuoteId}</p>
-                  <p className="text-sm text-blue-700">이 예약을 바탕으로 예약을 진행합니다.</p>
-                </div>
-              )}
             </div>
-            
+
             <div className="flex gap-3">
               {/* 예약 확인 버튼 */}
               {(quoteId || existingQuoteId) && (
                 <button
                   onClick={() => router.push(`/mypage/quotes/${quoteId || existingQuoteId}/view`)}
-                  className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
+                  className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 transition-colors"
                 >
                   📋 예약 확인
                 </button>
               )}
-              
+
               {/* 새로운 예약 버튼 - 기존 예약이 없을 때만 표시 */}
               {!existingQuoteId && !showTitleInput ? (
                 <button
                   onClick={handleStartQuoteCreation}
                   disabled={loading}
-                  className="bg-gradient-to-r from-blue-400 to-sky-500 text-white px-6 py-3 rounded-lg font-semibold shadow hover:from-blue-500 hover:to-sky-600 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="bg-gradient-to-r from-blue-400 to-sky-500 text-white px-3 py-1.5 rounded text-xs font-medium shadow hover:from-blue-500 hover:to-sky-600 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   ➕ 새 예약 작성
                 </button>
               ) : null}
             </div>
           </div>
-          
-      {/* 예약 상태 표시 */}
-      {(quoteId || existingQuoteId) && quote ? (
-        <div className="bg-white/70 backdrop-blur rounded-lg p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                ✅ 예약 진행할 예약
-              </h3>
-              <div className="text-sm text-gray-600 space-y-1">
-                <p>예약 제목: <span className="font-semibold text-blue-600">{quote.title}</span></p>
-                <p>상태: <span className="text-blue-600 font-medium">{quote.status === 'draft' ? '작성 중' : quote.status === 'approved' ? '승인됨' : quote.status}</span></p>
-                <p>생성 시간: {new Date(quote.created_at).toLocaleString('ko-KR')}</p>
+
+          {/* 예약 상태 표시 */}
+          {(quoteId || existingQuoteId) && quote ? (
+            <div className="bg-white/70 backdrop-blur rounded-lg p-6 mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                    ✅ 진행할 예약
+                  </h3>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p>예약 제목: <span className="font-semibold text-blue-600">{quote.title}</span></p>
+                    <p>상태: <span className="text-blue-600 font-medium">{quote.status === 'draft' ? '작성 중' : quote.status === 'approved' ? '승인됨' : quote.status}</span></p>
+                    <p>생성 시간: {new Date(quote.created_at).toLocaleString('ko-KR')}</p>
+                  </div>
+                </div>
+                <div className="text-blue-600">
+                  <p className="text-sm">아래 서비스 중 원하는 항목을 선택하여</p>
+                  <p className="text-sm">예약을 진행하세요.</p>
+                </div>
               </div>
             </div>
-            <div className="text-blue-600">
-              <p className="text-sm">아래 서비스 중 원하는 항목을 선택하여</p>
-              <p className="text-sm">예약을 진행하세요.</p>
-            </div>
-          </div>
-        </div>
-      ) : null}
+          ) : null}
 
-      {/* 신상정보 입력 카드 - 크루즈 예약 위에 표시 */}
-      {(existingQuoteId || quoteId) && (
-        <div className="bg-white/70 backdrop-blur rounded-lg p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                👤 신상정보 입력
-              </h3>
-              <div className="text-sm text-gray-600">
-                {profileLoading ? (
-                  <p>신상정보를 확인하고 있습니다...</p>
-                ) : userProfile && userProfile.name && userProfile.english_name ? (
-                  <div>
-                    <p className="text-green-600 font-medium">✅ 신상정보 입력 완료</p>
-                    <p>이름: <span className="font-semibold">{userProfile.name}</span></p>
-                    <p>영문이름: <span className="font-semibold">{userProfile.english_name}</span></p>
-                    {userProfile.phone_number && (
-                      <p>연락처: <span className="font-semibold">{userProfile.phone_number}</span></p>
+          {/* 신상정보 입력 카드 - 크루즈 예약 위에 표시 */}
+          {(existingQuoteId || quoteId) && (
+            <div className="bg-white/70 backdrop-blur rounded-lg p-6 mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                    👤 신상정보 입력
+                  </h3>
+                  <div className="text-sm text-gray-600">
+                    {profileLoading ? (
+                      <p>신상정보를 확인하고 있습니다...</p>
+                    ) : userProfile && userProfile.name && userProfile.english_name ? (
+                      <div>
+                        <p className="text-green-600 font-medium">✅ 신상정보 입력 완료</p>
+                        <p>이름: <span className="font-semibold">{userProfile.name}</span></p>
+                        <p>영문이름: <span className="font-semibold">{userProfile.english_name}</span></p>
+                        {userProfile.phone_number && (
+                          <p>연락처: <span className="font-semibold">{userProfile.phone_number}</span></p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-red-600">⚠️ 신상정보를 먼저 입력해주세요</p>
                     )}
                   </div>
-                ) : (
-                  <p className="text-red-600">⚠️ 신상정보를 먼저 입력해주세요</p>
-                )}
+                </div>
+                <div>
+                  {!userProfile || !userProfile.name || !userProfile.english_name ? (
+                    <button
+                      onClick={() => router.push(`/mypage/reservations/profile?quoteId=${existingQuoteId || quoteId}`)}
+                      className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors"
+                    >
+                      신상정보 입력
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => router.push(`/mypage/reservations/profile?quoteId=${existingQuoteId || quoteId}`)}
+                      className="bg-gray-500 text-white px-2 py-1 rounded text-xs hover:bg-gray-600 transition-colors"
+                    >
+                      정보 수정
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-            <div>
-              {!userProfile || !userProfile.name || !userProfile.english_name ? (
-                <button
-                  onClick={() => router.push(`/mypage/reservations/profile?quoteId=${existingQuoteId || quoteId}`)}
-                  className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-                >
-                  신상정보 입력
-                </button>
-              ) : (
-                <button
-                  onClick={() => router.push(`/mypage/reservations/profile?quoteId=${existingQuoteId || quoteId}`)}
-                  className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                >
-                  정보 수정
-                </button>
-              )}
+          )}
+
+          {!existingQuoteId && (
+            <div className="bg-white/70 backdrop-blur rounded-lg p-6 mb-6">
+              <div className="text-left">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                  {showTitleInput ? '📝 행복 여행 이름 짓기' : '📝 새 예약을 작성하여 예약을 시작하세요'}
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  {showTitleInput
+                    ? (<><span>행복 여행의 이름을 지어 주세요.<br />예) "하롱베이 3박4일", "가족여행 패키지", "허니문 크루즈" 등</span></>)
+                    : (<span>"새 예약 작성" 버튼을 클릭하여 예약을 생성하고, 원하는 서비스를 선택해주세요.</span>)}
+                </p>
+                <div className="text-blue-600 text-sm">
+                  {showTitleInput
+                    ? (<p>💡 제목은 나중에 예약 목록에서 구분하는데 도움이 됩니다</p>)
+                    : (<p>💡 한 번의 예약에 여러 서비스를 추가하여 예약할 수 있습니다</p>)}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
-      
-      {!existingQuoteId && (
-        <div className="bg-white/70 backdrop-blur rounded-lg p-6 mb-6">
-          <div className="text-left">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">
-              {showTitleInput ? '📝 행복 여행 이름 짓기' : '📝 새 예약을 작성하여 예약을 시작하세요'}
-            </h3>
-            <p className="text-gray-600 mb-4">
-              {showTitleInput
-                ? (<><span>행복 여행의 이름을 지어 주세요.<br/>예) "하롱베이 3박4일", "가족여행 패키지", "허니문 크루즈" 등</span></>)
-                : (<span>"새 예약 작성" 버튼을 클릭하여 예약을 생성하고, 원하는 서비스를 선택해주세요.</span>)}
-            </p>
-            <div className="text-blue-600 text-sm">
-              {showTitleInput
-                ? (<p>💡 제목은 나중에 예약 목록에서 구분하는데 도움이 됩니다</p>)
-                : (<p>💡 한 번의 예약에 여러 서비스를 추가하여 예약할 수 있습니다</p>)}
+          )}
+
+          {/* 예약 제목 입력창과 버튼을 카드 아래에 위치 */}
+          {showTitleInput && (
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <input
+                type="text"
+                value={quoteTitle}
+                onChange={(e) => setQuoteTitle(e.target.value)}
+                placeholder="행복 여행 이름 입력하세요 (예: 하롱베이 3박4일)"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
+                autoFocus
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleCreateNewQuote();
+                  }
+                }}
+              />
+              <button
+                onClick={handleCreateNewQuote}
+                disabled={loading || !quoteTitle.trim()}
+                className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {loading ? '생성 중...' : '생성'}
+              </button>
+              <button
+                onClick={handleCancelTitleInput}
+                disabled={loading}
+                className="bg-gray-500 text-white px-2 py-1 rounded text-xs hover:bg-gray-600 transition-colors"
+              >
+                취소
+              </button>
             </div>
-          </div>
-        </div>
-      )}
-      
-      {/* 예약 제목 입력창과 버튼을 카드 아래에 위치 */}
-      {showTitleInput && (
-        <div className="flex items-center justify-center gap-2 mb-1">
-          <input
-            type="text"
-            value={quoteTitle}
-            onChange={(e) => setQuoteTitle(e.target.value)}
-            placeholder="행복 여행 이름 입력하세요 (예: 하롱베이 3박4일)"
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
-            autoFocus
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                handleCreateNewQuote();
-              }
-            }}
-          />
-          <button
-            onClick={handleCreateNewQuote}
-            disabled={loading || !quoteTitle.trim()}
-            className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {loading ? '생성 중...' : '생성'}
-          </button>
-          <button
-            onClick={handleCancelTitleInput}
-            disabled={loading}
-            className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-          >
-            취소
-          </button>
-        </div>
-      )}
+          )}
         </div>
       </div>
       {/* 서비스 메뉴 그리드 및 하단 안내, 기존 예약 확인 버튼 등 기존 코드 */}
@@ -349,50 +343,44 @@ function ReservationHomeContent() {
           {menuList.map((menu, index) => {
             const isProfileComplete = userProfile && userProfile.name && userProfile.english_name;
             const isDisabled = (existingQuoteId || quoteId) && !isProfileComplete;
-            
+
             return (
               <div
                 key={menu.key}
-                className={`group rounded-xl shadow-lg transform transition-all duration-300 overflow-hidden border border-gray-200 ${
-                  isDisabled 
-                    ? 'bg-gray-100/80 cursor-not-allowed opacity-60' 
-                    : 'bg-white/80 hover:shadow-2xl hover:scale-105 cursor-pointer'
-                }`}
+                className={`group rounded-xl shadow-lg transform transition-all duration-300 overflow-hidden border border-gray-200 ${isDisabled
+                  ? 'bg-gray-100/80 cursor-not-allowed opacity-60'
+                  : 'bg-white/80 hover:shadow-2xl hover:scale-105 cursor-pointer'
+                  }`}
                 onClick={() => handleServiceSelect(menu)}
                 style={{
                   animationDelay: `${index * 100}ms`,
                   animation: 'fadeInUp 0.6s ease-out forwards'
                 }}
               >
-                <div className={`h-20 bg-gradient-to-br ${getGradientClass(menu.key, true)} flex items-center justify-center ${
-                  isDisabled ? 'opacity-50' : ''
-                }`}>
+                <div className={`h-20 bg-gradient-to-br ${getGradientClass(menu.key, true)} flex items-center justify-center ${isDisabled ? 'opacity-50' : ''
+                  }`}>
                   <span className="text-4xl">{menu.label.split(' ')[0]}</span>
                 </div>
                 <div className="p-2">
-                  <h3 className={`text-lg font-bold mb-2 transition-colors ${
-                    isDisabled 
-                      ? 'text-gray-500' 
-                      : 'text-gray-800 group-hover:text-blue-500'
-                  }`}>
+                  <h3 className={`text-lg font-bold mb-2 transition-colors ${isDisabled
+                    ? 'text-gray-500'
+                    : 'text-gray-800 group-hover:text-blue-500'
+                    }`}>
                     {menu.label}
                   </h3>
-                  <p className={`text-sm mb-3 leading-relaxed ${
-                    isDisabled ? 'text-gray-400' : 'text-gray-700'
-                  }`}>
+                  <p className={`text-sm mb-3 leading-relaxed ${isDisabled ? 'text-gray-400' : 'text-gray-700'
+                    }`}>
                     {menu.description}
                   </p>
                   <div className="flex items-center justify-between">
-                    <span className={`font-semibold text-xs ${
-                      isDisabled ? 'text-gray-400' : 'text-blue-400'
-                    }`}>
+                    <span className={`font-semibold text-xs ${isDisabled ? 'text-gray-400' : 'text-blue-400'
+                      }`}>
                       {isDisabled ? '신상정보 입력 필요' : '예약 신청하기'}
                     </span>
-                    <span className={`text-base transition-transform ${
-                      isDisabled 
-                        ? 'text-gray-400' 
-                        : 'text-blue-400 group-hover:transform group-hover:translate-x-1'
-                    }`}>
+                    <span className={`text-base transition-transform ${isDisabled
+                      ? 'text-gray-400'
+                      : 'text-blue-400 group-hover:transform group-hover:translate-x-1'
+                      }`}>
                       {isDisabled ? '🔒' : '→'}
                     </span>
                   </div>

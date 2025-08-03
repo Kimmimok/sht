@@ -14,6 +14,7 @@ function ReservationProfileContent() {
   
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [quote, setQuote] = useState<any>(null);
   const [userFormData, setUserFormData] = useState({
     name: '',
     english_name: '',
@@ -22,7 +23,10 @@ function ReservationProfileContent() {
 
   useEffect(() => {
     checkAuthAndLoadUser();
-  }, []);
+    if (quoteId) {
+      loadQuoteInfo();
+    }
+  }, [quoteId]);
 
   const checkAuthAndLoadUser = async () => {
     try {
@@ -51,6 +55,41 @@ function ReservationProfileContent() {
     } catch (error) {
       console.error('사용자 정보 로드 오류:', error);
     }
+  };
+
+  const loadQuoteInfo = async () => {
+    if (!quoteId) return;
+    
+    try {
+      const { data: quoteData, error } = await supabase
+        .from('quote')
+        .select('id, title, cruise_name, checkin, cruise_code')
+        .eq('id', quoteId)
+        .single();
+
+      if (error) {
+        console.error('견적 정보 로드 실패:', error);
+        return;
+      }
+
+      setQuote(quoteData);
+    } catch (error) {
+      console.error('견적 정보 로드 오류:', error);
+    }
+  };
+
+  const getQuoteTitle = (quote: any) => {
+    if (!quote) return '';
+    
+    // title 필드가 있으면 우선 사용
+    if (quote.title && quote.title.trim()) {
+      return quote.title;
+    }
+    
+    // title이 없으면 기본 형식으로 생성
+    const date = quote.checkin ? new Date(quote.checkin).toLocaleDateString() : '날짜 미정';
+    const cruiseCode = quote.cruise_code || quote.cruise_name || '크루즈 미정';
+    return `${date} | ${cruiseCode}`;
   };
 
   // 사용자 정보 저장 및 예약 홈으로 이동
@@ -129,7 +168,9 @@ function ReservationProfileContent() {
           {quoteId && (
             <div className="mb-6 p-4 bg-blue-50 rounded-lg">
               <h3 className="font-semibold text-blue-800">견적 정보</h3>
-              <p className="text-sm text-blue-600">견적 ID: {quoteId}</p>
+              <p className="text-sm text-blue-600">
+                견적: {quote ? getQuoteTitle(quote) : '로딩 중...'}
+              </p>
               <p className="text-sm text-blue-600">해당 견적으로 예약을 진행합니다.</p>
             </div>
           )}

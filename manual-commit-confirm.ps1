@@ -1,6 +1,8 @@
 # ============================
 # manual-commit-confirm.ps1
 # ============================
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+Write-Host "🚀 Git 수동 업로드 시작"
 
 # Git 저장소 경로
 $repoPath = "C:\Users\saint\cruise"
@@ -52,3 +54,6 @@ git commit -m $commitMessage
 git push origin $branch
 
 Write-Host "✅ 업로드 완료: $commitMessage"
+
+chcp 65001 > $null
+

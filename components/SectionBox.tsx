@@ -14,7 +14,7 @@ export default function SectionBox({
   return (
     <div className="p-4 bg-gray-25 border rounded mb-4">
       {(title || icon) && (
-        <h3 className="font-semibold mb-3 flex items-center gap-2">
+        <h3 className="font-medium text-sm mb-2 flex items-center gap-1">
           {icon}
           {title}
         </h3>

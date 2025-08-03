@@ -20,7 +20,7 @@ export default function Header() {
                 alt="스테이하롱 크루즈"
                 width={40}
                 height={40}
-                style={{ height: 'auto' }} // 비율 유지
+                style={{ width: 'auto', height: 'auto' }} // 비율 유지
                 className="object-contain"
               />
               <span className="text-xl font-bold text-blue-600">

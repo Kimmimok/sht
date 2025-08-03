@@ -35,9 +35,10 @@ function CruiseReservationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
-  
+
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [quoteInfo, setQuoteInfo] = useState<any>(null);
   const [formData, setFormData] = useState<CruiseReservationForm>({
     room_price_code: '',
     checkin: '',
@@ -60,16 +61,47 @@ function CruiseReservationContent() {
   }, []);
 
   const checkAuthAndLoadData = async () => {
+    setLoading(true);
     try {
       const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
       if (userError || !authUser) {
         alert('로그인이 필요합니다.');
         router.push('/login');
+        setLoading(false);
         return;
       }
       setUser(authUser);
+
+      if (quoteId) {
+        const { data: quoteData, error: quoteError } = await supabase
+          .from('quote')
+          .select('*')
+          .eq('id', quoteId)
+          .single();
+
+        if (quoteError || !quoteData) {
+          console.error('견적 조회 오류:', quoteError);
+          alert('견적 정보를 가져올 수 없습니다. 목록으로 돌아갑니다.');
+          router.push('/mypage/quotes/confirmed');
+          setLoading(false);
+          return;
+        }
+
+        setQuoteInfo(quoteData);
+        console.log('✅ 견적 정보 로딩 완료:', quoteData);
+
+        setFormData(prev => ({
+          ...prev,
+          checkin: quoteData.departure_date || '',
+          guest_count: quoteData.total_people || 1,
+          request_note: `견적 ID: ${quoteData.id}\n견적 제목: ${quoteData.title || '제목 없음'}`
+        }));
+      }
     } catch (error) {
-      console.error('인증 확인 오류:', error);
+      console.error('데이터 로딩 중 오류 발생:', error);
+      alert('데이터를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -105,7 +137,7 @@ function CruiseReservationContent() {
 
       alert('크루즈 예약이 성공적으로 등록되었습니다!');
       router.push('/mypage/reservations');
-      
+
     } catch (error) {
       console.error('크루즈 예약 오류:', error);
       alert('예약 처리 중 오류가 발생했습니다.');
@@ -124,7 +156,26 @@ function CruiseReservationContent() {
   return (
     <PageWrapper>
       <div className="max-w-4xl mx-auto">
-        <SectionBox title="🚢 크루즈 예약">
+        {/* 헤더 */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">크루즈 예약</h1>
+          {quoteInfo && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h2 className="text-lg font-semibold text-blue-800 mb-2">
+                📋 {quoteInfo.title || '제목 없음'}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-blue-700">
+                <div><span className="font-medium">견적 ID:</span> {quoteInfo.id}</div>
+                <div><span className="font-medium">출항일:</span> {quoteInfo.departure_date}</div>
+                <div><span className="font-medium">귀항일:</span> {quoteInfo.return_date}</div>
+                <div><span className="font-medium">총 인원:</span> {quoteInfo.total_people || 0}명</div>
+                <div><span className="font-medium">총 금액:</span> {quoteInfo.total_price?.toLocaleString() || '0'}원</div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <SectionBox title="예약 정보 입력">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* 객실 정보 섹션 */}
             <div className="bg-blue-50 rounded-lg p-6">

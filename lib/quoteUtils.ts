@@ -1,9 +1,9 @@
 import supabase from './supabase';
-import { 
-  Quote, 
-  QuoteItem, 
-  QuoteWithItems, 
-  ServiceType, 
+import {
+  Quote,
+  QuoteItem,
+  QuoteWithItems,
+  ServiceType,
   ServiceData,
   CruiseFormData,
   AirportFormData,
@@ -125,21 +125,11 @@ export async function getQuoteWithItems(quoteId: string): Promise<QuoteWithItems
       throw new Error('인증이 필요합니다.');
     }
 
-    // quote_item 시스템 사용 (오류 메시지 기반 수정)
+    // 견적 기본 정보만 조회 (id, title만)
     const { data: quote, error: quoteError } = await supabase
       .from('quote')
-      .select(`
-        *,
-        quote_item(
-          id,
-          service_type,
-          service_data,
-          quantity,
-          total_price,
-          created_at
-        )
-      `)
-      .eq('quote_id', quoteId)
+      .select('id, title')
+      .eq('id', quoteId)
       .eq('user_id', user.id)
       .single();
 
@@ -152,36 +142,16 @@ export async function getQuoteWithItems(quoteId: string): Promise<QuoteWithItems
       return null;
     }
 
-    // 서비스 데이터 추가 조회 (병렬 처리)
-    const itemsWithData = await Promise.all(
-      (quote.quote_item || []).map(async (item: any) => {
-        // service_data가 이미 있으면 추가 조회 없이 사용
-        if (item.service_data && typeof item.service_data === 'object') {
-          return {
-            ...item,
-            service_data: item.service_data
-          };
-        }
-
-        // service_data가 문자열 ID인 경우 추가 조회
-        if (typeof item.service_data === 'string') {
-          const serviceData = await getServiceData(item.service_type, item.service_data);
-          return {
-            ...item,
-            service_data: serviceData || {}
-          };
-        }
-
-        return {
-          ...item,
-          service_data: {}
-        };
-      })
-    );
-
+    // 간단한 견적 정보만 반환
     return {
-      ...quote,
-      items: itemsWithData
+      id: quote.id,
+      title: quote.title,
+      user_id: user.id,
+      status: 'approved',
+      total_price: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      items: []
     };
   } catch (error) {
     console.error('견적 조회 중 오류:', error);
@@ -495,7 +465,7 @@ export async function removeQuoteItem(itemId: string): Promise<boolean> {
 export async function updateQuoteStatus(quoteId: string, status: Quote['status']): Promise<boolean> {
   try {
     const updateData: any = { status };
-    
+
     if (status === 'submitted') {
       updateData.submitted_at = new Date().toISOString();
     } else if (status === 'approved') {
@@ -521,16 +491,16 @@ export async function updateQuoteStatus(quoteId: string, status: Quote['status']
 
 // 견적에 서비스 추가
 export async function addServiceToQuote(
-  quoteId: string, 
-  serviceType: ServiceType, 
+  quoteId: string,
+  serviceType: ServiceType,
   formData: CruiseFormData | AirportFormData | HotelFormData | TourFormData | RentcarFormData
 ): Promise<boolean> {
   try {
     console.log('addServiceToQuote 시작:', { quoteId, serviceType, formData });
-    
+
     // 1. 서비스 데이터를 해당 테이블에 저장
     let serviceRefId: string | null = null;
-    
+
     switch (serviceType) {
       case 'cruise':
         const cruiseData = formData as CruiseFormData;
@@ -551,7 +521,7 @@ export async function addServiceToQuote(
           })
           .select()
           .single();
-        
+
         if (cruiseError || !cruise) {
           console.error('크루즈 서비스 저장 오류:', cruiseError);
           return false;
@@ -579,7 +549,7 @@ export async function addServiceToQuote(
           })
           .select()
           .single();
-        
+
         if (airportError || !airport) {
           console.error('공항 서비스 저장 오류:', airportError);
           console.error('공항 서비스 저장 상세 오류:', JSON.stringify(airportError, null, 2));
@@ -606,7 +576,7 @@ export async function addServiceToQuote(
           })
           .select()
           .single();
-        
+
         if (hotelError || !hotel) {
           console.error('호텔 서비스 저장 오류:', hotelError);
           return false;
@@ -631,7 +601,7 @@ export async function addServiceToQuote(
           })
           .select()
           .single();
-        
+
         if (tourError || !tour) {
           console.error('투어 서비스 저장 오류:', tourError);
           return false;
@@ -657,7 +627,7 @@ export async function addServiceToQuote(
           })
           .select()
           .single();
-        
+
         if (rentcarError || !rentcar) {
           console.error('렌트카 서비스 저장 오류:', rentcarError);
           return false;

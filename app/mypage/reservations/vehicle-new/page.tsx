@@ -19,6 +19,7 @@ function VehicleReservationContent() {
   
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [quote, setQuote] = useState<any>(null);
   const [formData, setFormData] = useState<VehicleReservationForm>({
     vehicle_number: '',
     seat_number: '',
@@ -27,7 +28,10 @@ function VehicleReservationContent() {
 
   useEffect(() => {
     checkAuthAndLoadData();
-  }, []);
+    if (quoteId) {
+      loadQuoteInfo();
+    }
+  }, [quoteId]);
 
   const checkAuthAndLoadData = async () => {
     try {
@@ -41,6 +45,41 @@ function VehicleReservationContent() {
     } catch (error) {
       console.error('인증 확인 오류:', error);
     }
+  };
+
+  const loadQuoteInfo = async () => {
+    if (!quoteId) return;
+    
+    try {
+      const { data: quoteData, error } = await supabase
+        .from('quote')
+        .select('id, title, cruise_name, checkin, cruise_code')
+        .eq('id', quoteId)
+        .single();
+
+      if (error) {
+        console.error('견적 정보 로드 실패:', error);
+        return;
+      }
+
+      setQuote(quoteData);
+    } catch (error) {
+      console.error('견적 정보 로드 오류:', error);
+    }
+  };
+
+  const getQuoteTitle = (quote: any) => {
+    if (!quote) return '';
+    
+    // title 필드가 있으면 우선 사용
+    if (quote.title && quote.title.trim()) {
+      return quote.title;
+    }
+    
+    // title이 없으면 기본 형식으로 생성
+    const date = quote.checkin ? new Date(quote.checkin).toLocaleDateString() : '날짜 미정';
+    const cruiseCode = quote.cruise_code || quote.cruise_name || '크루즈 미정';
+    return `${date} | ${cruiseCode}`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -179,8 +218,10 @@ function VehicleReservationContent() {
               <h3 className="text-lg font-bold text-gray-900 mb-4">예약 정보 확인</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-gray-700">견적 ID:</span>
-                  <span className="text-sm text-gray-900">{quoteId || '없음'}</span>
+                  <span className="text-sm font-medium text-gray-700">견적:</span>
+                  <span className="text-sm text-gray-900">
+                    {quote ? getQuoteTitle(quote) : (quoteId ? '로딩 중...' : '없음')}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-gray-700">차량 번호:</span>

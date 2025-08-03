@@ -28,7 +28,7 @@ function AirportReservationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
-  
+
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [formData, setFormData] = useState<AirportReservationForm>({
@@ -99,7 +99,7 @@ function AirportReservationContent() {
 
       alert('공항 서비스 예약이 성공적으로 등록되었습니다!');
       router.push('/mypage/reservations');
-      
+
     } catch (error) {
       console.error('공항 서비스 예약 오류:', error);
       alert('예약 처리 중 오류가 발생했습니다.');

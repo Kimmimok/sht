@@ -194,11 +194,25 @@ if (loading) {
 
 ### 스타일링 패턴 (Tailwind CSS)
 ```tsx
-// ✅ 표준 스타일 클래스
-className="bg-gray-100 text-black"        // 라이트 모드 배경
-className="bg-white rounded-lg shadow-md p-6" // 카드 스타일
-className="btn"                           // 전역 버튼 스타일
-className="w-full px-3 py-2 rounded border" // 입력 필드
+// ✅ 표준 스타일 클래스 - 옅은 색상 사용
+className="bg-gray-50 text-gray-600"        // 라이트 모드 배경 (더 연하게)
+className="bg-white rounded-lg shadow-sm p-6" // 카드 스타일 (shadow 연하게)
+className="btn"                           // 전역 버튼 스타일 (옅은 색상)
+className="w-full px-2 py-1 rounded border border-gray-200" // 입력 필드 (작은 크기)
+
+// ✅ 옅은 색상 가이드라인
+className="bg-blue-50 text-blue-500"      // 파란색 (500 → 50/500으로 연하게)
+className="bg-green-50 text-green-500"    // 초록색 (연한 배경 + 중간 텍스트)
+className="bg-red-50 text-red-500"        // 빨간색 (경고 색상도 연하게)
+className="bg-yellow-50 text-yellow-600"  // 노란색 (배경 매우 연하게)
+className="text-gray-600"                 // 텍스트 (900 → 600으로 연하게)
+className="border-gray-200"               // 테두리 (300 → 200으로 연하게)
+
+// ✅ 크기 축소 패턴
+className="text-xs px-2 py-1"             // 모든 버튼 기본 크기
+className="text-lg"                       // 제목 (2xl → lg로 축소)
+className="text-base"                     // 부제목 (xl → base로 축소)
+className="text-sm"                       // 소제목 (lg → sm으로 축소)
 ```
 
 ## 개발 워크플로우
