@@ -119,14 +119,25 @@ export default function QuotesPage() {
                 로그아웃
               </button>
             </div>
-            {/* 확정/새 견적 버튼을 전체 필터 버튼 위에 가로로 배치 */}
-            <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => router.push('/mypage/quotes/confirmed')}
-                className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1 rounded text-sm font-semibold hover:from-green-600 hover:to-emerald-600 transition-all"
-              >
-                ✅ 확정
-              </button>
+            {/* 새 견적 버튼 오른쪽, 필터 버튼 왼쪽 정렬 */}
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex gap-2">
+                <button className="bg-white/80 text-gray-700 px-2 py-1 rounded text-xs font-medium border border-gray-300 hover:bg-white transition-all">
+                  📋 전체
+                </button>
+                <button
+                  onClick={() => router.push('/mypage/quotes/processing')}
+                  className="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs font-medium border border-orange-300 hover:bg-orange-200 transition-all"
+                >
+                  � 처리중
+                </button>
+                <button
+                  onClick={() => router.push('/mypage/quotes/confirmed')}
+                  className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-medium border border-green-300 hover:bg-green-200 transition-all"
+                >
+                  ✅ 확정됨
+                </button>
+              </div>
               <button
                 onClick={() => router.push('/mypage/quotes/new')}
                 className="bg-gradient-to-r from-blue-500 to-sky-500 text-white px-3 py-1 rounded text-sm font-semibold hover:from-blue-600 hover:to-sky-600 transition-all"
@@ -134,25 +145,6 @@ export default function QuotesPage() {
                 ➕ 새 견적
               </button>
             </div>
-          </div>
-
-          {/* 빠른 필터 버튼들 */}
-          <div className="flex gap-2 mb-4">
-            <button className="bg-white/80 text-gray-700 px-2 py-1 rounded text-xs font-medium border border-gray-300 hover:bg-white transition-all">
-              📋 전체
-            </button>
-            <button
-              onClick={() => router.push('/mypage/quotes/processing')}
-              className="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs font-medium border border-orange-300 hover:bg-orange-200 transition-all"
-            >
-              🔄 처리중
-            </button>
-            <button
-              onClick={() => router.push('/mypage/quotes/confirmed')}
-              className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-medium border border-green-300 hover:bg-green-200 transition-all"
-            >
-              ✅ 확정됨
-            </button>
           </div>
         </div>
       </div>

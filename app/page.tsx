@@ -23,7 +23,7 @@ export default function HomePage() {
   const checkAuth = async () => {
     try {
       const { data: { user: authUser }, error } = await supabase.auth.getUser();
-      
+
       if (error || !authUser) {
         setUser(null);
         setLoading(false);
@@ -38,7 +38,7 @@ export default function HomePage() {
         .single();
 
       let userRole = 'guest'; // 기본값: 견적자 (users 테이블에 없는 경우)
-      
+
       if (profile && profile.role) {
         // users 테이블에 등록되고 role이 있는 경우
         userRole = profile.role;
@@ -56,7 +56,7 @@ export default function HomePage() {
       };
 
       setUser(userProfile);
-      
+
       // 권한별 자동 리다이렉트
       if (userRole === 'admin') {
         console.log('🔧 관리자 계정 - 관리자 페이지로 리다이렉트');
@@ -75,7 +75,7 @@ export default function HomePage() {
         router.push('/mypage/quotes');
         return;
       }
-      
+
     } catch (error) {
       console.error('인증 확인 중 오류:', error);
       setUser(null);
@@ -111,7 +111,7 @@ export default function HomePage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full space-y-8">
           <div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            <h2 className="mt-6 text-center text-2xl font-extrabold text-gray-900">
               스테이하롱 크루즈 예약 시스템
             </h2>
             <p className="mt-2 text-center text-sm text-gray-600">
