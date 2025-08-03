@@ -141,27 +141,8 @@ export default function ConfirmedQuoteDetailPage() {
         return;
       }
 
-      // 견적 데이터를 URL 파라미터로 전달하여 예약 페이지로 이동
-      const reservationData = {
-        quoteId: quoteData.id,
-        title: quoteData.title,
-        cruiseCode: quoteData.cruise_name,
-        scheduleCode: quoteData.cruise_name, // cruise_name을 schedule로도 사용
-        checkin: quoteData.departure_date,
-        checkout: quoteData.return_date,
-        totalPrice: quoteData.total_price,
-        services: (quoteData.quote_item || []).map((item: any) => ({
-          type: item.service_type,
-          code: item.service_ref_id, // service_ref_id를 code로 사용
-          quantity: item.quantity,
-          unitPrice: item.unit_price,
-          totalPrice: item.total_price
-        }))
-      };
-
-      // 데이터를 Base64로 인코딩하여 URL에 전달
-      const encodedData = btoa(JSON.stringify(reservationData));
-      router.push(`/mypage/reservations/cruise-new?data=${encodedData}`);
+      // 견적 ID만 URL 파라미터로 전달하여 예약 페이지로 이동
+      router.push(`/mypage/reservations?quoteId=${quoteData.id}`);
     } catch (error) {
       console.error('예약 처리 오류:', error);
       alert('예약 처리 중 오류가 발생했습니다.');
@@ -410,12 +391,12 @@ export default function ConfirmedQuoteDetailPage() {
                   onClick={() => router.push('/mypage/quotes')}
                   className="p-2 text-gray-300 hover:text-gray-500"
                 >
-                  ← 목록으로
+                  ← 목록
                 </button>
                 <h1 className="text-2xl font-bold text-gray-700">📋 {quote.cruise_name || '크루즈 견적'}</h1>
                 {getStatusBadge(quote.status)}
               </div>
-              <div className="text-sm text-gray-400">사용자: {user?.email}</div>
+
             </div>
           </div>
         </div>
@@ -453,7 +434,7 @@ export default function ConfirmedQuoteDetailPage() {
                     <h2 className="text-lg font-medium text-gray-600">🛏 객실 정보 (상세)</h2>
                     <div className="text-right">
                       <span className="text-lg font-bold text-blue-600">
-                        {detailedServices.rooms.reduce((total: number, room: any) => total + (room.total_price || 0), 0).toLocaleString()}원
+                        {detailedServices.rooms.reduce((total: number, room: any) => total + (room.total_price || 0), 0).toLocaleString()}동
                       </span>
                       <p className="text-sm text-gray-500">객실 합계</p>
                     </div>
@@ -461,13 +442,11 @@ export default function ConfirmedQuoteDetailPage() {
                   <div className="space-y-4">
                     {detailedServices.rooms.map((room: any, index: number) => (
                       <div key={index} className="border border-gray-100 rounded-lg p-4">
-                        <div className="flex justify-between items-center mb-3">
-                          <h3 className="font-medium text-gray-700">객실 #{index + 1}</h3>
+                        <div className="flex justify-end items-center mb-3">
                           <div className="text-right">
                             <span className="text-base font-semibold text-blue-600">
-                              {(room.total_price || 0).toLocaleString()}원
+                              {(room.total_price || 0).toLocaleString()}동
                             </span>
-                            <p className="text-xs text-gray-500">단가: {(room.unit_price || 0).toLocaleString()}원 × {room.quantity || 1}</p>
                           </div>
                         </div>
                         <table className="min-w-full text-sm text-gray-600 border border-blue-100">
@@ -491,12 +470,12 @@ export default function ConfirmedQuoteDetailPage() {
                                   <td className="px-2 py-1 border-blue-100 border">{price.room_category || '-'}</td>
                                 </tr>
                                 <tr>
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '원' : '-'}</td>
+                                  <td className="px-2 py-1 font-medium border-blue-100 border">단가</td>
+                                  <td className="px-2 py-1 border-blue-100 border">{room.unit_price ? room.unit_price.toLocaleString() + '동' : '-'}</td>
                                 </tr>
                                 <tr>
                                   <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '원' : '-'}</td>
+                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                                 </tr>
                                 <tr className="bg-gray-50">
                                   <td className="px-2 py-1 font-medium border-blue-100 border">인원수</td>
@@ -524,7 +503,7 @@ export default function ConfirmedQuoteDetailPage() {
                     <h2 className="text-lg font-medium text-gray-600">🚗 차량 정보 (상세)</h2>
                     <div className="text-right">
                       <span className="text-lg font-bold text-green-600">
-                        {detailedServices.cars.reduce((total: number, car: any) => total + (car.total_price || 0), 0).toLocaleString()}원
+                        {detailedServices.cars.reduce((total: number, car: any) => total + (car.total_price || 0), 0).toLocaleString()}동
                       </span>
                       <p className="text-sm text-gray-500">차량 합계</p>
                     </div>
@@ -532,13 +511,11 @@ export default function ConfirmedQuoteDetailPage() {
                   <div className="space-y-4">
                     {detailedServices.cars.map((car: any, index: number) => (
                       <div key={index} className="border border-gray-100 rounded-lg p-4">
-                        <div className="flex justify-between items-center mb-3">
-                          <h3 className="font-medium text-gray-700">차량 #{index + 1}</h3>
+                        <div className="flex justify-end items-center mb-3">
                           <div className="text-right">
                             <span className="text-base font-semibold text-green-600">
-                              {(car.total_price || 0).toLocaleString()}원
+                              {(car.total_price || 0).toLocaleString()}동
                             </span>
-                            <p className="text-xs text-gray-500">단가: {(car.unit_price || 0).toLocaleString()}원 × {car.quantity || 1}</p>
                           </div>
                         </div>
                         <table className="min-w-full text-sm text-gray-600 border border-blue-100">
@@ -562,12 +539,12 @@ export default function ConfirmedQuoteDetailPage() {
                                   <td className="px-2 py-1 border-blue-100 border">{price.car_category || '-'}</td>
                                 </tr>
                                 <tr>
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '원' : '-'}</td>
+                                  <td className="px-2 py-1 font-medium border-blue-100 border">단가</td>
+                                  <td className="px-2 py-1 border-blue-100 border">{car.unit_price ? car.unit_price.toLocaleString() + '동' : '-'}</td>
                                 </tr>
                                 <tr>
                                   <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '원' : '-'}</td>
+                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                                 </tr>
                                 <tr className="bg-gray-50">
                                   <td className="px-2 py-1 font-medium border-blue-100 border">차량수</td>
@@ -591,7 +568,7 @@ export default function ConfirmedQuoteDetailPage() {
                     <h2 className="text-lg font-medium text-gray-600">✈️ 공항 서비스 (상세)</h2>
                     <div className="text-right">
                       <span className="text-lg font-bold text-yellow-600">
-                        {detailedServices.airports.reduce((total: number, airport: any) => total + (airport.total_price || 0), 0).toLocaleString()}원
+                        {detailedServices.airports.reduce((total: number, airport: any) => total + (airport.total_price || 0), 0).toLocaleString()}동
                       </span>
                       <p className="text-sm text-gray-500">공항 서비스 합계</p>
                     </div>
@@ -616,12 +593,12 @@ export default function ConfirmedQuoteDetailPage() {
                                   <td className="px-2 py-1 border-blue-100 border">{price.airport_car_type || '-'}</td>
                                 </tr>
                                 <tr>
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '원' : '-'}</td>
+                                  <td className="px-2 py-1 font-medium border-blue-100 border">단가</td>
+                                  <td className="px-2 py-1 border-blue-100 border">{airport.unit_price ? airport.unit_price.toLocaleString() + '동' : '-'}</td>
                                 </tr>
                                 <tr>
                                   <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '원' : '-'}</td>
+                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                                 </tr>
                                 <tr className="bg-gray-50">
                                   <td className="px-2 py-1 font-medium border-blue-100 border">승객수</td>
@@ -644,7 +621,7 @@ export default function ConfirmedQuoteDetailPage() {
                     <h2 className="text-lg font-medium text-gray-600">🏨 호텔 정보 (상세)</h2>
                     <div className="text-right">
                       <span className="text-lg font-bold text-pink-600">
-                        {detailedServices.hotels.reduce((total: number, hotel: any) => total + (hotel.total_price || 0), 0).toLocaleString()}원
+                        {detailedServices.hotels.reduce((total: number, hotel: any) => total + (hotel.total_price || 0), 0).toLocaleString()}동
                       </span>
                       <p className="text-sm text-gray-500">호텔 합계</p>
                     </div>
@@ -669,12 +646,12 @@ export default function ConfirmedQuoteDetailPage() {
                                   <td className="px-2 py-1 border-blue-100 border">{price.room_type || '-'}</td>
                                 </tr>
                                 <tr>
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '원' : '-'}</td>
+                                  <td className="px-2 py-1 font-medium border-blue-100 border">단가</td>
+                                  <td className="px-2 py-1 border-blue-100 border">{hotel.unit_price ? hotel.unit_price.toLocaleString() + '동' : '-'}</td>
                                 </tr>
                                 <tr>
                                   <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '원' : '-'}</td>
+                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                                 </tr>
                                 <tr className="bg-gray-50">
                                   <td className="px-2 py-1 font-medium border-blue-100 border">호텔명</td>
@@ -697,7 +674,7 @@ export default function ConfirmedQuoteDetailPage() {
                     <h2 className="text-lg font-medium text-gray-600">🚙 렌트카 정보 (상세)</h2>
                     <div className="text-right">
                       <span className="text-lg font-bold text-green-600">
-                        {detailedServices.rentcars.reduce((total: number, rentcar: any) => total + (rentcar.total_price || 0), 0).toLocaleString()}원
+                        {detailedServices.rentcars.reduce((total: number, rentcar: any) => total + (rentcar.total_price || 0), 0).toLocaleString()}동
                       </span>
                       <p className="text-sm text-gray-500">렌트카 합계</p>
                     </div>
@@ -722,12 +699,12 @@ export default function ConfirmedQuoteDetailPage() {
                                   <td className="px-2 py-1 border-blue-100 border">{price.rent_route || '-'}</td>
                                 </tr>
                                 <tr>
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '원' : '-'}</td>
+                                  <td className="px-2 py-1 font-medium border-blue-100 border">단가</td>
+                                  <td className="px-2 py-1 border-blue-100 border">{rentcar.unit_price ? rentcar.unit_price.toLocaleString() + '동' : '-'}</td>
                                 </tr>
                                 <tr>
                                   <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '원' : '-'}</td>
+                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                                 </tr>
                                 <tr className="bg-gray-50">
                                   <td className="px-2 py-1 font-medium border-blue-100 border">렌트카명</td>
@@ -751,7 +728,7 @@ export default function ConfirmedQuoteDetailPage() {
                     <h2 className="text-lg font-medium text-gray-600">🎯 투어 정보 (상세)</h2>
                     <div className="text-right">
                       <span className="text-lg font-bold text-purple-600">
-                        {detailedServices.tours.reduce((total: number, tour: any) => total + (tour.total_price || 0), 0).toLocaleString()}원
+                        {detailedServices.tours.reduce((total: number, tour: any) => total + (tour.total_price || 0), 0).toLocaleString()}동
                       </span>
                       <p className="text-sm text-gray-500">투어 합계</p>
                     </div>
@@ -768,7 +745,7 @@ export default function ConfirmedQuoteDetailPage() {
                                   <td className="px-2 py-1 border-blue-100 border">{price.tour_name || '-'}</td>
                                 </tr>
                                 <tr>
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">정원</td>
+                                  <td className="px-2 py-1 font-medium border-blue-100 border">정동</td>
                                   <td className="px-2 py-1 border-blue-100 border">{price.tour_capacity ? price.tour_capacity + '명' : '-'}</td>
                                 </tr>
                                 <tr>
@@ -776,12 +753,12 @@ export default function ConfirmedQuoteDetailPage() {
                                   <td className="px-2 py-1 border-blue-100 border">{price.tour_vehicle || '-'}</td>
                                 </tr>
                                 <tr>
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '원' : '-'}</td>
+                                  <td className="px-2 py-1 font-medium border-blue-100 border">단가</td>
+                                  <td className="px-2 py-1 border-blue-100 border">{tour.unit_price ? tour.unit_price.toLocaleString() + '동' : '-'}</td>
                                 </tr>
                                 <tr>
                                   <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '원' : '-'}</td>
+                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                                 </tr>
                                 <tr className="bg-gray-50">
                                   <td className="px-2 py-1 font-medium border-blue-100 border">투어명</td>
@@ -815,7 +792,7 @@ export default function ConfirmedQuoteDetailPage() {
                     <div className="flex justify-between items-center py-2 border-b border-gray-100">
                       <span className="text-gray-600">🛏 객실 서비스</span>
                       <span className="font-medium text-blue-600">
-                        {detailedServices.rooms.reduce((total: number, room: any) => total + (room.total_price || 0), 0).toLocaleString()}원
+                        {detailedServices.rooms.reduce((total: number, room: any) => total + (room.total_price || 0), 0).toLocaleString()}동
                       </span>
                     </div>
                   )}
@@ -824,7 +801,7 @@ export default function ConfirmedQuoteDetailPage() {
                     <div className="flex justify-between items-center py-2 border-b border-gray-100">
                       <span className="text-gray-600">🚗 차량 서비스</span>
                       <span className="font-medium text-green-600">
-                        {detailedServices.cars.reduce((total: number, car: any) => total + (car.total_price || 0), 0).toLocaleString()}원
+                        {detailedServices.cars.reduce((total: number, car: any) => total + (car.total_price || 0), 0).toLocaleString()}동
                       </span>
                     </div>
                   )}
@@ -833,7 +810,7 @@ export default function ConfirmedQuoteDetailPage() {
                     <div className="flex justify-between items-center py-2 border-b border-gray-100">
                       <span className="text-gray-600">✈️ 공항 서비스</span>
                       <span className="font-medium text-yellow-600">
-                        {detailedServices.airports.reduce((total: number, airport: any) => total + (airport.total_price || 0), 0).toLocaleString()}원
+                        {detailedServices.airports.reduce((total: number, airport: any) => total + (airport.total_price || 0), 0).toLocaleString()}동
                       </span>
                     </div>
                   )}
@@ -842,7 +819,7 @@ export default function ConfirmedQuoteDetailPage() {
                     <div className="flex justify-between items-center py-2 border-b border-gray-100">
                       <span className="text-gray-600">🏨 호텔 서비스</span>
                       <span className="font-medium text-pink-600">
-                        {detailedServices.hotels.reduce((total: number, hotel: any) => total + (hotel.total_price || 0), 0).toLocaleString()}원
+                        {detailedServices.hotels.reduce((total: number, hotel: any) => total + (hotel.total_price || 0), 0).toLocaleString()}동
                       </span>
                     </div>
                   )}
@@ -851,7 +828,7 @@ export default function ConfirmedQuoteDetailPage() {
                     <div className="flex justify-between items-center py-2 border-b border-gray-100">
                       <span className="text-gray-600">🚙 렌트카 서비스</span>
                       <span className="font-medium text-green-600">
-                        {detailedServices.rentcars.reduce((total: number, rentcar: any) => total + (rentcar.total_price || 0), 0).toLocaleString()}원
+                        {detailedServices.rentcars.reduce((total: number, rentcar: any) => total + (rentcar.total_price || 0), 0).toLocaleString()}동
                       </span>
                     </div>
                   )}
@@ -860,7 +837,7 @@ export default function ConfirmedQuoteDetailPage() {
                     <div className="flex justify-between items-center py-2 border-b border-gray-100">
                       <span className="text-gray-600">🎯 투어 서비스</span>
                       <span className="font-medium text-purple-600">
-                        {detailedServices.tours.reduce((total: number, tour: any) => total + (tour.total_price || 0), 0).toLocaleString()}원
+                        {detailedServices.tours.reduce((total: number, tour: any) => total + (tour.total_price || 0), 0).toLocaleString()}동
                       </span>
                     </div>
                   )}
@@ -869,7 +846,7 @@ export default function ConfirmedQuoteDetailPage() {
                     <div className="flex justify-between items-center py-2 border-b border-gray-100">
                       <span className="text-gray-600">🚗 기본 렌트카</span>
                       <span className="font-medium text-gray-600">
-                        {quote.rentcar.reduce((total: number, car: any) => total + (car.total_price || 0), 0).toLocaleString()}원
+                        {quote.rentcar.reduce((total: number, car: any) => total + (car.total_price || 0), 0).toLocaleString()}동
                       </span>
                     </div>
                   )}
@@ -879,7 +856,7 @@ export default function ConfirmedQuoteDetailPage() {
                 <div className="border-t-2 border-blue-200 pt-4">
                   <div className="flex justify-between items-center">
                     <span className="text-xl font-bold text-gray-800">총 견적 금액</span>
-                    <span className="text-3xl font-bold text-blue-600">
+                    <span className="text-2xl font-bold text-blue-600">
                       {(() => {
                         const detailedTotal =
                           (detailedServices.rooms?.reduce((total: number, room: any) => total + (room.total_price || 0), 0) || 0) +
@@ -893,12 +870,12 @@ export default function ConfirmedQuoteDetailPage() {
                         // 상세 서비스 총액과 견적 총액 중 더 큰 값을 사용
                         const finalTotal = Math.max(detailedTotal, quote.total_price || 0);
                         return finalTotal.toLocaleString();
-                      })()}원
+                      })()}동
                     </span>
                   </div>
                   {quote.total_price && quote.total_price > 0 && (
                     <div className="mt-2 text-sm text-gray-500 text-right">
-                      (시스템 견적액: {quote.total_price.toLocaleString()}원)
+
                     </div>
                   )}
                 </div>
@@ -909,7 +886,7 @@ export default function ConfirmedQuoteDetailPage() {
                     <h2 className="text-lg font-medium text-gray-600">🚗 기본 렌트카 정보</h2>
                     <div className="text-right">
                       <span className="text-lg font-bold text-gray-600">
-                        {quote.rentcar.reduce((total: number, car: any) => total + (car.total_price || 0), 0).toLocaleString()}원
+                        {quote.rentcar.reduce((total: number, car: any) => total + (car.total_price || 0), 0).toLocaleString()}동
                       </span>
                       <p className="text-sm text-gray-500">기본 렌트카 합계</p>
                     </div>
@@ -943,9 +920,9 @@ export default function ConfirmedQuoteDetailPage() {
                           </div>
                           <div className="text-right ml-4">
                             <span className="text-base font-semibold text-gray-600">
-                              {(car.total_price || 0).toLocaleString()}원
+                              {(car.total_price || 0).toLocaleString()}동
                             </span>
-                            <p className="text-xs text-gray-500">단가: {(car.unit_price || 0).toLocaleString()}원 × {car.quantity || 1}</p>
+
                           </div>
                         </div>
                       </div>
@@ -958,9 +935,9 @@ export default function ConfirmedQuoteDetailPage() {
               <div className="flex justify-center mt-10">
                 <button
                   onClick={handleReservation}
-                  className="bg-blue-300 text-white px-10 py-4 rounded-lg text-lg hover:bg-blue-400 transition-colors font-bold shadow-sm"
+                  className="btn bg-blue-300 text-black text-xs px-2 py-2 rounded w-40 font-bold shadow-sm hover:bg-blue-400 transition-colors"
                 >
-                  🚢 예약하기
+                  🚢 예약
                 </button>
               </div>
             </div>

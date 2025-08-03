@@ -135,7 +135,7 @@ export default function ConfirmedQuotesPage() {
         <div className="bg-gradient-to-br from-green-100 via-emerald-100 to-teal-50 text-gray-700">
           <div className="container mx-auto px-4 py-8">
             <div className="mb-6">
-              <h1 className="text-3xl font-bold mb-2">✅ 확정 견적</h1>
+              <h1 className="text-2xl font-bold mb-2">✅ 확정 견적</h1>
               <p className="text-lg opacity-80">
                 승인되어 예약 가능한 견적들을 확인하세요.
               </p>
@@ -143,15 +143,15 @@ export default function ConfirmedQuotesPage() {
               <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => router.push('/mypage/quotes/new')}
-                  className="bg-gradient-to-r from-blue-300 to-sky-300 text-white px-6 py-3 rounded-lg font-semibold hover:from-blue-400 hover:to-sky-400 transition-all"
+                  className="bg-gradient-to-r from-blue-300 to-sky-300 text-white px-6 py-2 rounded-lg font-medium hover:from-blue-400 hover:to-sky-400 transition-all"
                 >
-                  ➕ 새 견적 작성
+                  ➕ 새 견적
                 </button>
                 <button
                   onClick={() => router.push('/mypage/quotes')}
-                  className="bg-gray-300 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-400 transition-all"
+                  className="bg-gray-300 text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-400 transition-all"
                 >
-                  📋 전체 견적
+                  📋 전체
                 </button>
               </div>
             </div>
@@ -265,14 +265,14 @@ export default function ConfirmedQuotesPage() {
                           onClick={() => router.push(`/mypage/quotes/${quote.id}/confirmed`)}
                           className="bg-blue-300 text-white px-6 py-2 rounded-lg hover:bg-blue-400 transition-colors font-medium"
                         >
-                          📋 확정견적 상세보기
+                          📋 상세
                         </button>
 
                         <button
                           onClick={() => handleReservation(quote.id)}
                           className="bg-green-300 text-white px-6 py-2 rounded-lg hover:bg-green-400 transition-colors font-medium"
                         >
-                          🎫 예약하기
+                          🎫 예약
                         </button>
 
 

@@ -75,93 +75,16 @@ export default function QuoteDetailPage() {
 
   const handleReservation = async () => {
     if (!user || !quote?.id) return;
-
     try {
       // 1. 게스트를 멤버로 승격 시도
       const upgradeResult = await upgradeGuestToMember(user.id, user.email);
-
       if (!upgradeResult.success && upgradeResult.error) {
         console.error('권한 업그레이드 실패:', upgradeResult.error);
         alert('예약 권한 설정 중 오류가 발생했습니다.');
         return;
       }
-
-      // 2. 견적 데이터에서 서비스 코드 수집
-      const serviceData = {
-        quote_id: quote.id,
-        user_id: user.id,
-        departure_date: quote.departure_date,
-        return_date: quote.return_date,
-        adult_count: quote.adult_count,
-        child_count: quote.child_count,
-        infant_count: quote.infant_count,
-        cruise_name: quote.cruise_name,
-        // 각 서비스별 코드 정보
-        services: {
-          cruise: quote.cruise?.map(item => ({
-            id: item.id,
-            service_ref_id: item.service_ref_id,
-            cruise_code: item.cruise_code,
-            schedule_code: item.schedule_code,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            total_price: item.total_price
-          })) || [],
-          rentcar: quote.rentcar?.map(item => ({
-            id: item.id,
-            service_ref_id: item.service_ref_id,
-            car_code: item.car_code,
-            pickup_date: item.pickup_date,
-            return_date: item.return_date,
-            pickup_location: item.pickup_location,
-            return_location: item.return_location,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            total_price: item.total_price
-          })) || [],
-          airport: quote.airport?.map(item => ({
-            id: item.id,
-            service_ref_id: item.service_ref_id,
-            airport_code: item.airport_code,
-            airport_name: item.airport_name,
-            service_type: item.service_type,
-            service_date: item.service_date,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            total_price: item.total_price
-          })) || [],
-          hotel: quote.hotel?.map(item => ({
-            id: item.id,
-            service_ref_id: item.service_ref_id,
-            hotel_code: item.hotel_code,
-            hotel_name: item.hotel_name,
-            checkin_date: item.checkin_date,
-            checkout_date: item.checkout_date,
-            room_type: item.room_type,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            total_price: item.total_price
-          })) || [],
-          tour: quote.tour?.map(item => ({
-            id: item.id,
-            service_ref_id: item.service_ref_id,
-            tour_code: item.tour_code,
-            tour_name: item.tour_name,
-            tour_date: item.tour_date,
-            duration_hours: item.duration_hours,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            total_price: item.total_price
-          })) || []
-        }
-      };
-
-      // 3. localStorage에 견적 데이터 저장
-      localStorage.setItem('reservationQuoteData', JSON.stringify(serviceData));
-
-      // 4. 예약 페이지로 이동 (견적 ID 포함)
-      router.push(`/mypage/quotes/${quote.id}/reserve`);
-
+      // 2. 예약 페이지로 이동 (견적 ID 포함)
+      router.push(`/mypage/reservations?quoteId=${quote.id}`);
     } catch (error) {
       console.error('예약 처리 중 오류:', error);
       alert('예약 처리 중 오류가 발생했습니다.');
@@ -579,14 +502,13 @@ export default function QuoteDetailPage() {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => router.push('/mypage/quotes')}
-                className="p-2 text-gray-300 hover:text-gray-500"
+                className="p-2 text-black hover:text-black font-bold text-lg"
               >
-                ← 목록으로
+                <span className="font-extrabold text-xl text-black">←</span>
               </button>
-              <h1 className="text-2xl font-bold text-gray-700">📋 {quote.cruise_name || '크루즈 견적'}</h1>
+              <h1 className="text-xl font-bold text-gray-700">📋 {quote.cruise_name || '견적 상세'}</h1>
               {getStatusBadge(quote.status)}
             </div>
-            <div className="text-sm text-gray-400">사용자: {user?.email}</div>
           </div>
         </div>
       </div>
@@ -954,7 +876,7 @@ export default function QuoteDetailPage() {
             <div className="flex justify-center mt-10">
               <button
                 onClick={handleReservation}
-                className="bg-blue-300 text-white px-10 py-4 rounded-lg text-lg hover:bg-blue-400 transition-colors font-bold shadow-sm"
+                className="bg-blue-300 text-black px-4 py-2 rounded text-xs hover:bg-blue-400 transition-colors font-bold shadow-sm"
               >
                 🚢 예약하기
               </button>

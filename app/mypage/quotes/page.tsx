@@ -194,12 +194,21 @@ export default function QuotesPage() {
                       </div>
 
                       <div className="flex flex-col gap-1 ml-4">
-                        <button
-                          onClick={() => router.push(`/mypage/quotes/${quote.id}/view`)}
-                          className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors"
-                        >
-                          상세 보기
-                        </button>
+                        {quote.status === 'approved' ? (
+                          <button
+                            onClick={() => router.push(`/mypage/quotes/${quote.id}/confirmed`)}
+                            className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors"
+                          >
+                            확정견적
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => router.push(`/mypage/quotes/${quote.id}/view`)}
+                            className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors"
+                          >
+                            상세 보기
+                          </button>
+                        )}
 
                         {quote.status === 'draft' && (
                           <button

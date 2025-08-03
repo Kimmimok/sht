@@ -16,6 +16,18 @@ const menuList = [
 ];
 
 function QuoteManagementContent() {
+  // 상태 한글 변환 함수
+  const getStatusLabel = (status: string): string => {
+    const labels: Record<string, string> = {
+      draft: '작성 중',
+      submitted: '제출됨',
+      approved: '승인됨',
+      rejected: '거절됨',
+      completed: '완료됨',
+      confirmed: '확정됨'
+    };
+    return labels[status] || status;
+  };
   const router = useRouter();
   const searchParams = useSearchParams();
   const existingQuoteId = searchParams.get('quoteId');
@@ -78,7 +90,7 @@ function QuoteManagementContent() {
         router.push('/login');
         return;
       }
-      
+
       const newQuote = await createQuote(user.id, quoteTitle.trim());
       if (newQuote) {
         setQuoteId(newQuote.id);
@@ -114,12 +126,12 @@ function QuoteManagementContent() {
         <div className="container mx-auto px-4 py-12">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h1 className="text-4xl font-bold mb-2">📝 견적 작성</h1>
+              <h1 className="text-2xl font-bold mb-2">📝 견적 작성</h1>
               <p className="text-lg opacity-90">
                 한 번의 견적에 여러 서비스를 자유롭게 신청할 수 있습니다.
               </p>
             </div>
-            
+
             <div className="flex gap-3">
               {/* 견적 확인 버튼 */}
               {quoteId && (
@@ -127,10 +139,10 @@ function QuoteManagementContent() {
                   onClick={() => router.push(`/mypage/quotes/${quoteId}/view`)}
                   className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
                 >
-                  📋 견적 확인
+                  📋 확인
                 </button>
               )}
-              
+
               {/* 새로운 견적 버튼 */}
               {!showTitleInput ? (
                 <button
@@ -142,85 +154,85 @@ function QuoteManagementContent() {
                 </button>
               ) : (
                 <div className="flex items-center gap-2">
-                 
-                 
+
+
                 </div>
               )}
             </div>
           </div>
-          
-      {/* 견적 상태 표시 및 입력창 카드 내부 복동 */}
-      {quoteId && quote ? (
-        <div className="bg-white/70 backdrop-blur rounded-lg p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                ✅ 현재 작업 중인 견적
-              </h3>
-              <div className="text-sm text-gray-600 space-y-1">
-                <p>견적 제목: <span className="font-semibold text-blue-600">{quote.title}</span></p>
-                <p>상태: <span className="text-blue-600 font-medium">{quote.status === 'draft' ? '작성 중' : quote.status}</span></p>
-                <p>생성 시간: {new Date(quote.created_at).toLocaleString('ko-KR')}</p>
+
+          {/* 견적 상태 표시 및 입력창 카드 내부 복동 */}
+          {quoteId && quote ? (
+            <div className="bg-white/70 backdrop-blur rounded-lg p-6 mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                    ✅ 현재 작업 중인 견적
+                  </h3>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p>견적 제목: <span className="font-semibold text-blue-600">{quote.title}</span></p>
+                    <p>상태: <span className="text-blue-600 font-medium">{getStatusLabel(quote.status)}</span></p>
+                    <p>생성 시간: {new Date(quote.created_at).toLocaleString('ko-KR')}</p>
+                  </div>
+                </div>
+                <div className="text-blue-600">
+                  <p className="text-sm">아래 서비스 중 원하는 항목을 선택하여</p>
+                  <p className="text-sm">견적에 추가하세요.</p>
+                </div>
               </div>
             </div>
-            <div className="text-blue-600">
-              <p className="text-sm">아래 서비스 중 원하는 항목을 선택하여</p>
-              <p className="text-sm">견적에 추가하세요.</p>
+          ) : (
+            <div className="bg-white/70 backdrop-blur rounded-lg p-6 mb-6">
+              <div className="text-left">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                  {showTitleInput ? '📝 행복 여행 이름 짓기' : '📝 견적 작성을 시작하세요'}
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  {showTitleInput
+                    ? (<><span>행복 여행의 이름을 지어 주세요.<br />예) "하롱베이 3박4일", "가족여행 패키지", "허니문 크루즈" 등</span></>)
+                    : (<span>"작성" 버튼을 클릭하여 행복 여행 이름을 입력하고, 원하는 서비스를 선택해주세요.</span>)}
+                </p>
+                <div className="text-blue-600 text-sm">
+                  {showTitleInput
+                    ? (<p>💡 제목은 나중에 견적 목록에서 구분하는데 도움이 됩니다</p>)
+                    : (<p>💡 한 번의 견적에 여러 서비스를 추가할 수 있습니다</p>)}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white/70 backdrop-blur rounded-lg p-6 mb-6">
-          <div className="text-left">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">
-              {showTitleInput ? '📝 행복 여행 이름 짓기' : '📝 견적 작성을 시작하세요'}
-            </h3>
-            <p className="text-gray-600 mb-4">
-              {showTitleInput
-                ? (<><span>행복 여행의 이름을 지어 주세요.<br/>예) "하롱베이 3박4일", "가족여행 패키지", "허니문 크루즈" 등</span></>)
-                : (<span>"작성" 버튼을 클릭하여 행복 이름을 입력하고, 원하는 서비스를 선택해주세요.</span>)}
-            </p>
-            <div className="text-blue-600 text-sm">
-              {showTitleInput
-                ? (<p>💡 제목은 나중에 견적 목록에서 구분하는데 도움이 됩니다</p>)
-                : (<p>💡 한 번의 견적에 여러 서비스를 추가할 수 있습니다</p>)}
+          )}
+
+          {/* 견적 제목 입력창과 버튼을 카드 아래에 위치 */}
+          {showTitleInput && (
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <input
+                type="text"
+                value={quoteTitle}
+                onChange={(e) => setQuoteTitle(e.target.value)}
+                placeholder="행복 여행 이름 입력하세요 (예: 하롱베이 3박4일)"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
+                autoFocus
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleCreateNewQuote();
+                  }
+                }}
+              />
+              <button
+                onClick={handleCreateNewQuote}
+                disabled={loading || !quoteTitle.trim()}
+                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {loading ? '생성 중...' : '생성'}
+              </button>
+              <button
+                onClick={handleCancelTitleInput}
+                disabled={loading}
+                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                취소
+              </button>
             </div>
-          </div>
-        </div>
-      )}
-      
-      {/* 견적 제목 입력창과 버튼을 카드 아래에 위치 */}
-      {showTitleInput && (
-        <div className="flex items-center justify-center gap-2 mb-1">
-          <input
-            type="text"
-            value={quoteTitle}
-            onChange={(e) => setQuoteTitle(e.target.value)}
-            placeholder="행복 여행 이름 입력하세요 (예: 하롱베이 3박4일)"
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
-            autoFocus
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                handleCreateNewQuote();
-              }
-            }}
-          />
-          <button
-            onClick={handleCreateNewQuote}
-            disabled={loading || !quoteTitle.trim()}
-            className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {loading ? '생성 중...' : '생성'}
-          </button>
-          <button
-            onClick={handleCancelTitleInput}
-            disabled={loading}
-            className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-          >
-            취소
-          </button>
-        </div>
-      )}
+          )}
         </div>
       </div>
       {/* 서비스 메뉴 그리드 및 하단 안내, 기존 견적 확인 버튼 등 기존 코드 */}

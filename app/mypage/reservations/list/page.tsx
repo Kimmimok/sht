@@ -36,7 +36,7 @@ export default function MyReservationsListPage() {
   const fetchReservations = async () => {
     try {
       setLoading(true);
-      
+
       // 사용자 인증 확인
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
@@ -120,28 +120,31 @@ export default function MyReservationsListPage() {
   return (
     <PageWrapper>
       <div className="max-w-4xl mx-auto space-y-6">
-        <SectionBox title="📂 내 예약 목록">
+        <SectionBox>
+          <div className="mb-6">
+            <div className="text-xl font-bold text-gray-800">📂 내 예약 목록</div>
+          </div>
           <div className="mb-4 flex justify-between items-center">
             <p className="text-gray-600">총 {reservations.length}건의 예약이 있습니다.</p>
             <div className="space-x-2">
               <Link href="/mypage/quotes">
-                <button className="bg-blue-300 text-white px-4 py-2 rounded-lg hover:bg-blue-400">
-                  견적 목록으로
+                <button className="bg-blue-300 text-gray-700 px-2 py-1 rounded hover:bg-blue-400 text-base">
+                  견적
                 </button>
               </Link>
               <Link href="/mypage/reservations/new">
-                <button className="bg-green-300 text-white px-4 py-2 rounded-lg hover:bg-green-400">
-                  새 예약 신청
+                <button className="bg-green-300 text-gray-700 px-2 py-1 rounded hover:bg-green-400 text-base">
+                  새 예약
                 </button>
               </Link>
-              <button 
+              <button
                 onClick={() => {
                   setLoading(true);
                   fetchReservations();
                 }}
-                className="bg-purple-300 text-white px-4 py-2 rounded-lg hover:bg-purple-400"
+                className="bg-purple-300 text-gray-700 px-2 py-1 rounded hover:bg-purple-400 text-base"
               >
-                🔄 새로고침
+                🔄
               </button>
             </div>
           </div>
@@ -152,13 +155,13 @@ export default function MyReservationsListPage() {
               <p className="text-gray-500 mb-4">예약 내역이 없습니다.</p>
               <div className="space-x-2">
                 <Link href="/mypage/quotes">
-                  <button className="bg-orange-300 text-white px-6 py-3 rounded-lg hover:bg-orange-400">
-                    견적 보러가기
+                  <button className="bg-orange-300 text-gray-700 px-2 py-1 rounded hover:bg-orange-400 text-base">
+                    견적 목록
                   </button>
                 </Link>
                 <Link href="/mypage/reservations/new">
-                  <button className="bg-blue-300 text-white px-6 py-3 rounded-lg hover:bg-blue-400">
-                    예약 신청하기
+                  <button className="bg-blue-300 text-gray-700 px-2 py-1 rounded hover:bg-blue-400 text-base">
+                    예약 신청
                   </button>
                 </Link>
               </div>
@@ -209,13 +212,13 @@ export default function MyReservationsListPage() {
                     </div>
                     <div className="space-x-2">
                       <Link href={`/mypage/reservations/${reservation.re_id}/view`}>
-                        <button className="bg-blue-300 text-white px-4 py-2 rounded-lg hover:bg-blue-400">
+                        <button className="bg-blue-300 text-gray-700 px-2 py-1 rounded hover:bg-blue-400 text-base">
                           상세보기
                         </button>
                       </Link>
                       {reservation.re_status === 'pending' && (
                         <Link href={`/mypage/reservations/${reservation.re_id}/edit`}>
-                          <button className="bg-gray-300 text-white px-4 py-2 rounded-lg hover:bg-gray-400">
+                          <button className="bg-gray-300 text-gray-700 px-2 py-1 rounded hover:bg-gray-400 text-base">
                             수정하기
                           </button>
                         </Link>
