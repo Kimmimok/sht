@@ -493,18 +493,22 @@ export async function updateQuoteStatus(quoteId: string, status: Quote['status']
 export async function addServiceToQuote(
   quoteId: string,
   serviceType: ServiceType,
-  formData: CruiseFormData | AirportFormData | HotelFormData | TourFormData | RentcarFormData
+  formData: CruiseFormData | AirportFormData | HotelFormData | TourFormData | RentcarFormData,
+  usageDate?: string
 ): Promise<boolean> {
   try {
-    console.log('addServiceToQuote 시작:', { quoteId, serviceType, formData });
+    console.log('addServiceToQuote 시작:', { quoteId, serviceType, formData, usageDate });
 
     // 1. 서비스 데이터를 해당 테이블에 저장
     let serviceRefId: string | null = null;
+    let serviceUsageDate: string | null = usageDate || null;
 
     switch (serviceType) {
       case 'cruise':
         const cruiseData = formData as CruiseFormData;
         console.log('크루즈 데이터 저장 시도:', cruiseData);
+        // 크루즈는 departure_date를 사용일자로 사용
+        serviceUsageDate = serviceUsageDate || cruiseData.departure_date;
         const { data: cruise, error: cruiseError } = await supabase
           .from('cruise')
           .insert({
@@ -533,6 +537,8 @@ export async function addServiceToQuote(
       case 'airport':
         const airportData = formData as AirportFormData;
         console.log('공항 데이터 저장 시도:', airportData);
+        // 공항은 arrival_date 또는 departure_date를 사용일자로 사용
+        serviceUsageDate = serviceUsageDate || (airportData.arrival_date || airportData.departure_date || null);
         const { data: airport, error: airportError } = await supabase
           .from('airport')
           .insert({
@@ -561,6 +567,8 @@ export async function addServiceToQuote(
 
       case 'hotel':
         const hotelData = formData as HotelFormData;
+        // 호텔은 check_in_date를 사용일자로 사용
+        serviceUsageDate = serviceUsageDate || hotelData.check_in_date;
         const { data: hotel, error: hotelError } = await supabase
           .from('hotel')
           .insert({
@@ -586,6 +594,8 @@ export async function addServiceToQuote(
 
       case 'tour':
         const tourData = formData as TourFormData;
+        // 투어는 tour_date를 사용일자로 사용
+        serviceUsageDate = serviceUsageDate || tourData.tour_date;
         const { data: tour, error: tourError } = await supabase
           .from('tour')
           .insert({
@@ -611,6 +621,8 @@ export async function addServiceToQuote(
 
       case 'rentcar':
         const rentcarData = formData as RentcarFormData;
+        // 렌트카는 pickup_date를 사용일자로 사용
+        serviceUsageDate = serviceUsageDate || rentcarData.pickup_date;
         const { data: rentcar, error: rentcarError } = await supabase
           .from('rentcar')
           .insert({
@@ -655,7 +667,8 @@ export async function addServiceToQuote(
         service_ref_id: serviceRefId,
         quantity: 1,
         unit_price: 0,
-        total_price: 0
+        total_price: 0,
+        usage_date: serviceUsageDate // 서비스별 사용일자 추가
       })
       .select()
       .single();

@@ -36,7 +36,7 @@ export default function QuoteDetailPage() {
   const router = useRouter();
   const params = useParams();
   const quoteId = params.id as string;
-  
+
   const [user, setUser] = useState<any>(null);
   const [calculating, setCalculating] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -90,7 +90,7 @@ export default function QuoteDetailPage() {
   const loadQuoteDetail = async () => {
     try {
       console.log('📋 견적 상세 정보 로딩 시작...', quoteId);
-      
+
       // 견적 기본 정보 조회
       const { data: quoteData, error: quoteError } = await supabase
         .from('quote')
@@ -115,7 +115,7 @@ export default function QuoteDetailPage() {
           .select('id, name, email, phone_number')
           .eq('id', quoteData.user_id)
           .single();
-        
+
         if (userError) {
           console.warn('⚠️ 사용자 정보 조회 실패:', userError);
         } else {
@@ -134,32 +134,32 @@ export default function QuoteDetailPage() {
           .from('quote_room')
           .select(`*`)
           .eq('quote_id', quoteId),
-        
+
         // quote_item을 통한 각 서비스별 데이터 조회 (조인 없이 먼저 시도)
         supabase
           .from('quote_item')
           .select('*')
           .eq('quote_id', quoteId)
           .eq('service_type', 'rentcar'),
-        
+
         supabase
           .from('quote_item')
           .select('*')
           .eq('quote_id', quoteId)
           .eq('service_type', 'cruise'),
-        
+
         supabase
           .from('quote_item')
           .select('*')
           .eq('quote_id', quoteId)
           .eq('service_type', 'airport'),
-        
+
         supabase
           .from('quote_item')
           .select('*')
           .eq('quote_id', quoteId)
           .eq('service_type', 'hotel'),
-        
+
         supabase
           .from('quote_item')
           .select('*')
@@ -177,7 +177,7 @@ export default function QuoteDetailPage() {
       });
 
       // 결과 처리 및 상세 로깅 (견적 룸 테이블 제거됨)
-      
+
       // quote_item 데이터에서 서비스별로 분류
       const carItems = serviceQueries[0].status === 'fulfilled' ? (serviceQueries[0].value.data || []) : [];
       const cruiseItems = serviceQueries[1].status === 'fulfilled' ? (serviceQueries[1].value.data || []) : [];
@@ -200,7 +200,7 @@ export default function QuoteDetailPage() {
         pickup_location: item.options?.pickup_location || '미정',
         return_location: item.options?.return_location || '미정'
       }));
-      
+
       const cruiseData = cruiseItems.map((item: any) => ({
         id: item.id,
         service_ref_id: item.service_ref_id,
@@ -214,7 +214,7 @@ export default function QuoteDetailPage() {
         return_date: item.options?.return_date || null,
         departure_port: item.options?.departure_port || '미정'
       }));
-      
+
       const airportData = airportItems.map((item: any) => ({
         id: item.id,
         service_ref_id: item.service_ref_id,
@@ -226,7 +226,7 @@ export default function QuoteDetailPage() {
         service_type: item.options?.service_type || '공항 서비스',
         flight_number: item.options?.flight_number || '미정'
       }));
-      
+
       const hotelData = hotelItems.map((item: any) => ({
         id: item.id,
         service_ref_id: item.service_ref_id,
@@ -239,7 +239,7 @@ export default function QuoteDetailPage() {
         check_in_date: item.options?.check_in_date || null,
         check_out_date: item.options?.check_out_date || null
       }));
-      
+
       const tourData = tourItems.map((item: any) => ({
         id: item.id,
         service_ref_id: item.service_ref_id,
@@ -296,15 +296,15 @@ export default function QuoteDetailPage() {
   const handleApproval = async () => {
     try {
       console.log('🔄 견적 승인 처리 시작...', quoteId);
-      
-      const updateData = { 
+
+      const updateData = {
         status: 'approved', // 승인 상태로 변경 (고객이 예약 신청할 수 있음)
         updated_at: new Date().toISOString(),
         ...(approvalNote.trim() && { manager_note: approvalNote.trim() })
       };
-      
+
       console.log('📝 업데이트 데이터:', updateData);
-      
+
       const { data, error } = await supabase
         .from('quote')
         .update(updateData)
@@ -332,15 +332,15 @@ export default function QuoteDetailPage() {
   const handleRejection = async () => {
     try {
       console.log('🔄 견적 거절 처리 시작...', quoteId);
-      
-      const updateData = { 
+
+      const updateData = {
         status: 'rejected',
         updated_at: new Date().toISOString(),
         manager_note: rejectionReason.trim()
       };
-      
+
       console.log('📝 업데이트 데이터:', updateData);
-      
+
       const { data, error } = await supabase
         .from('quote')
         .update(updateData)
@@ -370,12 +370,16 @@ export default function QuoteDetailPage() {
     try {
       setCalculating(true);
       console.log('💰 견적 가격 계산 시작...');
-      
+
       const success = await updateQuoteItemPrices(quoteId);
-      
+
       if (success) {
         alert('가격 계산이 완료되었습니다.');
-        await loadQuoteDetail(); // 새로고침
+        // 기본 견적 정보와 상세 서비스 정보를 모두 다시 로드
+        await Promise.all([
+          loadQuoteDetail(),
+          loadDetailedServices()
+        ]);
       } else {
         alert('가격 계산에 실패했습니다. 콘솔을 확인해주세요.');
       }
@@ -391,14 +395,14 @@ export default function QuoteDetailPage() {
   const loadDetailedServices = async () => {
     try {
       console.log('🔍 상세 서비스 정보 로드 시작...', quoteId);
-      
+
       const { data: quoteItems, error } = await supabase
         .from('quote_item')
         .select('*')
         .eq('quote_id', quoteId);
 
       if (error) throw error;
-      
+
       console.log('📋 Quote Items 로드됨:', quoteItems);
 
       const detailed: any = {
@@ -420,7 +424,7 @@ export default function QuoteDetailPage() {
               .select('*')
               .eq('id', item.service_ref_id)
               .single();
-            
+
             if (roomData) {
               console.log('✅ 객실 정보:', roomData);
               // room_price 테이블에서 모든 가격 정보 조회
@@ -428,7 +432,7 @@ export default function QuoteDetailPage() {
                 .from('room_price')
                 .select('*')
                 .eq('room_code', roomData.room_code);
-                
+
               detailed.rooms.push({
                 ...item,
                 roomInfo: roomData,
@@ -441,14 +445,14 @@ export default function QuoteDetailPage() {
               .select('*')
               .eq('id', item.service_ref_id)
               .single();
-              
+
             if (carData) {
               console.log('✅ 차량 정보:', carData);
               const { data: priceData } = await supabase
                 .from('car_price')
                 .select('*')
                 .eq('car_code', carData.car_code);
-                
+
               detailed.cars.push({
                 ...item,
                 carInfo: carData,
@@ -461,14 +465,14 @@ export default function QuoteDetailPage() {
               .select('*')
               .eq('id', item.service_ref_id)
               .single();
-              
+
             if (airportData) {
               console.log('✅ 공항 정보:', airportData);
               const { data: priceData } = await supabase
                 .from('airport_price')
                 .select('*')
                 .eq('airport_code', airportData.airport_code);
-                
+
               detailed.airports.push({
                 ...item,
                 airportInfo: airportData,
@@ -481,14 +485,14 @@ export default function QuoteDetailPage() {
               .select('*')
               .eq('id', item.service_ref_id)
               .single();
-              
+
             if (hotelData) {
               console.log('✅ 호텔 정보:', hotelData);
               const { data: priceData } = await supabase
                 .from('hotel_price')
                 .select('*')
                 .eq('hotel_code', hotelData.hotel_code);
-                
+
               detailed.hotels.push({
                 ...item,
                 hotelInfo: hotelData,
@@ -501,14 +505,14 @@ export default function QuoteDetailPage() {
               .select('*')
               .eq('id', item.service_ref_id)
               .single();
-              
+
             if (rentcarData) {
               console.log('✅ 렌트카 정보:', rentcarData);
               const { data: priceData } = await supabase
                 .from('rent_price')
                 .select('*')
                 .eq('rent_code', rentcarData.rentcar_code);
-                
+
               detailed.rentcars.push({
                 ...item,
                 rentcarInfo: rentcarData,
@@ -521,14 +525,14 @@ export default function QuoteDetailPage() {
               .select('*')
               .eq('id', item.service_ref_id)
               .single();
-              
+
             if (tourData) {
               console.log('✅ 투어 정보:', tourData);
               const { data: priceData } = await supabase
                 .from('tour_price')
                 .select('*')
                 .eq('tour_code', tourData.tour_code);
-                
+
               detailed.tours.push({
                 ...item,
                 tourInfo: tourData,
@@ -601,11 +605,10 @@ export default function QuoteDetailPage() {
               <button
                 onClick={handleCalculatePrices}
                 disabled={calculating}
-                className={`ml-4 px-4 py-2 rounded-md text-sm font-medium ${
-                  calculating 
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
+                className={`ml-4 px-4 py-2 rounded-md text-sm font-medium ${calculating
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
               >
                 {calculating ? '계산 중...' : '💰 가격 계산'}
               </button>
@@ -668,12 +671,12 @@ export default function QuoteDetailPage() {
                                   <p className="text-sm text-gray-600">크루즈: {price.cruise}</p>
                                   <p className="text-sm text-gray-600">객실 타입: {price.room_type}</p>
                                   <p className="text-sm text-gray-600">카테고리: {price.room_category}</p>
-                                  <p className="text-sm font-medium text-green-600">기본 가격: {price.price?.toLocaleString()}원</p>
+                                  <p className="text-sm font-medium text-green-600">기본 가격: {price.price?.toLocaleString()}동</p>
                                   {price.base_price && (
-                                    <p className="text-sm text-gray-600">베이스 가격: {price.base_price?.toLocaleString()}원</p>
+                                    <p className="text-sm text-gray-600">베이스 가격: {price.base_price?.toLocaleString()}동</p>
                                   )}
                                   {price.extra_charge && (
-                                    <p className="text-sm text-gray-600">추가 요금: {price.extra_charge?.toLocaleString()}원</p>
+                                    <p className="text-sm text-gray-600">추가 요금: {price.extra_charge?.toLocaleString()}동</p>
                                   )}
                                 </div>
                               ))}
@@ -682,7 +685,7 @@ export default function QuoteDetailPage() {
                             <p className="text-sm text-red-600">가격 정보 없음</p>
                           )}
                           <p className="text-sm font-medium text-blue-600 mt-2">
-                            단가: {room.unit_price?.toLocaleString()}원 | 총액: {room.total_price?.toLocaleString()}원
+                            총액: {room.total_price?.toLocaleString()}동
                           </p>
                         </div>
                       </div>
@@ -715,12 +718,12 @@ export default function QuoteDetailPage() {
                                   <p className="text-sm text-gray-600">크루즈: {price.cruise}</p>
                                   <p className="text-sm text-gray-600">차량 타입: {price.car_type}</p>
                                   <p className="text-sm text-gray-600">카테고리: {price.car_category}</p>
-                                  <p className="text-sm font-medium text-green-600">기본 가격: {price.price?.toLocaleString()}원</p>
+                                  <p className="text-sm font-medium text-green-600">기본 가격: {price.price?.toLocaleString()}동</p>
                                   {price.base_price && (
-                                    <p className="text-sm text-gray-600">베이스 가격: {price.base_price?.toLocaleString()}원</p>
+                                    <p className="text-sm text-gray-600">베이스 가격: {price.base_price?.toLocaleString()}동</p>
                                   )}
                                   {price.extra_charge && (
-                                    <p className="text-sm text-gray-600">추가 요금: {price.extra_charge?.toLocaleString()}원</p>
+                                    <p className="text-sm text-gray-600">추가 요금: {price.extra_charge?.toLocaleString()}동</p>
                                   )}
                                 </div>
                               ))}
@@ -729,7 +732,7 @@ export default function QuoteDetailPage() {
                             <p className="text-sm text-red-600">가격 정보 없음</p>
                           )}
                           <p className="text-sm font-medium text-blue-600 mt-2">
-                            단가: {car.unit_price?.toLocaleString()}원 | 총액: {car.total_price?.toLocaleString()}원
+                            총액: {car.total_price?.toLocaleString()}동
                           </p>
                         </div>
                       </div>
@@ -761,12 +764,12 @@ export default function QuoteDetailPage() {
                                   <p className="text-sm text-gray-600">카테고리: {price.airport_category}</p>
                                   <p className="text-sm text-gray-600">경로: {price.airport_route}</p>
                                   <p className="text-sm text-gray-600">차량 타입: {price.airport_car_type}</p>
-                                  <p className="text-sm font-medium text-green-600">기본 가격: {price.price?.toLocaleString()}원</p>
+                                  <p className="text-sm font-medium text-green-600">기본 가격: {price.price?.toLocaleString()}동</p>
                                   {price.base_price && (
-                                    <p className="text-sm text-gray-600">베이스 가격: {price.base_price?.toLocaleString()}원</p>
+                                    <p className="text-sm text-gray-600">베이스 가격: {price.base_price?.toLocaleString()}동</p>
                                   )}
                                   {price.extra_charge && (
-                                    <p className="text-sm text-gray-600">추가 요금: {price.extra_charge?.toLocaleString()}원</p>
+                                    <p className="text-sm text-gray-600">추가 요금: {price.extra_charge?.toLocaleString()}동</p>
                                   )}
                                 </div>
                               ))}
@@ -775,7 +778,7 @@ export default function QuoteDetailPage() {
                             <p className="text-sm text-red-600">가격 정보 없음</p>
                           )}
                           <p className="text-sm font-medium text-blue-600 mt-2">
-                            단가: {airport.unit_price?.toLocaleString()}원 | 총액: {airport.total_price?.toLocaleString()}원
+                            총액: {airport.total_price?.toLocaleString()}동
                           </p>
                         </div>
                       </div>
@@ -806,12 +809,12 @@ export default function QuoteDetailPage() {
                                   <p className="text-sm text-gray-600">호텔명: {price.hotel_name}</p>
                                   <p className="text-sm text-gray-600">객실명: {price.room_name}</p>
                                   <p className="text-sm text-gray-600">객실 타입: {price.room_type}</p>
-                                  <p className="text-sm font-medium text-green-600">기본 가격: {price.price?.toLocaleString()}원</p>
+                                  <p className="text-sm font-medium text-green-600">기본 가격: {price.price?.toLocaleString()}동</p>
                                   {price.base_price && (
-                                    <p className="text-sm text-gray-600">베이스 가격: {price.base_price?.toLocaleString()}원</p>
+                                    <p className="text-sm text-gray-600">베이스 가격: {price.base_price?.toLocaleString()}동</p>
                                   )}
                                   {price.extra_charge && (
-                                    <p className="text-sm text-gray-600">추가 요금: {price.extra_charge?.toLocaleString()}원</p>
+                                    <p className="text-sm text-gray-600">추가 요금: {price.extra_charge?.toLocaleString()}동</p>
                                   )}
                                 </div>
                               ))}
@@ -820,7 +823,7 @@ export default function QuoteDetailPage() {
                             <p className="text-sm text-red-600">가격 정보 없음</p>
                           )}
                           <p className="text-sm font-medium text-blue-600 mt-2">
-                            단가: {hotel.unit_price?.toLocaleString()}원 | 총액: {hotel.total_price?.toLocaleString()}원
+                            총액: {hotel.total_price?.toLocaleString()}동
                           </p>
                         </div>
                       </div>
@@ -851,12 +854,12 @@ export default function QuoteDetailPage() {
                                   <p className="text-sm text-gray-600">렌트 타입: {price.rent_type}</p>
                                   <p className="text-sm text-gray-600">카테고리: {price.rent_category}</p>
                                   <p className="text-sm text-gray-600">경로: {price.rent_route}</p>
-                                  <p className="text-sm font-medium text-green-600">기본 가격: {price.price?.toLocaleString()}원</p>
+                                  <p className="text-sm font-medium text-green-600">기본 가격: {price.price?.toLocaleString()}동</p>
                                   {price.base_price && (
-                                    <p className="text-sm text-gray-600">베이스 가격: {price.base_price?.toLocaleString()}원</p>
+                                    <p className="text-sm text-gray-600">베이스 가격: {price.base_price?.toLocaleString()}동</p>
                                   )}
                                   {price.extra_charge && (
-                                    <p className="text-sm text-gray-600">추가 요금: {price.extra_charge?.toLocaleString()}원</p>
+                                    <p className="text-sm text-gray-600">추가 요금: {price.extra_charge?.toLocaleString()}동</p>
                                   )}
                                 </div>
                               ))}
@@ -865,7 +868,7 @@ export default function QuoteDetailPage() {
                             <p className="text-sm text-red-600">가격 정보 없음</p>
                           )}
                           <p className="text-sm font-medium text-blue-600 mt-2">
-                            단가: {rentcar.unit_price?.toLocaleString()}원 | 총액: {rentcar.total_price?.toLocaleString()}원
+                            총액: {rentcar.total_price?.toLocaleString()}동
                           </p>
                         </div>
                       </div>
@@ -896,14 +899,14 @@ export default function QuoteDetailPage() {
                               {tour.priceInfo.map((price: any, priceIndex: number) => (
                                 <div key={priceIndex} className="bg-gray-50 p-2 rounded">
                                   <p className="text-sm text-gray-600">투어명: {price.tour_name}</p>
-                                  <p className="text-sm text-gray-600">정원: {price.tour_capacity}명</p>
+                                  <p className="text-sm text-gray-600">정동: {price.tour_capacity}명</p>
                                   <p className="text-sm text-gray-600">차량: {price.tour_vehicle}</p>
-                                  <p className="text-sm font-medium text-green-600">기본 가격: {price.price?.toLocaleString()}원</p>
+                                  <p className="text-sm font-medium text-green-600">기본 가격: {price.price?.toLocaleString()}동</p>
                                   {price.base_price && (
-                                    <p className="text-sm text-gray-600">베이스 가격: {price.base_price?.toLocaleString()}원</p>
+                                    <p className="text-sm text-gray-600">베이스 가격: {price.base_price?.toLocaleString()}동</p>
                                   )}
                                   {price.extra_charge && (
-                                    <p className="text-sm text-gray-600">추가 요금: {price.extra_charge?.toLocaleString()}원</p>
+                                    <p className="text-sm text-gray-600">추가 요금: {price.extra_charge?.toLocaleString()}동</p>
                                   )}
                                 </div>
                               ))}
@@ -912,7 +915,7 @@ export default function QuoteDetailPage() {
                             <p className="text-sm text-red-600">가격 정보 없음</p>
                           )}
                           <p className="text-sm font-medium text-blue-600 mt-2">
-                            단가: {tour.unit_price?.toLocaleString()}원 | 총액: {tour.total_price?.toLocaleString()}원
+                            총액: {tour.total_price?.toLocaleString()}동
                           </p>
                         </div>
                       </div>
@@ -939,11 +942,11 @@ export default function QuoteDetailPage() {
                             {car.car_model || '차량 정보 없음'}
                           </h3>
                           <p className="text-sm text-gray-600 mt-1">
-                            픽업일: {car.pickup_date ? new Date(car.pickup_date).toLocaleDateString() : '미정'} | 
+                            픽업일: {car.pickup_date ? new Date(car.pickup_date).toLocaleDateString() : '미정'} |
                             반납일: {car.return_date ? new Date(car.return_date).toLocaleDateString() : '미정'}
                           </p>
                           <p className="text-sm text-gray-600">
-                            픽업장소: {car.pickup_location || '미정'} | 
+                            픽업장소: {car.pickup_location || '미정'} |
                             반납장소: {car.return_location || '미정'}
                           </p>
                           <div className="mt-2">
@@ -952,7 +955,7 @@ export default function QuoteDetailPage() {
                             </span>
                             {car.total_price && (
                               <span className="ml-4 text-sm font-medium text-green-600">
-                                {car.total_price.toLocaleString()}원
+                                {car.total_price.toLocaleString()}동
                               </span>
                             )}
                           </div>
@@ -979,7 +982,7 @@ export default function QuoteDetailPage() {
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">총 견적가</span>
                   <span className="text-lg font-bold text-blue-600">
-                    {quote.total_price?.toLocaleString() || '0'}원
+                    {quote.total_price?.toLocaleString() || '0'}동
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -1002,7 +1005,7 @@ export default function QuoteDetailPage() {
             {/* 승인 액션 */}
             <div className="bg-white shadow rounded-lg p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">🔍 승인 관리</h2>
-              
+
               {/* 현재 상태 표시 */}
               <div className="mb-4 p-3 bg-gray-50 rounded-md">
                 <span className="text-sm text-gray-600">현재 상태: </span>
@@ -1011,14 +1014,14 @@ export default function QuoteDetailPage() {
                   실제 DB 값: "{quote.status}"
                 </div>
               </div>
-              
+
               {/* 디버깅 정보 */}
               <div className="mb-4 p-2 bg-blue-50 rounded text-xs text-blue-700">
                 승인 버튼 표시 조건: status가 'pending', 'submitted', 'draft' 중 하나
                 <br />
                 현재 조건 만족: {['pending', 'submitted', 'draft'].includes(quote.status) ? '✅ 예' : '❌ 아니오'}
               </div>
-              
+
               {(quote.status === 'pending' || quote.status === 'submitted' || quote.status === 'draft') && (
                 <div className="space-y-3">
                   <button

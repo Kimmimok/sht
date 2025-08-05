@@ -482,6 +482,24 @@ export default function QuoteDetailPage() {
     );
   };
 
+  const handleSubmitQuote = async () => {
+    if (!quote?.id) return;
+    try {
+      const { error } = await supabase
+        .from('quote')
+        .update({ status: 'submitted' })
+        .eq('id', quote.id);
+      if (error) {
+        alert('견적 제출 중 오류가 발생했습니다.');
+        return;
+      }
+      alert('견적이 성공적으로 제출되었습니다!');
+      router.push('/mypage/quotes');
+    } catch (err) {
+      alert('견적 제출 중 오류가 발생했습니다.');
+    }
+  };
+
   if (loading || !quote) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -568,11 +586,11 @@ export default function QuoteDetailPage() {
                               </tr>
                               <tr>
                                 <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '원' : '-'}</td>
+                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '동' : '-'}</td>
                               </tr>
                               <tr>
                                 <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '원' : '-'}</td>
+                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                               </tr>
                               <tr className="bg-gray-50">
                                 <td className="px-2 py-1 font-medium border-blue-100 border">인원수</td>
@@ -622,11 +640,11 @@ export default function QuoteDetailPage() {
                               </tr>
                               <tr>
                                 <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '원' : '-'}</td>
+                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '동' : '-'}</td>
                               </tr>
                               <tr>
                                 <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '원' : '-'}</td>
+                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                               </tr>
                               <tr className="bg-gray-50">
                                 <td className="px-2 py-1 font-medium border-blue-100 border">차량수</td>
@@ -667,11 +685,11 @@ export default function QuoteDetailPage() {
                               </tr>
                               <tr>
                                 <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '원' : '-'}</td>
+                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '동' : '-'}</td>
                               </tr>
                               <tr>
                                 <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '원' : '-'}</td>
+                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                               </tr>
                               <tr className="bg-gray-50">
                                 <td className="px-2 py-1 font-medium border-blue-100 border">승객수</td>
@@ -712,11 +730,11 @@ export default function QuoteDetailPage() {
                               </tr>
                               <tr>
                                 <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '원' : '-'}</td>
+                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '동' : '-'}</td>
                               </tr>
                               <tr>
                                 <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '원' : '-'}</td>
+                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                               </tr>
                               <tr className="bg-gray-50">
                                 <td className="px-2 py-1 font-medium border-blue-100 border">호텔명</td>
@@ -757,11 +775,11 @@ export default function QuoteDetailPage() {
                               </tr>
                               <tr>
                                 <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '원' : '-'}</td>
+                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '동' : '-'}</td>
                               </tr>
                               <tr>
                                 <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '원' : '-'}</td>
+                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                               </tr>
                               <tr className="bg-gray-50">
                                 <td className="px-2 py-1 font-medium border-blue-100 border">렌트카명</td>
@@ -793,7 +811,7 @@ export default function QuoteDetailPage() {
                                 <td className="px-2 py-1 border-blue-100 border">{price.tour_name || '-'}</td>
                               </tr>
                               <tr>
-                                <td className="px-2 py-1 font-medium border-blue-100 border">정원</td>
+                                <td className="px-2 py-1 font-medium border-blue-100 border">최대 인원수</td>
                                 <td className="px-2 py-1 border-blue-100 border">{price.tour_capacity ? price.tour_capacity + '명' : '-'}</td>
                               </tr>
                               <tr>
@@ -802,11 +820,11 @@ export default function QuoteDetailPage() {
                               </tr>
                               <tr>
                                 <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '원' : '-'}</td>
+                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '동' : '-'}</td>
                               </tr>
                               <tr>
                                 <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '원' : '-'}</td>
+                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                               </tr>
                               <tr className="bg-gray-50">
                                 <td className="px-2 py-1 font-medium border-blue-100 border">투어명</td>
@@ -886,22 +904,4 @@ export default function QuoteDetailPage() {
       </div>
     </div>
   );
-  // 견적 제출 핸들러
-  const handleSubmitQuote = async () => {
-    if (!quote?.id) return;
-    try {
-      const { error } = await supabase
-        .from('quote')
-        .update({ status: 'submitted' })
-        .eq('id', quote.id);
-      if (error) {
-        alert('견적 제출 중 오류가 발생했습니다.');
-        return;
-      }
-      alert('견적이 성공적으로 제출되었습니다!');
-      router.push('/mypage/quotes');
-    } catch (err) {
-      alert('견적 제출 중 오류가 발생했습니다.');
-    }
-  };
 }

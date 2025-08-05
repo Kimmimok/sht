@@ -460,7 +460,7 @@ export default function CruisePage() {
         alert('크루즈 서비스 생성 실패: ' + cruiseError?.message);
         return;
       }
-      // 6. 견적 아이템 생성
+      // 6. 견적 아이템 생성 (크루즈 출발일을 사용일자로 설정)
       const { data: itemData, error: itemError } = await supabase
         .from('quote_item')
         .insert({
@@ -469,7 +469,8 @@ export default function CruisePage() {
           service_ref_id: cruiseData.id,
           quantity: 1,
           unit_price: 0,
-          total_price: 0
+          total_price: 0,
+          usage_date: cruiseFormData.departure_date || form.checkin // 크루즈 출발일 또는 체크인일
         })
         .select()
         .single();
@@ -478,11 +479,41 @@ export default function CruisePage() {
         alert('견적 아이템 생성 실패: ' + itemError?.message);
         return;
       }
-      // quote_room 테이블에 객실 정보도 별도 저장
+      // quote_room 테이블에 객실 정보도 별도 저장 및 quote_item 연결
       if (form.rooms.length > 0) {
-        const roomData = form.rooms
-          .filter(room => room.room_code)
-          .map(room => ({
+        for (const room of form.rooms.filter(room => room.room_code)) {
+          // 1. room 테이블에 객실 데이터 저장
+          const { data: roomData, error: roomError } = await supabase
+            .from('room')
+            .insert({
+              room_code: room.room_code,
+              adult_count: room.adult_count || 0,
+              child_count: room.child_count || 0,
+              infant_count: room.infant_count || 0,
+              extra_adult_count: room.extra_adult_count || 0,
+              extra_child_count: room.extra_child_count || 0,
+              additional_categories: JSON.stringify(room.additional_categories || [])
+            })
+            .select()
+            .single();
+
+          if (roomData && !roomError) {
+            // 2. quote_item에 객실 연결 (체크인 날짜를 사용일자로 설정)
+            await supabase
+              .from('quote_item')
+              .insert({
+                quote_id: newQuote.id,
+                service_type: 'room',
+                service_ref_id: roomData.id,
+                quantity: 1,
+                unit_price: 0,
+                total_price: 0,
+                usage_date: form.checkin // 체크인 날짜를 사용일자로 설정
+              });
+          }
+
+          // 3. 기존 quote_room 테이블에도 저장 (호환성 유지)
+          await supabase.from('quote_room').insert({
             quote_id: newQuote.id,
             room_code: room.room_code,
             category: room.category || null,
@@ -493,22 +524,42 @@ export default function CruisePage() {
             extra_adult_count: room.extra_adult_count || 0,
             extra_child_count: room.extra_child_count || 0,
             additional_categories: JSON.stringify(room.additional_categories || [])
-          }));
-        if (roomData.length > 0) {
-          await supabase.from('quote_room').insert(roomData);
+          });
         }
       }
-      // quote_car 테이블에 차량 정보도 별도 저장
+      // quote_car 테이블에 차량 정보도 별도 저장 및 quote_item 연결
       if (vehicleForm.length > 0) {
-        const carData = vehicleForm
-          .filter(car => car.car_code)
-          .map(car => ({
+        for (const car of vehicleForm.filter(car => car.car_code)) {
+          // 1. car 테이블에 차량 데이터 저장
+          const { data: carData, error: carError } = await supabase
+            .from('car')
+            .insert({
+              car_code: car.car_code
+            })
+            .select()
+            .single();
+
+          if (carData && !carError) {
+            // 2. quote_item에 차량 연결 (체크인 날짜를 사용일자로 설정)
+            await supabase
+              .from('quote_item')
+              .insert({
+                quote_id: newQuote.id,
+                service_type: 'car',
+                service_ref_id: carData.id,
+                quantity: car.count || 1,
+                unit_price: 0,
+                total_price: 0,
+                usage_date: form.checkin // 체크인 날짜를 사용일자로 설정
+              });
+          }
+
+          // 3. 기존 quote_car 테이블에도 저장 (호환성 유지)
+          await supabase.from('quote_car').insert({
             quote_id: newQuote.id,
             car_code: car.car_code,
             count: car.count || 1
-          }));
-        if (carData.length > 0) {
-          await supabase.from('quote_car').insert(carData);
+          });
         }
       }
       alert('크루즈 견적이 저장되었습니다!');
@@ -828,8 +879,8 @@ export default function CruisePage() {
                       type="button"
                       onClick={() => setSelectedVehicleCategory(cat.code)}
                       className={`border px-4 py-2 rounded-lg transition-colors ${selectedVehicleCategory === cat.code
-                          ? 'bg-green-500 text-white border-green-500'
-                          : 'bg-gray-50 border-gray-300 hover:bg-gray-100 text-gray-700'
+                        ? 'bg-green-500 text-white border-green-500'
+                        : 'bg-gray-50 border-gray-300 hover:bg-gray-100 text-gray-700'
                         }`}
                     >
                       {cat.name}

@@ -211,7 +211,57 @@ export default function ManagerDashboard() {
           <div className="mb-8">
             <h2 className="text-xl font-bold text-gray-800 mb-4">🛠️ 관리 메뉴</h2>
             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* ...existing code... */}
+              <button
+                onClick={() => router.push('/manager/quotes')}
+                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600 text-sm">견적 관리</p>
+                    <p className="text-lg font-bold text-blue-600">견적 승인</p>
+                  </div>
+                  <div className="text-3xl text-blue-400">📋</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => router.push('/manager/reservations')}
+                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600 text-sm">예약 관리</p>
+                    <p className="text-lg font-bold text-purple-600">예약 처리</p>
+                  </div>
+                  <div className="text-3xl text-purple-400">🎫</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => router.push('/manager/customers')}
+                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600 text-sm">고객 관리</p>
+                    <p className="text-lg font-bold text-green-600">고객 정보</p>
+                  </div>
+                  <div className="text-3xl text-green-400">👥</div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => router.push('/manager/analytics')}
+                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600 text-sm">분석 리포트</p>
+                    <p className="text-lg font-bold text-orange-600">통계 분석</p>
+                  </div>
+                  <div className="text-3xl text-orange-400">📊</div>
+                </div>
+              </button>
             </div>
           </div>
 
