@@ -875,10 +875,10 @@ export default function QuoteDetailPage() {
             {/* 예약하기 버튼 - 페이지 하단 */}
             <div className="flex justify-center mt-10">
               <button
-                onClick={handleReservation}
-                className="bg-blue-300 text-black px-4 py-2 rounded text-xs hover:bg-blue-400 transition-colors font-bold shadow-sm"
+                onClick={handleSubmitQuote}
+                className="bg-green-300 text-black px-4 py-2 rounded text-xs hover:bg-green-400 transition-colors font-bold shadow-sm"
               >
-                🚢 예약하기
+                � 견적 제출
               </button>
             </div>
           </div>
@@ -886,4 +886,22 @@ export default function QuoteDetailPage() {
       </div>
     </div>
   );
+  // 견적 제출 핸들러
+  const handleSubmitQuote = async () => {
+    if (!quote?.id) return;
+    try {
+      const { error } = await supabase
+        .from('quote')
+        .update({ status: 'submitted' })
+        .eq('id', quote.id);
+      if (error) {
+        alert('견적 제출 중 오류가 발생했습니다.');
+        return;
+      }
+      alert('견적이 성공적으로 제출되었습니다!');
+      router.push('/mypage/quotes');
+    } catch (err) {
+      alert('견적 제출 중 오류가 발생했습니다.');
+    }
+  };
 }

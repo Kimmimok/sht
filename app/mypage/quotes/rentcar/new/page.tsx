@@ -11,7 +11,7 @@ function RentcarQuoteContent() {
 
   const [loading, setLoading] = useState(false);
   const [quote, setQuote] = useState<any>(null);
-  
+
   // 단계별 옵션들 (rent_price 테이블 기준)
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [routeOptions, setRouteOptions] = useState<string[]>([]);
@@ -77,7 +77,7 @@ function RentcarQuoteContent() {
         .order('rent_category');
 
       if (error) throw error;
-      
+
       // 중복 제거
       const uniqueCategories = [...new Set(data.map((item: any) => item.rent_category).filter(Boolean))] as string[];
       setCategoryOptions(uniqueCategories);
@@ -95,7 +95,7 @@ function RentcarQuoteContent() {
         .order('rent_route');
 
       if (error) throw error;
-      
+
       // 중복 제거
       const uniqueRoutes = [...new Set(data.map((item: any) => item.rent_route).filter(Boolean))] as string[];
       setRouteOptions(uniqueRoutes);
@@ -114,7 +114,7 @@ function RentcarQuoteContent() {
         .order('rent_car_type');
 
       if (error) throw error;
-      
+
       // 중복 제거
       const uniqueCarTypes = [...new Set(data.map((item: any) => item.rent_car_type).filter(Boolean))] as string[];
       setCarTypeOptions(uniqueCarTypes);
@@ -125,14 +125,14 @@ function RentcarQuoteContent() {
 
   const loadQuote = async () => {
     if (!quoteId) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('quote')
         .select('*')
         .eq('id', quoteId)
         .single();
-      
+
       if (error) throw error;
       setQuote(data);
     } catch (error) {
@@ -163,7 +163,7 @@ function RentcarQuoteContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedCategory || !selectedRoute || !selectedCarType) {
       alert('모든 필수 항목을 선택해주세요.');
       return;
@@ -179,8 +179,8 @@ function RentcarQuoteContent() {
     try {
       // 3가지 조건으로 rent_code 조회
       const rentCode = await getRentCodeFromConditions(
-        selectedCategory, 
-        selectedRoute, 
+        selectedCategory,
+        selectedRoute,
         selectedCarType
       );
 
@@ -230,7 +230,7 @@ function RentcarQuoteContent() {
       console.log('✅ 견적 아이템 생성 성공:', itemData);
 
       alert('렌트카 서비스가 견적에 추가되었습니다!');
-      router.push(`/mypage/quotes/${quoteId}/view`);
+      // 페이지 이동 없이 그대로 머무름
 
     } catch (error) {
       console.error('❌ 렌트카 견적 추가 중 오류:', error);
@@ -272,7 +272,7 @@ function RentcarQuoteContent() {
               ← 뒤로가기
             </button>
           </div>
-          
+
           {/* 견적 정보 */}
           <div className="bg-white/70 backdrop-blur rounded-lg p-4 mb-6">
             <h3 className="font-semibold text-gray-800 mb-2">현재 견적 정보</h3>
@@ -290,11 +290,11 @@ function RentcarQuoteContent() {
         <div className="max-w-4xl mx-auto">
           <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">렌트카 정보 입력</h2>
-            
+
             {/* 렌트카 안내 카드 */}
             <div className="bg-green-600 rounded-lg p-6 mb-6 border border-green-700">
               <h3 className="text-white text-lg font-semibold mb-2">🚗 견적안내</h3>
-              <p className="text-white/90 text-sm">렌트카 예약을 위해 아래 정보를 순서대로 입력해 주세요.<br/>정확한 카테고리, 경로, 차량 타입 정보를 입력하시면 빠른 견적 안내가 가능합니다.</p>
+              <p className="text-white/90 text-sm">렌트카 예약을 위해 아래 정보를 순서대로 입력해 주세요.<br />정확한 카테고리, 경로, 차량 타입 정보를 입력하시면 빠른 견적 안내가 가능합니다.</p>
             </div>
 
             {/* 렌트카 서비스 선택 폼 */}
@@ -364,7 +364,7 @@ function RentcarQuoteContent() {
                 </label>
                 <textarea
                   value={formData.special_requests}
-                  onChange={(e) => setFormData({...formData, special_requests: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, special_requests: e.target.value })}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows={4}
                   placeholder="네비게이션, 차일드시트, 픽업 위치, 반납 위치 등을 입력해주세요"

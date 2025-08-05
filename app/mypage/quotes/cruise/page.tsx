@@ -24,7 +24,7 @@ export default function CruisePage() {
         infant_count: 0,
         extra_adult_count: 0,
         extra_child_count: 0,
-        additional_categories: [] as Array<{category: string, count: number}>
+        additional_categories: [] as Array<{ category: string, count: number }>
       }
     ],
     discount_rate: 0
@@ -52,7 +52,7 @@ export default function CruisePage() {
     const checkAuth = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
+
         if (sessionError || !session?.user) {
           alert('로그인이 필요합니다.');
           router.push('/login');
@@ -183,7 +183,7 @@ export default function CruisePage() {
           .eq('payment_code', form.payment_code);
 
         const checkin = new Date(form.checkin);
-        const filteredCodes = roomPrices?.filter((rp: any) => 
+        const filteredCodes = roomPrices?.filter((rp: any) =>
           new Date(rp.start_date) <= checkin && checkin <= new Date(rp.end_date)
         ).map((rp: any) => rp.room_code);
 
@@ -212,7 +212,7 @@ export default function CruisePage() {
           .eq('cruise_code', form.cruise_code);
 
         const checkin = new Date(form.checkin);
-        const filteredCodes = roomPrices?.filter((rp: any) => 
+        const filteredCodes = roomPrices?.filter((rp: any) =>
           new Date(rp.start_date) <= checkin && checkin <= new Date(rp.end_date)
         ).map((rp: any) => rp.payment_code);
 
@@ -239,7 +239,7 @@ export default function CruisePage() {
           infant_count: 0,
           extra_adult_count: 0,
           extra_child_count: 0,
-          additional_categories: [] as Array<{category: string, count: number}>
+          additional_categories: [] as Array<{ category: string, count: number }>
         }
       ]
     }));
@@ -277,14 +277,14 @@ export default function CruisePage() {
           .eq('payment_code', form.payment_code);
 
         const checkin = new Date(form.checkin);
-        const filteredCategories = roomPrices?.filter((rp: any) => 
+        const filteredCategories = roomPrices?.filter((rp: any) =>
           new Date(rp.start_date) <= checkin && checkin <= new Date(rp.end_date)
         ).map((rp: any) => rp.room_category_code);
 
         const uniqueCategoryCodes = [...new Set(filteredCategories?.filter(Boolean))];
-        
+
         console.log('필터링된 인동 구분 코드:', uniqueCategoryCodes); // 디버깅용
-        
+
         if (uniqueCategoryCodes.length > 0) {
           // 임시 하드코딩된 인동 구분 매핑 (추후 DB에서 가져오도록 수정 예정)
           const categoryMap = {
@@ -306,7 +306,7 @@ export default function CruisePage() {
             code,
             name: categoryMap[code as keyof typeof categoryMap] || code
           }));
-          
+
           console.log('인동 구분 정보:', categoryInfos); // 디버깅용
           setCategories(categoryInfos || []);
         } else {
@@ -341,9 +341,8 @@ export default function CruisePage() {
           <button
             key={`${field}-${n}`}
             onClick={() => setForm(prev => ({ ...prev, [field]: n }))}
-            className={`border rounded px-2 py-1 text-xs transition-colors ${
-              (form as any)[field] === n ? 'bg-blue-200 text-blue-700 border-blue-200' : 'bg-blue-50 border-blue-100 text-purple-600 hover:bg-blue-100'
-            }`}
+            className={`border rounded px-2 py-1 text-xs transition-colors ${(form as any)[field] === n ? 'bg-blue-200 text-blue-700 border-blue-200' : 'bg-blue-50 border-blue-100 text-purple-600 hover:bg-blue-100'
+              }`}
           >
             {n}
           </button>
@@ -377,36 +376,24 @@ export default function CruisePage() {
   // 폼 제출 - 새로운 저장 방식으로 변경
   const handleSubmit = async () => {
     if (!user) return;
-    
     if (!form.checkin || !form.schedule_code || !form.cruise_code || !form.payment_code) {
       alert('필수 항목을 모두 입력해주세요.');
       return;
     }
-
     setLoading(true);
     try {
-      console.log('크루즈 견적 저장 시도:', {
-        user_id: user.id,
-        checkin: form.checkin,
-        schedule_code: form.schedule_code,
-        cruise_code: form.cruise_code,
-        payment_code: form.payment_code
-      });
-
       // 1. 사용자 테이블 확인 및 생성
       const { data: userExists } = await supabase
         .from('users')
         .select('id')
         .eq('id', user.id)
         .maybeSingle();
-
       if (!userExists) {
         const isAdmin = user.email && (
-          user.email.includes('admin') || 
+          user.email.includes('admin') ||
           user.email.includes('manager') ||
           user.email.endsWith('@cruise.com')
         );
-        
         await supabase
           .from('users')
           .insert({
@@ -416,8 +403,7 @@ export default function CruisePage() {
             role: isAdmin ? 'admin' : 'guest'
           });
       }
-
-      // 2. 메인 견적 생성 (새로운 방식)
+      // 2. 메인 견적 생성
       const { data: newQuote, error: quoteError } = await supabase
         .from('quote')
         .insert({
@@ -427,13 +413,11 @@ export default function CruisePage() {
         })
         .select()
         .single();
-      
       if (quoteError) {
         console.error('Quote 저장 오류:', quoteError);
         alert('견적 저장 실패: ' + quoteError.message);
         return;
       }
-
       // 3. 크루즈 이름 조회
       let cruiseName = '';
       if (form.cruise_code) {
@@ -444,27 +428,24 @@ export default function CruisePage() {
           .single();
         cruiseName = cruiseInfo?.name || form.cruise_code;
       }
-
-      // 4. 크루즈 서비스 데이터 생성 (올드 페이지 폼 데이터를 뉴 방식으로 변환)
+      // 4. 크루즈 서비스 데이터 생성
       const cruiseFormData = {
         cruise_name: cruiseName,
         departure_date: form.checkin,
-        return_date: form.checkin, // 체크아웃 날짜는 일정에 따라 계산 필요
-        departure_port: '', // 추가 필요한 필드
+        return_date: form.checkin,
+        departure_port: '',
         room_type: form.rooms[0]?.room_code || '',
         adult_count: form.rooms.reduce((sum, room) => sum + (room.adult_count || 0), 0),
         child_count: form.rooms.reduce((sum, room) => sum + (room.child_count || 0), 0),
         infant_count: form.rooms.reduce((sum, room) => sum + (room.infant_count || 0), 0),
         special_requests: `일정: ${form.schedule_code}, 크루즈: ${form.cruise_code}, 결제방식: ${form.payment_code}`,
-        // 올드 페이지 추가 필드들
         schedule_code: form.schedule_code,
         cruise_code: form.cruise_code,
         payment_code: form.payment_code,
         discount_rate: form.discount_rate,
-        rooms_detail: JSON.stringify(form.rooms), // 상세 객실 정보를 JSON으로 저장
-        vehicle_detail: JSON.stringify(vehicleForm) // 차량 정보를 JSON으로 저장
+        rooms_detail: JSON.stringify(form.rooms),
+        vehicle_detail: JSON.stringify(vehicleForm)
       };
-
       // 5. 크루즈 서비스 생성
       const { data: cruiseData, error: cruiseError } = await supabase
         .from('cruise')
@@ -474,13 +455,11 @@ export default function CruisePage() {
         })
         .select()
         .single();
-
       if (cruiseError || !cruiseData) {
         console.error('크루즈 서비스 생성 오류:', cruiseError);
         alert('크루즈 서비스 생성 실패: ' + cruiseError?.message);
         return;
       }
-
       // 6. 견적 아이템 생성
       const { data: itemData, error: itemError } = await supabase
         .from('quote_item')
@@ -494,14 +473,11 @@ export default function CruisePage() {
         })
         .select()
         .single();
-
       if (itemError || !itemData) {
         console.error('견적 아이템 생성 오류:', itemError);
         alert('견적 아이템 생성 실패: ' + itemError?.message);
         return;
       }
-
-      // 7. 기존 방식과 호환성을 위한 추가 데이터 저장 (선택사항)
       // quote_room 테이블에 객실 정보도 별도 저장
       if (form.rooms.length > 0) {
         const roomData = form.rooms
@@ -518,12 +494,10 @@ export default function CruisePage() {
             extra_child_count: room.extra_child_count || 0,
             additional_categories: JSON.stringify(room.additional_categories || [])
           }));
-
         if (roomData.length > 0) {
           await supabase.from('quote_room').insert(roomData);
         }
       }
-
       // quote_car 테이블에 차량 정보도 별도 저장
       if (vehicleForm.length > 0) {
         const carData = vehicleForm
@@ -533,15 +507,12 @@ export default function CruisePage() {
             car_code: car.car_code,
             count: car.count || 1
           }));
-
         if (carData.length > 0) {
           await supabase.from('quote_car').insert(carData);
         }
       }
-
-      alert('크루즈 견적이 저장되었습니다!\n잠시 기다려 주시면 빠른 답변 드리겠습니다.');
-      router.push(`/mypage/quotes/${newQuote.id}/view`);
-      
+      alert('크루즈 견적이 저장되었습니다!');
+      // 페이지 이동 없이 그대로 머무름
     } catch (error) {
       console.error('견적 저장 오류:', error);
       alert('견적 저장 중 오류가 발생했습니다.');
@@ -558,13 +529,13 @@ export default function CruisePage() {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-blue-600">🚢 크루즈 예약 (상세)</h1>
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={() => router.push('/mypage/quotes/cruise/new')}
                 className="bg-green-100 hover:bg-green-200 px-4 py-2 rounded-lg transition-colors text-green-700 border border-green-200"
               >
                 ✨ 간편 예약
               </button>
-              <button 
+              <button
                 onClick={() => router.push('/mypage/quotes/new')}
                 className="bg-blue-100 hover:bg-blue-200 px-4 py-2 rounded-lg transition-colors text-blue-700 border border-blue-200"
               >
@@ -585,15 +556,15 @@ export default function CruisePage() {
           {/* 크루즈 안내 카드 (체크인 날짜 위) */}
           <div className="bg-blue-600 rounded-lg p-6 mb-6 border border-blue-700">
             <h3 className="text-white text-lg font-semibold mb-2">📝 상세 예약 안내</h3>
-            <p className="text-white/90 text-sm">크루즈 상세 예약을 위해 아래 정보를 순서대로 입력해 주세요.<br/>정확한 일정, 객실, 차량 정보를 입력하시면 빠른 견적 안내가 가능합니다.<br/>비교 견적이 필요하시면 필요한 만큼 반복하여 작성해 주세요.</p>
+            <p className="text-white/90 text-sm">크루즈 상세 예약을 위해 아래 정보를 순서대로 입력해 주세요.<br />정확한 일정, 객실, 차량 정보를 입력하시면 빠른 견적 안내가 가능합니다.<br />비교 견적이 필요하시면 필요한 만큼 반복하여 작성해 주세요.</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">📅 체크인 날짜</label>
-            <input 
-              type="date" 
-              value={form.checkin} 
-              onChange={e => setForm({ ...form, checkin: e.target.value })} 
-              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+            <input
+              type="date"
+              value={form.checkin}
+              onChange={e => setForm({ ...form, checkin: e.target.value })}
+              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
@@ -601,12 +572,11 @@ export default function CruisePage() {
             <label className="block text-sm font-medium text-gray-700 mb-2">🗓 일정 선택</label>
             <div className="grid grid-cols-3 gap-2">
               {schedules.map(s => (
-                <button 
-                  key={s.code} 
-                  onClick={() => setForm({ ...form, schedule_code: s.code })} 
-                  className={`border p-3 rounded-lg transition-colors ${
-                    form.schedule_code === s.code ? 'bg-blue-200 text-blue-700 border-blue-200' : 'bg-blue-50 border-blue-100 text-purple-600 hover:bg-blue-100'
-                  }`}
+                <button
+                  key={s.code}
+                  onClick={() => setForm({ ...form, schedule_code: s.code })}
+                  className={`border p-3 rounded-lg transition-colors ${form.schedule_code === s.code ? 'bg-blue-200 text-blue-700 border-blue-200' : 'bg-blue-50 border-blue-100 text-purple-600 hover:bg-blue-100'
+                    }`}
                 >
                   {s.name}
                 </button>
@@ -616,9 +586,9 @@ export default function CruisePage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">🚢 크루즈 선택</label>
-            <select 
-              value={form.cruise_code} 
-              onChange={e => setForm({ ...form, cruise_code: e.target.value })} 
+            <select
+              value={form.cruise_code}
+              onChange={e => setForm({ ...form, cruise_code: e.target.value })}
               className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">크루즈를 선택하세요</option>
@@ -636,9 +606,8 @@ export default function CruisePage() {
                 <button
                   key={p.code}
                   onClick={() => setForm({ ...form, payment_code: p.code })}
-                  className={`border p-3 rounded-lg transition-colors ${
-                    form.payment_code === p.code ? 'bg-blue-200 text-blue-700 border-blue-200' : 'bg-blue-50 border-blue-100 text-purple-600 hover:bg-blue-100'
-                  }`}
+                  className={`border p-3 rounded-lg transition-colors ${form.payment_code === p.code ? 'bg-blue-200 text-blue-700 border-blue-200' : 'bg-blue-50 border-blue-100 text-purple-600 hover:bg-blue-100'
+                    }`}
                 >
                   {p.name}
                 </button>
@@ -728,7 +697,7 @@ export default function CruisePage() {
                     </select>
                   </div>
                 </div>
-                
+
                 {/* 추가 인동 구분 입력창들 - 모바일 최적화 */}
                 {room.additional_categories?.map((addCat, catIdx) => {
                   const usedCategories = [room.category, ...room.additional_categories.map(ac => ac.category)];
@@ -785,7 +754,7 @@ export default function CruisePage() {
                         >
                           <option value={0}>0명</option>
                           {[...Array(10).keys()].map(n => (
-                            <option key={n+1} value={n+1}>{n+1}명</option>
+                            <option key={n + 1} value={n + 1}>{n + 1}명</option>
                           ))}
                         </select>
                       </div>
@@ -858,11 +827,10 @@ export default function CruisePage() {
                       key={cat.code}
                       type="button"
                       onClick={() => setSelectedVehicleCategory(cat.code)}
-                      className={`border px-4 py-2 rounded-lg transition-colors ${
-                        selectedVehicleCategory === cat.code
+                      className={`border px-4 py-2 rounded-lg transition-colors ${selectedVehicleCategory === cat.code
                           ? 'bg-green-500 text-white border-green-500'
                           : 'bg-gray-50 border-gray-300 hover:bg-gray-100 text-gray-700'
-                      }`}
+                        }`}
                     >
                       {cat.name}
                     </button>
@@ -902,13 +870,12 @@ export default function CruisePage() {
                         <div className="grid grid-cols-5 gap-1">
                           {[...Array(10).keys()].map(n => (
                             <button
-                              key={n+1}
-                              onClick={() => handleVehicleChange(vehicleIndex, 'count', n+1)}
-                              className={`border rounded px-2 py-1 text-sm transition-colors ${
-                                vehicle.count === n+1 ? 'bg-green-200 text-green-700 border-green-200' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-                              }`}
+                              key={n + 1}
+                              onClick={() => handleVehicleChange(vehicleIndex, 'count', n + 1)}
+                              className={`border rounded px-2 py-1 text-sm transition-colors ${vehicle.count === n + 1 ? 'bg-green-200 text-green-700 border-green-200' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                                }`}
                             >
-                              {n+1}
+                              {n + 1}
                             </button>
                           ))}
                         </div>
@@ -930,20 +897,20 @@ export default function CruisePage() {
 
           {/* 기존 단일 인동 선택 박스 제거됨. 객실별 인동 선택 UI만 남김 */}
 
-                   {/* 제출 버튼 */}
+          {/* 제출 버튼 */}
           <div className="flex gap-4">
-            <button 
+            <button
               onClick={() => router.back()}
               className="flex-1 bg-blue-100 text-blue-700 py-3 rounded-lg hover:bg-blue-200 border border-blue-200 transition-colors"
             >
               ← 뒤로가기
             </button>
-            <button 
-              onClick={handleSubmit} 
+            <button
+              onClick={handleSubmit}
               disabled={loading}
               className="flex-1 bg-gradient-to-r from-blue-200 to-purple-200 text-blue-700 py-3 rounded-lg hover:from-blue-300 hover:to-purple-300 border border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-all"
             >
-              {loading ? '저장 중...' : '🚢 크루즈 예약하기'}
+              {loading ? '추가 중...' : '🚢 견적 추가'}
             </button>
           </div>
         </div>

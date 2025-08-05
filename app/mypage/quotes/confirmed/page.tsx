@@ -109,8 +109,8 @@ export default function ConfirmedQuotesPage() {
         }))
       };
 
-      // 간단하게 견적 ID만 전달하여 예약 페이지로 이동 (한글 인코딩 문제 해결)
-      router.push(`/mypage/reservations/cruise-new?quoteId=${quoteData.id}`);
+      // 간단하게 견적 ID만 전달하여 예약 페이지로 이동
+      router.push(`/mypage/reservations/?quoteId=${quoteData.id}`);
     } catch (error) {
       console.error('예약 처리 오류:', error);
       alert('예약 처리 중 오류가 발생했습니다.');

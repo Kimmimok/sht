@@ -104,48 +104,15 @@ export default function ConfirmedQuoteDetailPage() {
 
   const handleReservation = async () => {
     try {
-      if (!quote) {
+      if (!quote || !quote.id) {
         alert('견적 정보를 찾을 수 없습니다.');
         return;
       }
-
-      // 견적 데이터 조회 - 실제 테이블 컬럼명 사용
-      const { data: quoteData, error } = await supabase
-        .from('quote')
-        .select(`
-          id,
-          title,
-          cruise_name,
-          departure_date,
-          return_date,
-          total_price,
-          quote_item (
-            service_type,
-            service_ref_id,
-            quantity,
-            unit_price,
-            total_price
-          )
-        `)
-        .eq('id', quoteId)
-        .single();
-
-      if (error) {
-        console.error('견적 조회 오류:', error);
-        alert('견적 데이터를 가져올 수 없습니다.');
-        return;
-      }
-
-      if (!quoteData) {
-        alert('견적을 찾을 수 없습니다.');
-        return;
-      }
-
-      // 견적 ID만 URL 파라미터로 전달하여 예약 페이지로 이동
-      router.push(`/mypage/reservations?quoteId=${quoteData.id}`);
+      // 견적 ID를 가지고 예약 생성 페이지로 바로 이동
+      router.push(`/mypage/reservations/?quoteId=${quote.id}`);
     } catch (error) {
-      console.error('예약 처리 오류:', error);
-      alert('예약 처리 중 오류가 발생했습니다.');
+      console.error('예약 페이지 이동 오류:', error);
+      alert('예약 페이지로 이동하는 중 오류가 발생했습니다.');
     }
   };
 
@@ -323,9 +290,9 @@ export default function ConfirmedQuoteDetailPage() {
             if (rentcarData) {
               console.log('✅ 렌트카 정보:', rentcarData);
               const { data: priceData } = await supabase
-                .from('rentcar_price')
+                .from('rent_price')
                 .select('*')
-                .eq('rentcar_code', rentcarData.rentcar_code);
+                .eq('rent_code', rentcarData.rentcar_code);
 
               detailed.rentcars.push({
                 ...item,
@@ -393,7 +360,7 @@ export default function ConfirmedQuoteDetailPage() {
                 >
                   ← 목록
                 </button>
-                <h1 className="text-2xl font-bold text-gray-700">📋 {quote.cruise_name || '크루즈 견적'}</h1>
+                <h1 className="text-2xl font-bold text-gray-700">📋 {quote.title || '크루즈 견적'}</h1>
                 {getStatusBadge(quote.status)}
               </div>
 
@@ -473,10 +440,6 @@ export default function ConfirmedQuoteDetailPage() {
                                   <td className="px-2 py-1 font-medium border-blue-100 border">단가</td>
                                   <td className="px-2 py-1 border-blue-100 border">{room.unit_price ? room.unit_price.toLocaleString() + '동' : '-'}</td>
                                 </tr>
-                                <tr>
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
-                                </tr>
                                 <tr className="bg-gray-50">
                                   <td className="px-2 py-1 font-medium border-blue-100 border">인원수</td>
                                   <td className="px-2 py-1 border-blue-100 border">{room.roomInfo?.adult_count}명</td>
@@ -542,10 +505,6 @@ export default function ConfirmedQuoteDetailPage() {
                                   <td className="px-2 py-1 font-medium border-blue-100 border">단가</td>
                                   <td className="px-2 py-1 border-blue-100 border">{car.unit_price ? car.unit_price.toLocaleString() + '동' : '-'}</td>
                                 </tr>
-                                <tr>
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
-                                </tr>
                                 <tr className="bg-gray-50">
                                   <td className="px-2 py-1 font-medium border-blue-100 border">차량수</td>
                                   <td className="px-2 py-1 border-blue-100 border">{car.carInfo?.car_count}대</td>
@@ -596,13 +555,9 @@ export default function ConfirmedQuoteDetailPage() {
                                   <td className="px-2 py-1 font-medium border-blue-100 border">단가</td>
                                   <td className="px-2 py-1 border-blue-100 border">{airport.unit_price ? airport.unit_price.toLocaleString() + '동' : '-'}</td>
                                 </tr>
-                                <tr>
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
-                                </tr>
                                 <tr className="bg-gray-50">
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">승객수</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{airport.airportInfo?.passenger_count}명</td>
+                                  <td className="px-2 py-1 font-medium border-blue-100 border">차량수</td>
+                                  <td className="px-2 py-1 border-blue-100 border">{airport.airportInfo?.passenger_count}대</td>
                                 </tr>
                               </Fragment>
                             ))}
@@ -648,10 +603,6 @@ export default function ConfirmedQuoteDetailPage() {
                                 <tr>
                                   <td className="px-2 py-1 font-medium border-blue-100 border">단가</td>
                                   <td className="px-2 py-1 border-blue-100 border">{hotel.unit_price ? hotel.unit_price.toLocaleString() + '동' : '-'}</td>
-                                </tr>
-                                <tr>
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                                 </tr>
                                 <tr className="bg-gray-50">
                                   <td className="px-2 py-1 font-medium border-blue-100 border">호텔명</td>
@@ -702,13 +653,9 @@ export default function ConfirmedQuoteDetailPage() {
                                   <td className="px-2 py-1 font-medium border-blue-100 border">단가</td>
                                   <td className="px-2 py-1 border-blue-100 border">{rentcar.unit_price ? rentcar.unit_price.toLocaleString() + '동' : '-'}</td>
                                 </tr>
-                                <tr>
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
-                                </tr>
                                 <tr className="bg-gray-50">
                                   <td className="px-2 py-1 font-medium border-blue-100 border">렌트카명</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{rentcar.rentcarInfo?.rentcar_name || '렌트카 정보 없음'}</td>
+                                  <td className="px-2 py-1 border-blue-100 border">{(rentcar.priceInfo && rentcar.priceInfo[0]?.rent_car_type) ? rentcar.priceInfo[0].rent_car_type : (rentcar.rentcarInfo?.rentcar_name || '렌트카 정보 없음')}</td>
                                 </tr>
                               </Fragment>
                             ))}
@@ -745,7 +692,7 @@ export default function ConfirmedQuoteDetailPage() {
                                   <td className="px-2 py-1 border-blue-100 border">{price.tour_name || '-'}</td>
                                 </tr>
                                 <tr>
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">정동</td>
+                                  <td className="px-2 py-1 font-medium border-blue-100 border">투어 인원</td>
                                   <td className="px-2 py-1 border-blue-100 border">{price.tour_capacity ? price.tour_capacity + '명' : '-'}</td>
                                 </tr>
                                 <tr>
@@ -756,21 +703,13 @@ export default function ConfirmedQuoteDetailPage() {
                                   <td className="px-2 py-1 font-medium border-blue-100 border">단가</td>
                                   <td className="px-2 py-1 border-blue-100 border">{tour.unit_price ? tour.unit_price.toLocaleString() + '동' : '-'}</td>
                                 </tr>
-                                <tr>
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
-                                </tr>
-                                <tr className="bg-gray-50">
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">투어명</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{tour.tourInfo?.tour_name || '투어 정보 없음'}</td>
-                                </tr>
                                 <tr className="bg-gray-50">
                                   <td className="px-2 py-1 font-medium border-blue-100 border">투어 날짜</td>
                                   <td className="px-2 py-1 border-blue-100 border">{tour.tourInfo?.tour_date || '-'}</td>
                                 </tr>
                                 <tr className="bg-gray-50">
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">참가자수</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{tour.tourInfo?.participant_count || 0}명</td>
+                                  <td className="px-2 py-1 font-medium border-blue-100 border">차량수</td>
+                                  <td className="px-2 py-1 border-blue-100 border">{tour.tourInfo?.participant_count || 0}대</td>
                                 </tr>
                               </Fragment>
                             ))}

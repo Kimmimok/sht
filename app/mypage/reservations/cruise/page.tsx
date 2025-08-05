@@ -72,23 +72,23 @@ function CruiseReservationContent() {
     // 견적에 연결된 룸/차량 데이터 로드
     const loadQuoteLinkedData = async () => {
         try {
-            // 견적에 연결된 quote_item들 조회
+            // 견적에 연결된 quote_item들 조회 (quantity 포함)
             const { data: quoteItems } = await supabase
                 .from('quote_item')
-                .select('service_type, service_ref_id')
+                .select('service_type, service_ref_id, quantity, unit_price, total_price')
                 .eq('quote_id', quoteId);
 
             if (quoteItems) {
                 // 룸 정보 로드
                 const roomItems = quoteItems.filter(item => item.service_type === 'room');
                 if (roomItems.length > 0) {
-                    await loadRoomInfo(roomItems[0].service_ref_id);
+                    await loadRoomInfo(roomItems[0].service_ref_id, roomItems[0]);
                 }
 
                 // 차량 정보 로드
                 const carItems = quoteItems.filter(item => item.service_type === 'car');
                 if (carItems.length > 0) {
-                    await loadCarInfo(carItems[0].service_ref_id);
+                    await loadCarInfo(carItems[0].service_ref_id, carItems[0]);
                 }
             }
         } catch (error) {
@@ -97,7 +97,7 @@ function CruiseReservationContent() {
     };
 
     // 룸 정보 로드
-    const loadRoomInfo = async (roomId: string) => {
+    const loadRoomInfo = async (roomId: string, quoteItem?: any) => {
         try {
             // room 테이블에서 룸 정보 조회
             const { data: roomData } = await supabase
@@ -117,10 +117,15 @@ function CruiseReservationContent() {
 
                 if (roomPriceData) {
                     setRoomPriceInfo(roomPriceData);
-                    // 폼에 룸 코드 설정
+                    // 폼에 룸 코드와 기본 가격 설정 (quote_item의 quantity와 가격 정보 활용)
+                    const unitPrice = quoteItem?.unit_price || roomPriceData.price || 0;
+                    const quantity = quoteItem?.quantity || 1;
                     setForm(prev => ({
                         ...prev,
-                        room_price_code: roomData.room_code
+                        room_price_code: roomData.room_code,
+                        unit_price: unitPrice,
+                        guest_count: quantity,
+                        room_total_price: quoteItem?.total_price || (unitPrice * quantity)
                     }));
                 }
             }
@@ -130,7 +135,7 @@ function CruiseReservationContent() {
     };
 
     // 차량 정보 로드
-    const loadCarInfo = async (carId: string) => {
+    const loadCarInfo = async (carId: string, quoteItem?: any) => {
         try {
             // car 테이블에서 차량 정보 조회
             const { data: carData } = await supabase
@@ -150,11 +155,14 @@ function CruiseReservationContent() {
 
                 if (carPriceData) {
                     setCarPriceInfo(carPriceData);
-                    // 폼에 차량 코드 설정
+                    // 폼에 차량 코드와 기본 차량 가격 설정 (quote_item의 quantity와 가격 정보 활용)
                     const carPriceCode = `${carPriceData.car_code}-${carPriceData.cruise}-${carPriceData.car_type}`;
+                    const quantity = quoteItem?.quantity || 1;
                     setForm(prev => ({
                         ...prev,
-                        car_price_code: carPriceCode
+                        car_price_code: carPriceCode,
+                        car_count: quantity,
+                        car_total_price: quoteItem?.total_price || (carPriceData.price * quantity)
                     }));
                 }
             }
@@ -163,18 +171,45 @@ function CruiseReservationContent() {
         }
     };    // 폼 입력 핸들러
     const handleInputChange = (field: string, value: any) => {
-        setForm(prev => ({
-            ...prev,
-            [field]: value
-        }));
+        setForm(prev => {
+            const updated = {
+                ...prev,
+                [field]: value
+            };
+
+            // 가격 관련 필드가 변경되면 총 가격 자동 계산
+            if (field === 'unit_price' || field === 'guest_count') {
+                updated.room_total_price = (updated.unit_price || 0) * (updated.guest_count || 1);
+            }
+
+            if (field === 'car_count' && carPriceInfo?.price) {
+                updated.car_total_price = (carPriceInfo.price || 0) * (updated.car_count || 0);
+            }
+
+            return updated;
+        });
     };
 
     // 인원수 변경 핸들러
     const handleCountChange = (field: string, increment: boolean) => {
-        setForm(prev => ({
-            ...prev,
-            [field]: Math.max(0, (prev[field as keyof typeof prev] as number) + (increment ? 1 : -1))
-        }));
+        setForm(prev => {
+            const updated = {
+                ...prev,
+                [field]: Math.max(0, (prev[field as keyof typeof prev] as number) + (increment ? 1 : -1))
+            };
+
+            // 투숙객 수 변경 시 룸 총 가격 재계산
+            if (field === 'guest_count') {
+                updated.room_total_price = (updated.unit_price || 0) * (updated.guest_count || 1);
+            }
+
+            // 차량 수 변경 시 차량 총 가격 재계산
+            if (field === 'car_count' && carPriceInfo?.price) {
+                updated.car_total_price = (carPriceInfo.price || 0) * (updated.car_count || 0);
+            }
+
+            return updated;
+        });
     };
 
     // 폼 제출
@@ -193,8 +228,60 @@ function CruiseReservationContent() {
                 return;
             }
 
+            // 먼저 reservation 테이블에 메인 예약 데이터 생성
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError || !user) {
+                alert('로그인이 필요합니다.');
+                return;
+            }
+
+            // 기존 사용자 정보 확인 및 권한 유지
+            const { data: existingUser } = await supabase
+                .from('users')
+                .select('id, role')
+                .eq('id', user.id)
+                .single();
+
+            // 사용자가 users 테이블에 없는 경우에만 새로 등록 (member 권한으로)
+            if (!existingUser) {
+                const { error: userInsertError } = await supabase
+                    .from('users')
+                    .insert({
+                        id: user.id,
+                        email: user.email,
+                        role: 'member', // 예약자는 member 권한
+                        created_at: new Date().toISOString()
+                    });
+
+                if (userInsertError) {
+                    console.error('사용자 등록 오류:', userInsertError);
+                    // 이미 존재하는 사용자일 수 있으므로 에러를 무시하고 계속 진행
+                }
+            }
+            // 기존 사용자의 경우 권한을 그대로 유지
+
+            // reservation 테이블에 메인 예약 생성
+            const { data: reservationData, error: reservationError } = await supabase
+                .from('reservation')
+                .insert({
+                    re_user_id: user.id,
+                    re_quote_id: quoteId,
+                    re_type: 'cruise',
+                    re_status: 'pending',
+                    re_created_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+            if (reservationError) {
+                console.error('예약 생성 오류:', reservationError);
+                alert('예약 생성 중 오류가 발생했습니다.');
+                return;
+            }
+
             // reservation_cruise 데이터 생성
             const reservationCruiseData = {
+                reservation_id: reservationData.re_id,
                 room_price_code: form.room_price_code,
                 checkin: form.checkin,
                 guest_count: form.guest_count,
@@ -212,14 +299,14 @@ function CruiseReservationContent() {
             };
 
             // reservation_cruise 테이블에 삽입
-            const { data: reservationResult, error: reservationError } = await supabase
+            const { data: reservationResult, error: cruiseReservationError } = await supabase
                 .from('reservation_cruise')
                 .insert(reservationCruiseData)
                 .select()
                 .single();
 
-            if (reservationError) {
-                console.error('크루즈 예약 저장 오류:', reservationError);
+            if (cruiseReservationError) {
+                console.error('크루즈 예약 저장 오류:', cruiseReservationError);
                 alert('크루즈 예약 저장 중 오류가 발생했습니다.');
                 return;
             }
@@ -263,12 +350,11 @@ function CruiseReservationContent() {
                     </button>
                 </div>
 
-                {/* 크루즈 정보 */}
-                <SectionBox title="크루즈 정보">
-                    {/* 룸 정보 표시 */}
+                {/* 크루즈 객실 정보 */}
+                <SectionBox title="크루즈 객실 정보">
                     {roomPriceInfo && (
                         <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                            <h4 className="text-sm font-medium text-blue-800 mb-3">🏨 룸 정보</h4>
+                            <h4 className="text-sm font-medium text-blue-800 mb-3">🏨 객실 가격 정보</h4>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                 <div>
                                     <span className="text-gray-600">룸 코드:</span>
@@ -305,11 +391,78 @@ function CruiseReservationContent() {
                             </div>
                         </div>
                     )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                체크인 날짜 *
+                            </label>
+                            <input
+                                type="date"
+                                value={form.checkin}
+                                onChange={(e) => handleInputChange('checkin', e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                단가
+                            </label>
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={form.unit_price}
+                                onChange={(e) => handleInputChange('unit_price', parseFloat(e.target.value) || 0)}
+                                placeholder="단가를 입력하세요"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                승선 도움 서비스
+                            </label>
+                            <input
+                                type="text"
+                                value={form.boarding_assist}
+                                onChange={(e) => handleInputChange('boarding_assist', e.target.value)}
+                                placeholder="승선 도움이 필요한 경우 입력하세요"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                    </div>
+                    <SectionBox title="인원 정보">
+                        <div className="text-center">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                투숙객 수 *
+                            </label>
+                            <div className="flex items-center justify-center space-x-4">
+                                <button
+                                    type="button"
+                                    onClick={() => handleCountChange('guest_count', false)}
+                                    className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
+                                >
+                                    -
+                                </button>
+                                <span className="text-xl font-semibold w-8 text-center">
+                                    {form.guest_count}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => handleCountChange('guest_count', true)}
+                                    className="w-8 h-8 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center"
+                                >
+                                    +
+                                </button>
+                            </div>
+                        </div>
+                    </SectionBox>
+                </SectionBox>
 
-                    {/* 차량 정보 표시 */}
+                {/* 차량 정보 */}
+                <SectionBox title="차량 정보">
                     {carPriceInfo && (
                         <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
-                            <h4 className="text-sm font-medium text-green-800 mb-3">🚗 차량 정보</h4>
+                            <h4 className="text-sm font-medium text-green-800 mb-3">🚗 차량 가격 정보</h4>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                 <div>
                                     <span className="text-gray-600">차량 코드:</span>
@@ -342,80 +495,6 @@ function CruiseReservationContent() {
                             </div>
                         </div>
                     )}
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                체크인 날짜 *
-                            </label>
-                            <input
-                                type="date"
-                                value={form.checkin}
-                                onChange={(e) => handleInputChange('checkin', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                단가
-                            </label>
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={form.unit_price}
-                                onChange={(e) => handleInputChange('unit_price', parseFloat(e.target.value) || 0)}
-                                placeholder="단가를 입력하세요"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                승선 도움 서비스
-                            </label>
-                            <input
-                                type="text"
-                                value={form.boarding_assist}
-                                onChange={(e) => handleInputChange('boarding_assist', e.target.value)}
-                                placeholder="승선 도움이 필요한 경우 입력하세요"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
-                    </div>
-                </SectionBox>
-
-                {/* 인원 정보 */}
-                <SectionBox title="인원 정보">
-                    <div className="text-center">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            투숙객 수 *
-                        </label>
-                        <div className="flex items-center justify-center space-x-4">
-                            <button
-                                type="button"
-                                onClick={() => handleCountChange('guest_count', false)}
-                                className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
-                            >
-                                -
-                            </button>
-                            <span className="text-xl font-semibold w-8 text-center">
-                                {form.guest_count}
-                            </span>
-                            <button
-                                type="button"
-                                onClick={() => handleCountChange('guest_count', true)}
-                                className="w-8 h-8 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center"
-                            >
-                                +
-                            </button>
-                        </div>
-                    </div>
-                </SectionBox>
-
-                {/* 차량 정보 */}
-                <SectionBox title="차량 정보">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -509,8 +588,8 @@ function CruiseReservationContent() {
                     </div>
                 </SectionBox>
 
-                {/* 가격 정보 */}
-                <SectionBox title="가격 정보">
+                {/* 예약 종합 정보 */}
+                <SectionBox title="예약 종합 정보">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -525,6 +604,9 @@ function CruiseReservationContent() {
                                 placeholder="룸 총 가격을 입력하세요"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
+                            <p className="text-xs text-gray-500 mt-1">
+                                자동 계산: {form.unit_price?.toLocaleString()}원 × {form.guest_count}명 = {(form.unit_price * form.guest_count)?.toLocaleString()}원
+                            </p>
                         </div>
 
                         <div>
@@ -540,6 +622,32 @@ function CruiseReservationContent() {
                                 placeholder="차량 총 가격을 입력하세요"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
+                            {carPriceInfo?.price && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                    자동 계산: {carPriceInfo.price?.toLocaleString()}원 × {form.car_count}대 = {(carPriceInfo.price * form.car_count)?.toLocaleString()}원
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* 총 예약 금액 표시 */}
+                    <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <h4 className="text-sm font-medium text-yellow-800 mb-3">💰 총 예약 금액</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                            <div>
+                                <span className="text-gray-600">룸 비용:</span>
+                                <p className="font-medium text-blue-600">{form.room_total_price?.toLocaleString()}원</p>
+                            </div>
+                            <div>
+                                <span className="text-gray-600">차량 비용:</span>
+                                <p className="font-medium text-green-600">{form.car_total_price?.toLocaleString()}원</p>
+                            </div>
+                            <div className="md:text-right">
+                                <span className="text-gray-600">총 금액:</span>
+                                <p className="font-bold text-lg text-red-600">
+                                    {(form.room_total_price + form.car_total_price)?.toLocaleString()}원
+                                </p>
+                            </div>
                         </div>
                     </div>
 
@@ -556,6 +664,7 @@ function CruiseReservationContent() {
                         />
                     </div>
                 </SectionBox>
+
 
                 {/* 제출 버튼 */}
                 <div className="flex justify-center space-x-4 pt-6">

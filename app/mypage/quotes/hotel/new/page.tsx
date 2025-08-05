@@ -32,14 +32,14 @@ function NewHotelQuoteContent() {
 
   const loadQuote = async () => {
     if (!quoteId) return
-    
+
     try {
       const { data, error } = await supabase
         .from('quote')
         .select('*')
         .eq('id', quoteId)
         .single()
-      
+
       if (error) throw error
       setQuote(data)
     } catch (error) {
@@ -120,11 +120,11 @@ function NewHotelQuoteContent() {
         .order('hotel_name')
 
       if (error) throw error
-      
+
       // 중복 제거
       const uniqueHotelNames = [...new Set(data.map((item: any) => item.hotel_name).filter(Boolean))]
       setHotelNameOptions(uniqueHotelNames)
-      
+
       console.log('🏨 필터링된 호텔명 옵션:', uniqueHotelNames)
     } catch (error) {
       console.error('호텔명 옵션 로드 실패:', error)
@@ -145,10 +145,10 @@ function NewHotelQuoteContent() {
         .order('room_name')
 
       if (error) throw error
-      
+
       const uniqueRoomNames = [...new Set(data.map((item: any) => item.room_name).filter(Boolean))]
       setRoomNameOptions(uniqueRoomNames)
-      
+
       console.log('🏨 필터링된 객실명 옵션:', uniqueRoomNames)
     } catch (error) {
       console.error('객실명 옵션 로드 실패:', error)
@@ -170,10 +170,10 @@ function NewHotelQuoteContent() {
         .order('room_type')
 
       if (error) throw error
-      
+
       const uniqueRoomTypes = [...new Set(data.map((item: any) => item.room_type).filter(Boolean))]
       setRoomTypeOptions(uniqueRoomTypes)
-      
+
       console.log('🏨 필터링된 객실 타입 옵션:', uniqueRoomTypes)
     } catch (error) {
       console.error('객실 타입 옵션 로드 실패:', error)
@@ -196,7 +196,7 @@ function NewHotelQuoteContent() {
         .order('hotel_code')
 
       if (error) throw error
-      
+
       setFilteredHotels(data)
       console.log('🏨 최종 필터링된 호텔들:', data)
     } catch (error) {
@@ -207,7 +207,7 @@ function NewHotelQuoteContent() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    
+
     if (!formData.checkin_date || !formData.checkout_date) {
       alert('체크인/체크아웃 날짜를 선택해주세요.')
       return
@@ -276,7 +276,7 @@ function NewHotelQuoteContent() {
       console.log('✅ 견적 아이템 생성 성공:', itemData)
 
       alert('호텔이 견적에 추가되었습니다!')
-      router.push(`/mypage/quotes/${quoteId}/view`)
+      // 페이지 이동 없이 그대로 머무름
 
     } catch (error) {
       console.error('❌ 호텔 견적 추가 중 오류:', error)
@@ -320,7 +320,7 @@ function NewHotelQuoteContent() {
               </button>
             </div>
           </div>
-          
+
           {/* 견적 정보 */}
           <div className="bg-white/70 backdrop-blur rounded-lg p-4 mb-6">
             <h3 className="font-semibold text-gray-800 mb-2">현재 견적 정보</h3>
@@ -338,11 +338,11 @@ function NewHotelQuoteContent() {
         <div className="max-w-4xl mx-auto">
           <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">호텔 정보 입력</h2>
-            
+
             {/* 호텔 안내 카드 */}
             <div className="bg-blue-600 rounded-lg p-6 mb-6 border border-blue-700">
               <h3 className="text-white text-lg font-semibold mb-2">📝 견적안내</h3>
-              <p className="text-white/90 text-sm">호텔 예약을 위해 아래 정보를 순서대로 입력해 주세요.<br/>체크인/체크아웃 날짜를 먼저 선택하시면 해당 날짜에 예약 가능한 호텔 목록이 표시됩니다.</p>
+              <p className="text-white/90 text-sm">호텔 예약을 위해 아래 정보를 순서대로 입력해 주세요.<br />체크인/체크아웃 날짜를 먼저 선택하시면 해당 날짜에 예약 가능한 호텔 목록이 표시됩니다.</p>
             </div>
 
             {/* 호텔 선택 폼 */}
@@ -356,7 +356,7 @@ function NewHotelQuoteContent() {
                   <input
                     type="date"
                     value={formData.checkin_date}
-                    onChange={(e) => setFormData({...formData, checkin_date: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, checkin_date: e.target.value })}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
@@ -374,7 +374,7 @@ function NewHotelQuoteContent() {
                   <input
                     type="date"
                     value={formData.checkout_date}
-                    onChange={(e) => setFormData({...formData, checkout_date: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, checkout_date: e.target.value })}
                     min={formData.checkin_date}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
@@ -452,11 +452,10 @@ function NewHotelQuoteContent() {
                     {filteredHotels.map((hotel, index) => (
                       <div
                         key={`${hotel.hotel_code}-${index}`}
-                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                          selectedHotel?.hotel_code === hotel.hotel_code
+                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedHotel?.hotel_code === hotel.hotel_code
                             ? 'border-blue-500 bg-blue-50'
                             : 'border-gray-300 hover:border-gray-400'
-                        }`}
+                          }`}
                         onClick={() => {
                           setSelectedHotel(hotel)
                           setSelectedHotelCode(hotel.hotel_code)
@@ -493,7 +492,7 @@ function NewHotelQuoteContent() {
                   min="1"
                   max="10"
                   value={formData.guest_count}
-                  onChange={(e) => setFormData({...formData, guest_count: parseInt(e.target.value) || 1})}
+                  onChange={(e) => setFormData({ ...formData, guest_count: parseInt(e.target.value) || 1 })}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
@@ -506,7 +505,7 @@ function NewHotelQuoteContent() {
                 </label>
                 <textarea
                   value={formData.special_requests}
-                  onChange={(e) => setFormData({...formData, special_requests: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, special_requests: e.target.value })}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows={4}
                   placeholder="특별한 요청사항이 있으시면 입력해주세요"

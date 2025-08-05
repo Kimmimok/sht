@@ -88,7 +88,7 @@ function NewTourQuoteContent() {
         .order('tour_name');
 
       if (error) throw error;
-      
+
       // 중복 제거
       const uniqueTourNames = [...new Set(data.map((item: any) => item.tour_name))] as string[];
       setTourNameOptions(uniqueTourNames);
@@ -106,7 +106,7 @@ function NewTourQuoteContent() {
         .order('tour_vehicle');
 
       if (error) throw error;
-      
+
       // 중복 제거
       const uniqueVehicles = [...new Set(data.map((item: any) => item.tour_vehicle))] as string[];
       setVehicleOptions(uniqueVehicles);
@@ -125,7 +125,7 @@ function NewTourQuoteContent() {
         .order('tour_type');
 
       if (error) throw error;
-      
+
       // 중복 제거
       const uniquePayments = [...new Set(data.map((item: any) => item.tour_type))] as string[];
       setPaymentOptions(uniquePayments);
@@ -145,7 +145,7 @@ function NewTourQuoteContent() {
         .order('tour_capacity');
 
       if (error) throw error;
-      
+
       // 중복 제거 (최대 참가자수는 숫자이므로 문자열로 변환)
       const uniqueCategories = [...new Set(data.map((item: any) => item.tour_capacity.toString()))] as string[];
       setCategoryOptions(uniqueCategories);
@@ -156,14 +156,14 @@ function NewTourQuoteContent() {
 
   const loadQuote = async () => {
     if (!quoteId) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('quote')
         .select('*')
         .eq('id', quoteId)
         .single();
-      
+
       if (error) throw error;
       setQuote(data);
     } catch (error) {
@@ -195,7 +195,7 @@ function NewTourQuoteContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedTourName || !selectedVehicle || !selectedPayment || !selectedCategory) {
       alert('모든 필수 항목을 선택해주세요.');
       return;
@@ -211,9 +211,9 @@ function NewTourQuoteContent() {
     try {
       // 4가지 조건으로 tour_code 조회
       const tourCode = await getTourCodeFromConditions(
-        selectedTourName, 
-        selectedVehicle, 
-        selectedPayment, 
+        selectedTourName,
+        selectedVehicle,
+        selectedPayment,
         selectedCategory
       );
 
@@ -264,7 +264,7 @@ function NewTourQuoteContent() {
       console.log('✅ 견적 아이템 생성 성공:', itemData);
 
       alert('투어가 견적에 추가되었습니다!');
-      router.push(`/mypage/quotes/${quoteId}/view`);
+      // 페이지 이동 없이 그대로 머무름
 
     } catch (error) {
       console.error('❌ 투어 견적 추가 중 오류:', error);
@@ -308,7 +308,7 @@ function NewTourQuoteContent() {
               </button>
             </div>
           </div>
-          
+
           {/* 견적 정보 */}
           <div className="bg-white/70 backdrop-blur rounded-lg p-4 mb-6">
             <h3 className="font-semibold text-gray-800 mb-2">현재 견적 정보</h3>
@@ -326,11 +326,11 @@ function NewTourQuoteContent() {
         <div className="max-w-4xl mx-auto">
           <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">투어 정보 입력</h2>
-            
+
             {/* 투어 안내 카드 */}
             <div className="bg-blue-600 rounded-lg p-6 mb-6 border border-blue-700">
               <h3 className="text-white text-lg font-semibold mb-2">📝 견적안내</h3>
-              <p className="text-white/90 text-sm">투어 예약을 위해 아래 정보를 순서대로 입력해 주세요.<br/>정확한 투어명, 차량, 투어 타입, 참가자수 정보를 입력하시면 빠른 견적 안내가 가능합니다.</p>
+              <p className="text-white/90 text-sm">투어 예약을 위해 아래 정보를 순서대로 입력해 주세요.<br />정확한 투어명, 차량, 투어 타입, 참가자수 정보를 입력하시면 빠른 견적 안내가 가능합니다.</p>
             </div>
 
             {/* 투어 선택 폼 */}
@@ -421,7 +421,7 @@ function NewTourQuoteContent() {
                 <input
                   type="date"
                   value={formData.tour_date}
-                  onChange={(e) => setFormData({...formData, tour_date: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, tour_date: e.target.value })}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
@@ -434,7 +434,7 @@ function NewTourQuoteContent() {
                 </label>
                 <textarea
                   value={formData.special_requests}
-                  onChange={(e) => setFormData({...formData, special_requests: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, special_requests: e.target.value })}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows={4}
                   placeholder="특별한 요청사항이 있으시면 입력해주세요"

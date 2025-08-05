@@ -20,8 +20,8 @@ export default function DatabaseStatusWidget() {
   const checkDatabaseStatus = async () => {
     try {
       console.log('🔍 데이터베이스 상태 확인 중...');
-      
-      const tables = ['quote', 'users', 'cruise_info', 'room_info', 'car_info'];
+
+      const tables = ['quote', 'reservation', 'users'];
       const tableStatus: { [key: string]: number | string } = {};
       let connected = true;
 
@@ -90,7 +90,7 @@ export default function DatabaseStatusWidget() {
           🔄 새로고침
         </button>
       </div>
-      
+
       <div className="text-xs text-gray-600 space-y-1">
         {Object.entries(status.tables).map(([table, count]) => (
           <div key={table} className="flex justify-between">
