@@ -17,7 +17,6 @@ function CruiseReservationContent() {
         checkin: '',
         guest_count: 0,
         unit_price: 0,
-        boarding_assist: 'n', // y/n 값으로 변경
         car_price_code: '',
         car_count: 0,
         passenger_count: 0,
@@ -151,16 +150,18 @@ function CruiseReservationContent() {
 
             // 첫 번째 객실 정보로 폼 기본값 설정
             if (uniqueRooms.length > 0) {
-                const firstRoom = uniqueRooms[0];
+                // 체크인 날짜는 견적 아이템의 usage_date에서만 가져옴
+                // uniqueRooms에는 usage_date가 없으므로, roomItems[0]?.usage_date를 사용
                 const totalGuestCount = uniqueRooms.reduce((sum, room) => sum + (room.adult_count || 0) + (room.child_count || 0) + (room.extra_count || 0), 0);
                 const totalPrice = uniqueRooms.reduce((sum, room) => sum + (room.quoteItem?.total_price || 0), 0);
 
                 setForm(prev => ({
                     ...prev,
-                    room_price_code: firstRoom.room_code,
-                    unit_price: firstRoom.quoteItem?.unit_price || firstRoom.priceInfo?.price || 0,
+                    room_price_code: uniqueRooms[0].room_code,
+                    unit_price: uniqueRooms[0].quoteItem?.unit_price || uniqueRooms[0].priceInfo?.price || 0,
                     guest_count: totalGuestCount,
-                    room_total_price: totalPrice
+                    room_total_price: totalPrice,
+                    checkin: roomItems[0]?.usage_date || ''
                 }));
             }
 
@@ -302,41 +303,41 @@ function CruiseReservationContent() {
             }
 
             if (form.guest_count === 0) {
-                alert('투숙객 인원은 최소 1명 이상이어야 합니다.');
+                alert('투숙객 인동은 최소 1명 이상이어야 합니다.');
                 return;
             }
 
             // 먼저 reservation 테이블에 메인 예약 데이터 생성
             const { data: { user }, error: userError } = await supabase.auth.getUser();
             if (userError || !user) {
-                alert('로그인이 필요합니다.');
+                router.push(`/mypage/reservations?quoteId=${quoteId}`);
                 return;
             }
 
-            // 기존 사용자 정보 확인 및 권한 유지
-            const { data: existingUser } = await supabase
+            // 기존 사용자 정보 확인
+            const { data: existingUser, error: fetchError } = await supabase
                 .from('users')
                 .select('id, role')
                 .eq('id', user.id)
                 .single();
 
-            // 사용자가 users 테이블에 없는 경우에만 새로 등록 (member 권한으로)
-            if (!existingUser) {
-                const { error: userInsertError } = await supabase
+            // 사용자가 없거나 'guest'일 경우에만 'member'로 승급 또는 등록
+            if (!existingUser || existingUser.role === 'guest') {
+                const { error: upsertError } = await supabase
                     .from('users')
-                    .insert({
+                    .upsert({
                         id: user.id,
                         email: user.email,
-                        role: 'member', // 예약자는 member 권한
-                        created_at: new Date().toISOString()
-                    });
+                        role: 'member', // 예약 시 'member'로 승급
+                        updated_at: new Date().toISOString()
+                    }, { onConflict: 'id' });
 
-                if (userInsertError) {
-                    console.error('사용자 등록 오류:', userInsertError);
-                    // 이미 존재하는 사용자일 수 있으므로 에러를 무시하고 계속 진행
+                if (upsertError) {
+                    console.error('사용자 역할 업데이트 오류:', upsertError);
+                    // 에러가 발생해도 예약을 중단하지 않고 계속 진행할 수 있음
                 }
             }
-            // 기존 사용자의 경우 권한을 그대로 유지
+            // 기존 'member', 'manager', 'admin' 역할은 그대로 유지
 
             // reservation 테이블에 메인 예약 생성
             const { data: reservationData, error: reservationError } = await supabase
@@ -358,13 +359,14 @@ function CruiseReservationContent() {
             }
 
             // reservation_cruise 데이터 생성
-            const reservationCruiseData = {
+            // boarding_assist 값 처리 - CHECK 제약조건 문제 해결을 위해 필드를 완전히 제거
+            // boarding_assist가 ''이면 null로 전달, 아니면 'y'/'n'만 전달
+            const reservationCruiseData: { [key: string]: any } = {
                 reservation_id: reservationData.re_id,
                 room_price_code: form.room_price_code,
                 checkin: form.checkin,
                 guest_count: form.guest_count,
                 unit_price: form.unit_price,
-                boarding_assist: form.boarding_assist,
                 car_price_code: form.car_price_code,
                 car_count: form.car_count,
                 passenger_count: form.passenger_count,
@@ -375,6 +377,7 @@ function CruiseReservationContent() {
                 car_total_price: form.car_total_price,
                 request_note: form.request_note
             };
+            console.log('reservationCruiseData (final):', reservationCruiseData); // 실제 값 확인
 
             // reservation_cruise 테이블에 삽입
             const { data: reservationResult, error: cruiseReservationError } = await supabase
@@ -390,7 +393,7 @@ function CruiseReservationContent() {
             }
 
             alert('크루즈 예약이 성공적으로 저장되었습니다!');
-            router.push('/mypage/reservations');
+            router.push(`/mypage/reservations?quoteId=${quoteId}`);
 
         } catch (error) {
             console.error('예약 저장 오류:', error);
@@ -512,11 +515,11 @@ function CruiseReservationContent() {
                                                             </div>
                                                             <div>
                                                                 <span className="text-gray-600">가격:</span>
-                                                                <p className="font-medium text-blue-600">{priceInfo.price ? `${priceInfo.price.toLocaleString()}원` : '-'}</p>
+                                                                <p className="font-medium text-blue-600">{priceInfo.price ? `${priceInfo.price.toLocaleString()}동` : '-'}</p>
                                                             </div>
                                                             <div>
                                                                 <span className="text-gray-600">합계:</span>
-                                                                <p className="font-medium text-red-600">{totalPrice.toLocaleString()}원</p>
+                                                                <p className="font-medium text-red-600">{totalPrice.toLocaleString()}동</p>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -540,76 +543,8 @@ function CruiseReservationContent() {
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none"
                             />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                단가
-                            </label>
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={form.unit_price}
-                                onChange={(e) => handleInputChange('unit_price', parseFloat(e.target.value) || 0)}
-                                placeholder="단가를 입력하세요"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                승선 도움 서비스
-                            </label>
-                            <div className="flex items-center gap-4">
-                                <label className="flex items-center">
-                                    <input
-                                        type="radio"
-                                        name="boarding_assist"
-                                        value="y"
-                                        checked={form.boarding_assist === 'y'}
-                                        onChange={(e) => handleInputChange('boarding_assist', e.target.value)}
-                                        className="mr-2"
-                                    />
-                                    <span className="text-sm">예</span>
-                                </label>
-                                <label className="flex items-center">
-                                    <input
-                                        type="radio"
-                                        name="boarding_assist"
-                                        value="n"
-                                        checked={form.boarding_assist === 'n'}
-                                        onChange={(e) => handleInputChange('boarding_assist', e.target.value)}
-                                        className="mr-2"
-                                    />
-                                    <span className="text-sm">아니오</span>
-                                </label>
-                            </div>
-                        </div>
+
                     </div>
-                    <SectionBox title="인원 정보">
-                        <div className="text-center">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                투숙객 수 *
-                            </label>
-                            <div className="flex items-center justify-center space-x-4">
-                                <button
-                                    type="button"
-                                    onClick={() => handleCountChange('guest_count', false)}
-                                    className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center"
-                                >
-                                    -
-                                </button>
-                                <span className="text-xl font-semibold w-8 text-center">
-                                    {form.guest_count}
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={() => handleCountChange('guest_count', true)}
-                                    className="w-8 h-8 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center"
-                                >
-                                    +
-                                </button>
-                            </div>
-                        </div>
-                    </SectionBox>
                 </SectionBox>
 
                 {/* 차량 정보 */}
@@ -637,16 +572,13 @@ function CruiseReservationContent() {
                                     </div>
                                     <div>
                                         <span className="text-gray-600">승객수:</span>
-                                        <p className="font-medium text-gray-800">{carPriceInfo.passenger_count || '-'}명</p>
+                                        <p className="font-medium text-gray-800">{carPriceInfo.passenger_count || '-'}</p>
                                     </div>
                                     <div>
                                         <span className="text-gray-600">가격:</span>
-                                        <p className="font-medium text-green-600">{carPriceInfo.price ? `${carPriceInfo.price.toLocaleString()}원` : '-'}</p>
+                                        <p className="font-medium text-green-600">{carPriceInfo.price ? `${carPriceInfo.price.toLocaleString()}동` : '-'}</p>
                                     </div>
-                                    <div>
-                                        <span className="text-gray-600">합계:</span>
-                                        <p className="font-medium text-red-600">{carPriceInfo.price && form.car_count ? `${(carPriceInfo.price * form.car_count).toLocaleString()}원` : '-'}</p>
-                                    </div>
+                                    {/* 합계(총 예약 금액)는 아래 종합 정보에서만 표시, 여기서는 제거 */}
                                 </div>
                             </div>
                         </div>
@@ -742,84 +674,18 @@ function CruiseReservationContent() {
                             />
                         </div>
                     </div>
-                </SectionBox>
-
-                {/* 예약 종합 정보 */}
-                <SectionBox title="예약 종합 정보">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                룸 총 가격
-                            </label>
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={form.room_total_price}
-                                onChange={(e) => handleInputChange('room_total_price', parseFloat(e.target.value) || 0)}
-                                placeholder="룸 총 가격을 입력하세요"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                                자동 계산: {form.unit_price?.toLocaleString()}원 × {form.guest_count}명 = {(form.unit_price * form.guest_count)?.toLocaleString()}원
-                            </p>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                차량 총 가격
-                            </label>
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={form.car_total_price}
-                                onChange={(e) => handleInputChange('car_total_price', parseFloat(e.target.value) || 0)}
-                                placeholder="차량 총 가격을 입력하세요"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            {carPriceInfo?.price && (
-                                <p className="text-xs text-gray-500 mt-1">
-                                    자동 계산: {carPriceInfo.price?.toLocaleString()}원 × {form.car_count}대 = {(carPriceInfo.price * form.car_count)?.toLocaleString()}원
-                                </p>
-                            )}
-                        </div>
-                    </div>
 
                     {/* 총 예약 금액 표시 */}
                     <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                         <h4 className="text-sm font-medium text-yellow-800 mb-3">💰 총 예약 금액</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                            <div>
-                                <span className="text-gray-600">룸 비용:</span>
-                                <p className="font-medium text-blue-600">{form.room_total_price?.toLocaleString()}원</p>
-                            </div>
-                            <div>
-                                <span className="text-gray-600">차량 비용:</span>
-                                <p className="font-medium text-green-600">{form.car_total_price?.toLocaleString()}원</p>
-                            </div>
-                            <div className="md:text-right">
-                                <span className="text-gray-600">총 금액:</span>
-                                <p className="font-bold text-lg text-red-600">
-                                    {(form.room_total_price + form.car_total_price)?.toLocaleString()}원
-                                </p>
-                            </div>
+                        <div className="flex flex-row items-center gap-6 text-sm">
+                            <span className="text-gray-600">룸 비용: <span className="font-medium text-blue-600">{form.room_total_price?.toLocaleString()}원</span></span>
+                            <span className="text-gray-600">차량 비용: <span className="font-medium text-green-600">{form.car_total_price?.toLocaleString()}원</span></span>
+                            <span className="text-gray-600">총 금액: <span className="font-bold text-lg text-red-600">{(form.room_total_price + form.car_total_price)?.toLocaleString()}원</span></span>
                         </div>
                     </div>
-
-                    <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            특별 요청사항
-                        </label>
-                        <textarea
-                            value={form.request_note}
-                            onChange={(e) => handleInputChange('request_note', e.target.value)}
-                            placeholder="특별한 요청사항이 있으시면 입력해주세요"
-                            rows={4}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
                 </SectionBox>
+
 
 
                 {/* 제출 버튼 */}
@@ -835,7 +701,7 @@ function CruiseReservationContent() {
                         disabled={loading}
                         className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {loading ? '저장 중...' : '크루즈 예약 저장'}
+                        {loading ? '저장 중...' : '크루즈 예약 추가'}
                     </button>
                 </div>
             </div>

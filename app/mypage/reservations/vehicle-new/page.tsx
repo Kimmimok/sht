@@ -16,7 +16,7 @@ function VehicleReservationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
-  
+
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [quote, setQuote] = useState<any>(null);
@@ -49,7 +49,7 @@ function VehicleReservationContent() {
 
   const loadQuoteInfo = async () => {
     if (!quoteId) return;
-    
+
     try {
       const { data: quoteData, error } = await supabase
         .from('quote')
@@ -70,12 +70,12 @@ function VehicleReservationContent() {
 
   const getQuoteTitle = (quote: any) => {
     if (!quote) return '';
-    
+
     // title 필드가 있으면 우선 사용
     if (quote.title && quote.title.trim()) {
       return quote.title;
     }
-    
+
     // title이 없으면 기본 형식으로 생성
     const date = quote.checkin ? new Date(quote.checkin).toLocaleDateString() : '날짜 미정';
     const cruiseCode = quote.cruise_code || quote.cruise_name || '크루즈 미정';
@@ -113,8 +113,8 @@ function VehicleReservationContent() {
       if (vehicleError) throw vehicleError;
 
       alert('차량 예약이 성공적으로 등록되었습니다!');
-      router.push('/mypage/reservations');
-      
+      router.push(`/mypage/reservations?quoteId=${quoteId}`);
+
     } catch (error) {
       console.error('차량 예약 오류:', error);
       alert('예약 처리 중 오류가 발생했습니다.');
@@ -234,7 +234,7 @@ function VehicleReservationContent() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-gray-700">색상 라벨:</span>
                   <span className="text-sm text-gray-900">
-                    {formData.color_label ? 
+                    {formData.color_label ?
                       colorOptions.find(opt => opt.value === formData.color_label)?.label : '미선택'}
                   </span>
                 </div>

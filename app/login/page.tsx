@@ -29,10 +29,37 @@ export default function LoginPage() {
       console.log('✅ 로그인된 유저:', user);
 
       if (user) {
-        // 사용자 프로필 자동 생성/업데이트 (guest 역할로)
-        await upsertUserProfile(user.id, user.email || '', {
-          role: 'guest'
-        });
+        // 사용자가 'users' 테이블에 존재하는지 확인
+        const { data: existingUser, error: fetchError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', user.id)
+          .single();
+
+        // 프로필이 존재하지 않을 경우에만 'guest'로 생성
+        // fetchError.code가 'PGRST116'인 경우는 결과가 없는 것이므로 정상 처리
+        if (!existingUser && (!fetchError || fetchError.code === 'PGRST116')) {
+          const { error: insertError } = await supabase
+            .from('users')
+            .insert({
+              id: user.id,
+              email: user.email,
+              role: 'guest',
+            });
+
+          if (insertError) {
+            console.error('사용자 프로필 생성 오류:', insertError);
+            alert('프로필 생성 중 오류가 발생했습니다.');
+            setLoading(false);
+            return;
+          }
+        } else if (fetchError && fetchError.code !== 'PGRST116') {
+          console.error('사용자 프로필 조회 오류:', fetchError);
+          alert('사용자 정보를 확인하는 중 오류가 발생했습니다.');
+          setLoading(false);
+          return;
+        }
+        // 기존 사용자의 경우 역할을 변경하지 않음
       }
 
       alert('✅ 로그인 성공!');

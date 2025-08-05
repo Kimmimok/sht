@@ -98,7 +98,7 @@ function AirportReservationContent() {
       if (airportError) throw airportError;
 
       alert('공항 서비스 예약이 성공적으로 등록되었습니다!');
-      router.push('/mypage/reservations');
+      router.push(`/mypage/reservations?quoteId=${quoteId}`);
 
     } catch (error) {
       console.error('공항 서비스 예약 오류:', error);

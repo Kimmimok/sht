@@ -19,7 +19,7 @@ function TourReservationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
-  
+
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [formData, setFormData] = useState<TourReservationForm>({
@@ -80,8 +80,8 @@ function TourReservationContent() {
       if (tourError) throw tourError;
 
       alert('투어 예약이 성공적으로 등록되었습니다!');
-      router.push('/mypage/reservations');
-      
+      router.push(`/mypage/reservations?quoteId=${quoteId}`);
+
     } catch (error) {
       console.error('투어 예약 오류:', error);
       alert('예약 처리 중 오류가 발생했습니다.');

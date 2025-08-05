@@ -135,6 +135,48 @@ function ReservationHomeContent() {
     }
   };
 
+  // 예약 신청하기 - 매니저에게 전달
+  const handleSubmitReservation = async () => {
+    const currentQuoteId = quoteId || existingQuoteId;
+
+    if (!currentQuoteId) {
+      alert('예약 ID가 없습니다.');
+      return;
+    }
+
+    if (!userProfile || !userProfile.name || !userProfile.english_name) {
+      alert('먼저 신상정보를 입력해주세요!');
+      router.push(`/mypage/reservations/profile?quoteId=${currentQuoteId}`);
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // 현재 견적의 상태를 'submitted'로 변경하여 매니저에게 전달
+      const { error: updateError } = await supabase
+        .from('quote')
+        .update({
+          status: 'submitted',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentQuoteId);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      alert('예약 신청이 완료되었습니다! 매니저가 확인 후 연락드리겠습니다.');
+      router.push('/mypage/quotes');
+
+    } catch (error) {
+      console.error('예약 신청 오류:', error);
+      alert('예약 신청 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 서비스 선택 시 프로필 확인 후 이동
   const handleServiceSelect = (service: typeof menuList[0]) => {
     if (!quoteId && !existingQuoteId) {
@@ -409,6 +451,31 @@ function ReservationHomeContent() {
             </div>
           </div>
         </div>
+        {/* 예약 신청 완료 버튼 */}
+        {(quoteId || existingQuoteId) && quote && (
+          <div className="mt-12 text-center">
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 p-8 rounded-xl shadow-lg border border-green-200">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">📝 예약 신청 완료</h2>
+              <p className="text-gray-600 mb-6">
+                모든 예약 정보를 입력하셨으면 아래 버튼을 클릭하여 매니저에게 예약을 신청하세요.
+              </p>
+              <button
+                onClick={handleSubmitReservation}
+                disabled={loading || !userProfile?.name}
+                className={`px-8 py-4 rounded-lg font-bold text-lg transition-all duration-200 shadow-lg ${loading || !userProfile?.name
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white transform hover:scale-105'
+                  }`}
+              >
+                {loading ? '신청 중...' : '🚀 매니저에게 예약 신청하기'}
+              </button>
+              {!userProfile?.name && (
+                <p className="text-red-500 text-sm mt-2">신상정보를 먼저 입력해주세요.</p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* 기존 예약 확인 버튼 */}
         <div className="mt-8 text-center">
           <button

@@ -1,6 +1,6 @@
 import supabase from './supabase';
 
-// 사용자 프로필 생성/업데이트 함수
+// 사용자 프로필 생성/업데이트 함수 (역할은 신중하게 다룸)
 export const upsertUserProfile = async (
   userId: string,
   email: string,
@@ -8,24 +8,50 @@ export const upsertUserProfile = async (
     name?: string;
     english_name?: string;
     phone_number?: string;
-    role?: string;
+    role?: string; // 역할 업데이트는 이 함수에서 직접 하지 않도록 유도
   } = {}
 ) => {
   try {
+    // 1. 기존 사용자 정보 조회
+    const { data: existingUser, error: fetchError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error('사용자 정보 조회 오류:', fetchError);
+      throw fetchError;
+    }
+
+    // 2. 업데이트할 데이터 준비
+    const updateData: any = {
+      id: userId,
+      email: email,
+      updated_at: new Date().toISOString(),
+    };
+
+    // 추가 정보가 있으면 병합
+    if (additionalData.name) updateData.name = additionalData.name;
+    if (additionalData.english_name) updateData.english_name = additionalData.english_name;
+    if (additionalData.phone_number) updateData.phone_number = additionalData.phone_number;
+
+    // 3. 역할(role) 처리
+    // 기존 사용자가 있으면 역할을 변경하지 않음
+    // 새 사용자이거나, 역할이 명시적으로 제공된 경우에만 설정
+    if (existingUser) {
+      // 기존 역할 유지
+      updateData.role = existingUser.role;
+    } else {
+      // 새 사용자: 제공된 역할 또는 'guest'
+      updateData.role = additionalData.role || 'guest';
+      updateData.created_at = new Date().toISOString();
+    }
+
+    // 4. Upsert 실행
     const { error } = await supabase
       .from('users')
-      .upsert({
-        id: userId,
-        email: email,
-        role: additionalData.role || 'guest',
-        name: additionalData.name,
-        english_name: additionalData.english_name,
-        phone_number: additionalData.phone_number,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'id'
-      });
+      .upsert(updateData, { onConflict: 'id' });
 
     if (error) {
       console.error('❌ 사용자 프로필 생성/업데이트 실패:', error);
