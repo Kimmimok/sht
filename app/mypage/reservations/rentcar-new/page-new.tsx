@@ -6,27 +6,31 @@ import supabase from '@/lib/supabase';
 import PageWrapper from '@/components/PageWrapper';
 import SectionBox from '@/components/SectionBox';
 
-function HotelReservationContent() {
+function RentcarReservationContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const quoteId = searchParams.get('quoteId');
 
-    // 폼 상태 - reservation_hotel 테이블 컬럼 기반
+    // 폼 상태 - reservation_rentcar 테이블 컬럼 기반
     const [form, setForm] = useState({
-        schedule: '',
-        room_count: 1,
-        checkin_date: '',
-        breakfast_service: '',
-        hotel_category: '',
-        guest_count: 1,
+        rentcar_price_code: '',
+        rentcar_count: 1,
+        unit_price: 0,
+        car_count: 1,
+        passenger_count: 1,
+        pickup_datetime: '',
+        pickup_location: '',
+        destination: '',
+        via_location: '',
+        via_waiting: '',
+        luggage_count: 0,
         total_price: 0,
-        hotel_price_code: '',
         request_note: ''
     });
 
     // 옵션 데이터
-    const [hotelPriceInfo, setHotelPriceInfo] = useState<any[]>([]);
-    const [hotelData, setHotelData] = useState<any[]>([]);
+    const [rentPriceInfo, setRentPriceInfo] = useState<any[]>([]);
+    const [rentcarData, setRentcarData] = useState<any[]>([]);
 
     // 로딩 상태
     const [loading, setLoading] = useState(false);
@@ -64,7 +68,7 @@ function HotelReservationContent() {
         }
     };
 
-    // 견적에 연결된 호텔 데이터 로드
+    // 견적에 연결된 렌트카 데이터 로드
     const loadQuoteLinkedData = async () => {
         try {
             // 견적에 연결된 quote_item들 조회 (usage_date 포함)
@@ -72,17 +76,17 @@ function HotelReservationContent() {
                 .from('quote_item')
                 .select('service_type, service_ref_id, quantity, unit_price, total_price, usage_date')
                 .eq('quote_id', quoteId)
-                .eq('service_type', 'hotel');
+                .eq('service_type', 'rentcar');
 
             if (quoteItems && quoteItems.length > 0) {
-                await loadAllHotelInfo(quoteItems);
+                await loadAllRentcarInfo(quoteItems);
 
-                // 첫 번째 호텔 아이템에서 체크인 날짜 설정
-                const firstHotelUsageDate = quoteItems[0]?.usage_date;
-                if (firstHotelUsageDate) {
+                // 첫 번째 렌트카 아이템에서 날짜 설정
+                const firstRentcarUsageDate = quoteItems[0]?.usage_date;
+                if (firstRentcarUsageDate) {
                     setForm(prev => ({
                         ...prev,
-                        checkin_date: firstHotelUsageDate
+                        pickup_datetime: firstRentcarUsageDate
                     }));
                 }
             }
@@ -91,62 +95,65 @@ function HotelReservationContent() {
         }
     };
 
-    // 모든 호텔 정보 로드
-    const loadAllHotelInfo = async (hotelItems: any[]) => {
+    // 모든 렌트카 정보 로드
+    const loadAllRentcarInfo = async (rentcarItems: any[]) => {
         try {
-            const allHotelData = [];
-            const hotelPriceDataList = [];
+            const allRentcarData = [];
+            const rentPriceDataList = [];
 
-            // 각 hotel item에 대해 정보 조회
-            for (const hotelItem of hotelItems) {
-                // hotel 테이블에서 호텔 정보 조회
-                const { data: hotelData } = await supabase
-                    .from('hotel')
+            // 각 rentcar item에 대해 정보 조회
+            for (const rentcarItem of rentcarItems) {
+                // rentcar 테이블에서 렌트카 정보 조회
+                const { data: rentcarData } = await supabase
+                    .from('rentcar')
                     .select('*')
-                    .eq('id', hotelItem.service_ref_id)
+                    .eq('id', rentcarItem.service_ref_id)
                     .single();
 
-                if (hotelData) {
-                    // hotel_price 테이블에서 가격 정보 조회
-                    const { data: hotelPriceData } = await supabase
-                        .from('hotel_price')
+                if (rentcarData) {
+                    // rent_price 테이블에서 가격 정보 조회
+                    const { data: rentPriceData } = await supabase
+                        .from('rent_price')
                         .select('*')
-                        .eq('hotel_code', hotelData.hotel_code);
+                        .eq('rent_code', rentcarData.rent_code);
 
-                    if (hotelPriceData && hotelPriceData.length > 0) {
+                    if (rentPriceData && rentPriceData.length > 0) {
                         // quote_item 정보와 함께 저장
-                        allHotelData.push({
-                            ...hotelData,
-                            quoteItem: hotelItem,
-                            priceInfo: hotelPriceData[0] // 첫 번째 가격 정보 사용
+                        allRentcarData.push({
+                            ...rentcarData,
+                            quoteItem: rentcarItem,
+                            priceInfo: rentPriceData[0] // 첫 번째 가격 정보 사용
                         });
 
-                        hotelPriceDataList.push(...hotelPriceData);
+                        rentPriceDataList.push(...rentPriceData);
                     }
                 }
             }
 
-            setHotelData(allHotelData);
-            setHotelPriceInfo(hotelPriceDataList);
+            setRentcarData(allRentcarData);
+            setRentPriceInfo(rentPriceDataList);
 
-            // 첫 번째 호텔 정보로 폼 기본값 설정
-            if (allHotelData.length > 0) {
-                const firstHotel = allHotelData[0];
+            // 첫 번째 렌트카 정보로 폼 기본값 설정
+            if (allRentcarData.length > 0) {
+                const firstRentcar = allRentcarData[0];
                 setForm(prev => ({
                     ...prev,
-                    hotel_price_code: firstHotel.hotel_code,
-                    schedule: firstHotel.priceInfo?.schedule || '',
-                    room_count: firstHotel.room_count || 1,
-                    breakfast_service: firstHotel.breakfast_service || '',
-                    hotel_category: firstHotel.hotel_category || '',
-                    guest_count: firstHotel.guest_count || 1,
-                    total_price: firstHotel.quoteItem?.total_price || 0,
-                    checkin_date: hotelItems[0]?.usage_date || ''
+                    rentcar_price_code: firstRentcar.rent_code,
+                    unit_price: firstRentcar.quoteItem?.unit_price || firstRentcar.priceInfo?.price || 0,
+                    car_count: firstRentcar.car_count || 1,
+                    passenger_count: firstRentcar.passenger_count || 1,
+                    pickup_location: firstRentcar.pickup_location || '',
+                    destination: firstRentcar.destination || '',
+                    via_location: firstRentcar.via_location || '',
+                    via_waiting: firstRentcar.via_waiting || '',
+                    luggage_count: firstRentcar.luggage_count || 0,
+                    total_price: firstRentcar.quoteItem?.total_price || 0,
+                    pickup_datetime: rentcarItems[0]?.usage_date || ''
                 }));
             }
 
         } catch (error) {
-            console.error('호텔 정보 로드 오류:', error);
+            console.error('렌트카 정보 로드 오류:', error);
         }
     };
 
@@ -157,18 +164,18 @@ function HotelReservationContent() {
 
         try {
             // 유효성 검사
-            if (!form.hotel_price_code) {
-                alert('호텔 가격 코드는 필수 입력 항목입니다.');
+            if (!form.pickup_location) {
+                alert('픽업 장소는 필수 입력 항목입니다.');
                 return;
             }
 
-            if (!form.checkin_date) {
-                alert('체크인 날짜는 필수 입력 항목입니다.');
+            if (!form.pickup_datetime) {
+                alert('픽업 일시는 필수 입력 항목입니다.');
                 return;
             }
 
-            if (form.guest_count === 0) {
-                alert('투숙객 수는 최소 1명 이상이어야 합니다.');
+            if (form.passenger_count === 0) {
+                alert('탑승 인원은 최소 1명 이상이어야 합니다.');
                 return;
             }
 
@@ -209,7 +216,7 @@ function HotelReservationContent() {
                 .insert({
                     re_user_id: user.id,
                     re_quote_id: quoteId,
-                    re_type: 'hotel',
+                    re_type: 'rentcar',
                     re_status: 'pending',
                     re_created_at: new Date().toISOString()
                 })
@@ -222,34 +229,38 @@ function HotelReservationContent() {
                 return;
             }
 
-            // reservation_hotel 데이터 생성
-            const reservationHotelData = {
+            // reservation_rentcar 데이터 생성
+            const reservationRentcarData = {
                 reservation_id: reservationData.re_id,
-                schedule: form.schedule,
-                room_count: form.room_count,
-                checkin_date: form.checkin_date ? new Date(form.checkin_date).toISOString() : null,
-                breakfast_service: form.breakfast_service,
-                hotel_category: form.hotel_category,
-                guest_count: form.guest_count,
+                rentcar_price_code: form.rentcar_price_code,
+                rentcar_count: form.rentcar_count,
+                unit_price: form.unit_price,
+                car_count: form.car_count,
+                passenger_count: form.passenger_count,
+                pickup_datetime: form.pickup_datetime ? new Date(form.pickup_datetime).toISOString() : null,
+                pickup_location: form.pickup_location,
+                destination: form.destination,
+                via_location: form.via_location,
+                via_waiting: form.via_waiting,
+                luggage_count: form.luggage_count,
                 total_price: form.total_price,
-                hotel_price_code: form.hotel_price_code,
                 request_note: form.request_note
             };
 
-            // reservation_hotel 테이블에 삽입
-            const { data: reservationResult, error: hotelReservationError } = await supabase
-                .from('reservation_hotel')
-                .insert(reservationHotelData)
+            // reservation_rentcar 테이블에 삽입
+            const { data: reservationResult, error: rentcarReservationError } = await supabase
+                .from('reservation_rentcar')
+                .insert(reservationRentcarData)
                 .select()
                 .single();
 
-            if (hotelReservationError) {
-                console.error('호텔 예약 저장 오류:', hotelReservationError);
-                alert('호텔 예약 저장 중 오류가 발생했습니다.');
+            if (rentcarReservationError) {
+                console.error('렌트카 예약 저장 오류:', rentcarReservationError);
+                alert('렌트카 예약 저장 중 오류가 발생했습니다.');
                 return;
             }
 
-            alert('호텔 예약이 성공적으로 저장되었습니다!');
+            alert('렌트카 예약이 성공적으로 저장되었습니다!');
             router.push(`/mypage/reservations?quoteId=${quoteId}`);
 
         } catch (error) {
@@ -284,7 +295,7 @@ function HotelReservationContent() {
                 {/* 헤더 */}
                 <div className="flex justify-between items-center">
                     <div>
-                        <h1 className="text-lg font-bold text-gray-800">🏨 호텔 예약</h1>
+                        <h1 className="text-lg font-bold text-gray-800">🚗 렌트카 예약</h1>
                         <p className="text-sm text-gray-600 mt-1">견적: {quote.title}</p>
                     </div>
                     <button
@@ -295,19 +306,18 @@ function HotelReservationContent() {
                     </button>
                 </div>
 
-                {/* 호텔 가격 정보 */}
-                {hotelPriceInfo.length > 0 && (
-                    <SectionBox title="호텔 가격 정보">
-                        <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
-                            <h4 className="text-sm font-medium text-orange-800 mb-3">🏨 호텔 정보</h4>
+                {/* 렌트카 가격 정보 */}
+                {rentPriceInfo.length > 0 && (
+                    <SectionBox title="렌트카 가격 정보">
+                        <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                            <h4 className="text-sm font-medium text-green-800 mb-3">🚗 렌트카 정보</h4>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                {hotelPriceInfo.map((price, index) => (
+                                {rentPriceInfo.map((price, index) => (
                                     <div key={index} className="space-y-2">
-                                        <div><span className="text-gray-600">일정:</span> <span className="font-medium">{price.schedule}</span></div>
+                                        <div><span className="text-gray-600">차종:</span> <span className="font-medium">{price.car_type}</span></div>
                                         <div><span className="text-gray-600">지역:</span> <span className="font-medium">{price.area}</span></div>
-                                        <div><span className="text-gray-600">호텔급:</span> <span className="font-medium">{price.hotel_category}</span></div>
-                                        <div><span className="text-gray-600">조식:</span> <span className="font-medium">{price.breakfast}</span></div>
-                                        <div><span className="text-gray-600">가격:</span> <span className="font-medium text-orange-600">{price.price?.toLocaleString()}원</span></div>
+                                        <div><span className="text-gray-600">운전자:</span> <span className="font-medium">{price.driver}</span></div>
+                                        <div><span className="text-gray-600">가격:</span> <span className="font-medium text-green-600">{price.price?.toLocaleString()}원</span></div>
                                     </div>
                                 ))}
                             </div>
@@ -315,122 +325,50 @@ function HotelReservationContent() {
                     </SectionBox>
                 )}
 
-                {/* 호텔 예약 폼 */}
-                <SectionBox title="호텔 예약 정보">
+                {/* 렌트카 예약 폼 */}
+                <SectionBox title="렌트카 예약 정보">
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* 호텔 기본 정보 */}
-                        <div className="bg-orange-50 rounded-lg p-6">
-                            <h3 className="text-lg font-bold text-orange-900 mb-4">호텔 기본 정보</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        호텔 가격 코드
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={form.hotel_price_code}
-                                        onChange={(e) => handleInputChange('hotel_price_code', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        일정
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={form.schedule}
-                                        onChange={(e) => handleInputChange('schedule', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                        placeholder="예: 3박4일"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        호텔 등급
-                                    </label>
-                                    <select
-                                        value={form.hotel_category}
-                                        onChange={(e) => handleInputChange('hotel_category', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                    >
-                                        <option value="">호텔 등급 선택</option>
-                                        <option value="3성급">3성급</option>
-                                        <option value="4성급">4성급</option>
-                                        <option value="5성급">5성급</option>
-                                        <option value="특급">특급</option>
-                                        <option value="럭셔리">럭셔리</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        조식 서비스
-                                    </label>
-                                    <select
-                                        value={form.breakfast_service}
-                                        onChange={(e) => handleInputChange('breakfast_service', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                    >
-                                        <option value="">조식 선택</option>
-                                        <option value="없음">조식 없음</option>
-                                        <option value="유럽식">유럽식 조식</option>
-                                        <option value="아메리칸">아메리칸 조식</option>
-                                        <option value="부페">부페 조식</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 객실 및 투숙 정보 */}
-                        <div className="bg-blue-50 rounded-lg p-6">
-                            <h3 className="text-lg font-bold text-blue-900 mb-4">객실 및 투숙 정보</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        객실 수
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        value={form.room_count}
-                                        onChange={(e) => handleInputChange('room_count', parseInt(e.target.value))}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        투숙객 수
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        value={form.guest_count}
-                                        onChange={(e) => handleInputChange('guest_count', parseInt(e.target.value))}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        체크인 날짜
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={form.checkin_date}
-                                        onChange={(e) => handleInputChange('checkin_date', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                        required
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 가격 정보 */}
+                        {/* 렌트카 기본 정보 */}
                         <div className="bg-green-50 rounded-lg p-6">
-                            <h3 className="text-lg font-bold text-green-900 mb-4">가격 정보</h3>
+                            <h3 className="text-lg font-bold text-green-900 mb-4">렌트카 기본 정보</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        렌트카 가격 코드
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={form.rentcar_price_code}
+                                        onChange={(e) => handleInputChange('rentcar_price_code', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        렌트카 수량
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={form.rentcar_count}
+                                        onChange={(e) => handleInputChange('rentcar_count', parseInt(e.target.value))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        단가
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={form.unit_price}
+                                        onChange={(e) => handleInputChange('unit_price', parseInt(e.target.value))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    />
+                                </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         총 가격
@@ -446,6 +384,117 @@ function HotelReservationContent() {
                             </div>
                         </div>
 
+                        {/* 차량 및 픽업 정보 */}
+                        <div className="bg-blue-50 rounded-lg p-6">
+                            <h3 className="text-lg font-bold text-blue-900 mb-4">차량 및 픽업 정보</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        차량 대수
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={form.car_count}
+                                        onChange={(e) => handleInputChange('car_count', parseInt(e.target.value))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        탑승 인원 수
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={form.passenger_count}
+                                        onChange={(e) => handleInputChange('passenger_count', parseInt(e.target.value))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        픽업 일시
+                                    </label>
+                                    <input
+                                        type="datetime-local"
+                                        value={form.pickup_datetime}
+                                        onChange={(e) => handleInputChange('pickup_datetime', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        수하물 개수
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={form.luggage_count}
+                                        onChange={(e) => handleInputChange('luggage_count', parseInt(e.target.value))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 위치 정보 */}
+                        <div className="bg-yellow-50 rounded-lg p-6">
+                            <h3 className="text-lg font-bold text-yellow-900 mb-4">위치 정보</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        픽업 장소
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={form.pickup_location}
+                                        onChange={(e) => handleInputChange('pickup_location', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        목적지
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={form.destination}
+                                        onChange={(e) => handleInputChange('destination', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        경유지
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={form.via_location}
+                                        onChange={(e) => handleInputChange('via_location', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        placeholder="경유지가 있을 경우 입력"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        경유지 대기시간
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={form.via_waiting}
+                                        onChange={(e) => handleInputChange('via_waiting', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        placeholder="예: 30분, 1시간"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
                         {/* 특별 요청 사항 */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -456,7 +505,7 @@ function HotelReservationContent() {
                                 onChange={(e) => handleInputChange('request_note', e.target.value)}
                                 rows={4}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                placeholder="객실 타입, 층수, 전망, 기타 요청사항을 입력해주세요..."
+                                placeholder="차량 종류, 어린이 카시트, 기타 요청사항을 입력해주세요..."
                             />
                         </div>
 
@@ -472,9 +521,9 @@ function HotelReservationContent() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 disabled:opacity-50"
+                                className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 disabled:opacity-50"
                             >
-                                {loading ? '예약 처리 중...' : '호텔 예약 완료'}
+                                {loading ? '예약 처리 중...' : '렌트카 예약 완료'}
                             </button>
                         </div>
                     </form>
@@ -484,10 +533,10 @@ function HotelReservationContent() {
     );
 }
 
-export default function HotelReservationPage() {
+export default function RentcarReservationPage() {
     return (
         <Suspense fallback={<div className="flex justify-center items-center h-64">로딩 중...</div>}>
-            <HotelReservationContent />
+            <RentcarReservationContent />
         </Suspense>
     );
 }
