@@ -64,8 +64,9 @@ export default function AdminLayout({ children, title, activeTab }: AdminLayoutP
     { id: 'quotes', label: '견적 관리', path: '/admin/quotes', icon: '📋' },
     { id: 'reservations', label: '예약 관리', path: '/admin/reservations', icon: '🎫' },
     { id: 'users', label: '사용자 관리', path: '/admin/users', icon: '👥' },
+    { id: 'base-prices', label: '베이스 가격 관리', path: '/admin/base-prices', icon: '💰' },
+    { id: 'sql-runner', label: 'SQL 실행', path: '/admin/sql-runner', icon: '⚡' },
     { id: 'database', label: 'DB 관리', path: '/admin/database', icon: '🔧' },
-    { id: 'sql-runner', label: 'SQL 실행', path: '/admin/sql-runner', icon: '💾' },
     { id: 'reports', label: '리포트', path: '/admin/reports', icon: '📈' },
     { id: 'settings', label: '설정', path: '/admin/settings', icon: '⚙️' },
   ];
