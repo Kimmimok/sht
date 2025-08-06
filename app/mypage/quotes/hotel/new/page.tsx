@@ -26,7 +26,6 @@ function NewHotelQuoteContent() {
   const [formData, setFormData] = useState({
     checkin_date: '',
     checkout_date: '',
-    guest_count: 1,
     special_requests: ''
   })
 
@@ -180,13 +179,15 @@ function NewHotelQuoteContent() {
     }
   }, [formData.checkin_date, formData.checkout_date, getWeekdayFromDate])
 
+  // searchFinalHotels 함수 수정
   const searchFinalHotels = useCallback(async () => {
     try {
       const checkinWeekday = getWeekdayFromDate(formData.checkin_date)
+      console.log('🔍 체크인 요일 검색:', checkinWeekday)
 
       const { data, error } = await supabase
         .from('hotel_price')
-        .select('hotel_code, hotel_name, room_name, room_type, price')
+        .select('hotel_code, hotel_name, room_name, room_type, price, weekday_type')
         .eq('hotel_name', selectedHotelName)
         .eq('room_name', selectedRoomName)
         .eq('room_type', selectedRoomType)
@@ -197,44 +198,61 @@ function NewHotelQuoteContent() {
 
       if (error) throw error
 
-      setFilteredHotels(data)
-      console.log('🏨 최종 필터링된 호텔들:', data)
+      // weekday_type에 체크인 요일이 포함된 행만 필터링
+      const filteredData = data.filter(hotel =>
+        hotel.weekday_type && hotel.weekday_type.includes(checkinWeekday)
+      )
+
+      console.log('🏨 요일 필터링된 호텔들:', filteredData)
+
+      setFilteredHotels(filteredData)
+
+      // 호텔이 있으면 첫 번째 항목 자동 선택
+      if (filteredData.length > 0) {
+        setSelectedHotel(filteredData[0])
+        setSelectedHotelCode(filteredData[0].hotel_code)
+        console.log(`✅ 선택된 호텔 코드: ${filteredData[0].hotel_code}, 적용 요일: ${filteredData[0].weekday_type}`)
+      } else {
+        setSelectedHotel(null)
+        setSelectedHotelCode('')
+      }
     } catch (error) {
       console.error('최종 호텔 검색 실패:', error)
       setFilteredHotels([])
+      setSelectedHotel(null)
+      setSelectedHotelCode('')
     }
   }, [formData.checkin_date, formData.checkout_date, selectedHotelName, selectedRoomName, selectedRoomType, getWeekdayFromDate])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!formData.checkin_date || !formData.checkout_date) {
-      alert('체크인/체크아웃 날짜를 선택해주세요.')
-      return
+      alert('체크인/체크아웃 날짜를 선택해주세요.');
+      return;
     }
 
     if (!selectedHotel) {
-      alert('호텔을 선택해주세요.')
-      return
+      alert('호텔을 선택해주세요.');
+      return;
     }
 
     if (!quoteId) {
-      alert('견적 ID가 없습니다.')
-      return
+      alert('견적 ID가 없습니다.');
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
 
     try {
-      // 호텔 폼 데이터 구성
+      // 호텔 폼 데이터 구성 (투숙객 수 제외)
       const hotelData = {
         hotel_code: selectedHotel.hotel_code,
         checkin_date: formData.checkin_date,
         checkout_date: formData.checkout_date,
-        guest_count: formData.guest_count,
         base_price: 0,
         ...(formData.special_requests && { special_requests: formData.special_requests })
-      }
+      };
 
       console.log('🏨 호텔 데이터:', hotelData)
 
@@ -282,7 +300,7 @@ function NewHotelQuoteContent() {
       console.error('❌ 호텔 견적 추가 중 오류:', error)
       alert('오류가 발생했습니다: ' + error.message)
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
@@ -439,64 +457,19 @@ function NewHotelQuoteContent() {
                       <option key={type} value={type}>{type}</option>
                     ))}
                   </select>
+                  {/* 객실 타입 아래에 위크데이 타입 컬럼 값 표시 */}
+                  {filteredHotels.length > 0 && filteredHotels[0].weekday_type && (
+                    <div className="mt-2 text-sm text-blue-600">
+                      <span className="font-medium">적용 요일:</span> {filteredHotels[0].weekday_type}
+                      <span className="ml-2 bg-yellow-100 px-2 py-1 rounded font-mono text-xs">
+                        {getWeekdayFromDate(formData.checkin_date)}요일 포함
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* 4단계: 최종 호텔 선택 */}
-              {filteredHotels.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    ✅ 최종 호텔 선택 *
-                  </label>
-                  <div className="space-y-3">
-                    {filteredHotels.map((hotel, index) => (
-                      <div
-                        key={`${hotel.hotel_code}-${index}`}
-                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedHotel?.hotel_code === hotel.hotel_code
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-300 hover:border-gray-400'
-                          }`}
-                        onClick={() => {
-                          setSelectedHotel(hotel)
-                          setSelectedHotelCode(hotel.hotel_code)
-                        }}
-                      >
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <h3 className="font-medium">{hotel.hotel_name}</h3>
-                            <p className="text-sm text-gray-600">
-                              {hotel.room_name} - {hotel.room_type}
-                            </p>
-                            <p className="text-sm text-gray-500">코드: {hotel.hotel_code}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold text-blue-600">
-                              {parseInt(hotel.price || '0').toLocaleString()}동
-                            </p>
-                            <p className="text-sm text-gray-500">1박 기준</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 투숙 인동 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  👥 투숙 인동 *
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={formData.guest_count}
-                  onChange={(e) => setFormData({ ...formData, guest_count: parseInt(e.target.value) || 1 })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
 
               {/* 특별 요청사항 */}
               <div>
@@ -521,7 +494,6 @@ function NewHotelQuoteContent() {
                     <div><strong>체크아웃:</strong> {new Date(formData.checkout_date).toLocaleDateString('ko-KR')}</div>
                     <div><strong>호텔:</strong> {selectedHotelName}</div>
                     <div><strong>객실:</strong> {selectedRoomName} - {selectedRoomType}</div>
-                    <div><strong>투숙 인동:</strong> {formData.guest_count}명</div>
                     <div><strong>1박 요금:</strong> {parseInt(selectedHotel?.price || '0').toLocaleString()}동</div>
                     {selectedHotelCode && (
                       <div className="pt-2 border-t border-green-200">

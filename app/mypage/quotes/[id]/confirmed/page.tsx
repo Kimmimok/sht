@@ -556,8 +556,10 @@ export default function ConfirmedQuoteDetailPage() {
                                   <td className="px-2 py-1 border-blue-100 border">{airport.unit_price ? airport.unit_price.toLocaleString() + '동' : '-'}</td>
                                 </tr>
                                 <tr className="bg-gray-50">
-                                  <td className="px-2 py-1 font-medium border-blue-100 border">차량수</td>
-                                  <td className="px-2 py-1 border-blue-100 border">{airport.airportInfo?.passenger_count}대</td>
+                                  <td className="px-2 py-1 font-medium border-blue-100 border">승객수</td>
+                                  <td className="px-2 py-1 border-blue-100 border">
+                                    {airport.quantity || airport.airportInfo?.passenger_count || 1}명
+                                  </td>
                                 </tr>
                               </Fragment>
                             ))}

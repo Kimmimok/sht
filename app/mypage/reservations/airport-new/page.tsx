@@ -170,16 +170,19 @@ function AirportReservationContent() {
       // 유효성 검사
       if (!form.ra_airport_name) {
         alert('공항명은 필수 입력 항목입니다.');
+        setLoading(false);
         return;
       }
 
       if (!form.ra_datetime) {
         alert('출발/도착 일시는 필수 입력 항목입니다.');
+        setLoading(false);
         return;
       }
 
       if (form.ra_passenger_count === 0) {
         alert('탑승 인원은 최소 1명 이상이어야 합니다.');
+        setLoading(false);
         return;
       }
 
@@ -187,11 +190,12 @@ function AirportReservationContent() {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
         router.push(`/mypage/reservations?quoteId=${quoteId}`);
+        setLoading(false);
         return;
       }
 
       // 기존 사용자 정보 확인
-      const { data: existingUser, error: fetchError } = await supabase
+      const { data: existingUser } = await supabase
         .from('users')
         .select('id, role')
         .eq('id', user.id)
@@ -199,7 +203,7 @@ function AirportReservationContent() {
 
       // 사용자가 없거나 'guest'일 경우에만 'member'로 승급 또는 등록
       if (!existingUser || existingUser.role === 'guest') {
-        const { error: upsertError } = await supabase
+        await supabase
           .from('users')
           .upsert({
             id: user.id,
@@ -207,11 +211,6 @@ function AirportReservationContent() {
             role: 'member', // 예약 시 'member'로 승급
             updated_at: new Date().toISOString()
           }, { onConflict: 'id' });
-
-        if (upsertError) {
-          console.error('사용자 역할 업데이트 오류:', upsertError);
-          // 에러가 발생해도 예약을 중단하지 않고 계속 진행할 수 있음
-        }
       }
 
       // reservation 테이블에 메인 예약 생성
@@ -228,8 +227,8 @@ function AirportReservationContent() {
         .single();
 
       if (reservationError) {
-        console.error('예약 생성 오류:', reservationError);
         alert('예약 생성 중 오류가 발생했습니다.');
+        setLoading(false);
         return;
       }
 
@@ -254,15 +253,15 @@ function AirportReservationContent() {
       };
 
       // reservation_airport 테이블에 삽입
-      const { data: reservationResult, error: airportReservationError } = await supabase
+      const { error: airportReservationError } = await supabase
         .from('reservation_airport')
         .insert(reservationAirportData)
         .select()
         .single();
 
       if (airportReservationError) {
-        console.error('공항 예약 저장 오류:', airportReservationError);
         alert('공항 예약 저장 중 오류가 발생했습니다.');
+        setLoading(false);
         return;
       }
 
@@ -270,7 +269,6 @@ function AirportReservationContent() {
       router.push(`/mypage/reservations?quoteId=${quoteId}`);
 
     } catch (error) {
-      console.error('예약 저장 오류:', error);
       alert('예약 저장 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
@@ -302,19 +300,14 @@ function AirportReservationContent() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-lg font-bold text-gray-800">✈️ 공항 서비스 예약</h1>
-            <p className="text-sm text-gray-600 mt-1">견적: {quote.title}</p>
+            <p className="text-sm text-gray-600 mt-1">행복 여행 이름: {quote.title}</p>
           </div>
-          <button
-            onClick={() => router.push('/mypage/reservations')}
-            className="px-3 py-1 bg-gray-50 text-gray-600 rounded border text-sm hover:bg-gray-100"
-          >
-            목록으로
-          </button>
+          {/* 목록으로 버튼 삭제됨 */}
         </div>
 
         {/* 공항 가격 정보 */}
         {airportPriceInfo.length > 0 && (
-          <SectionBox title="공항 서비스 가격 정보">
+          <SectionBox title="">
             <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
               <h4 className="text-sm font-medium text-blue-800 mb-3">✈️ 공항 서비스 정보</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -323,7 +316,6 @@ function AirportReservationContent() {
                     {Object.entries(price)
                       .filter(([col]) => col !== 'deleted' && col !== 'is_deleted')
                       .map(([col, val]) => {
-                        // 컬럼명 한글 매핑
                         const colMap: Record<string, string> = {
                           airport: '공항명',
                           area: '지역',
@@ -339,7 +331,8 @@ function AirportReservationContent() {
                         const label = colMap[col] || col;
                         return (
                           <div key={col}>
-                            <span className="text-gray-600">{label}:</span> <span className="font-medium">{typeof val === 'number' ? val.toLocaleString() : String(val)}</span>
+                            <span className="text-gray-600">{label}:</span>{' '}
+                            <span className="font-medium">{typeof val === 'number' ? val.toLocaleString() : String(val)}</span>
                           </div>
                         );
                       })}
@@ -351,27 +344,110 @@ function AirportReservationContent() {
         )}
 
         {/* 공항 서비스 예약 폼 */}
-        <SectionBox title="공항 서비스 예약 정보">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <SectionBox title="">
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setLoading(true);
+              try {
+                // 기존 handleSubmit 로직 복사
+                if (!form.ra_airport_name) {
+                  alert('공항명은 필수 입력 항목입니다.');
+                  setLoading(false);
+                  return;
+                }
+                if (!form.ra_datetime) {
+                  alert('출발/도착 일시는 필수 입력 항목입니다.');
+                  setLoading(false);
+                  return;
+                }
+                if (form.ra_passenger_count === 0) {
+                  alert('탑승 인원은 최소 1명 이상이어야 합니다.');
+                  setLoading(false);
+                  return;
+                }
+                const { data: { user }, error: userError } = await supabase.auth.getUser();
+                if (userError || !user) {
+                  router.push(`/mypage/reservations?quoteId=${quoteId}`);
+                  setLoading(false);
+                  return;
+                }
+                const { data: existingUser } = await supabase
+                  .from('users')
+                  .select('id, role')
+                  .eq('id', user.id)
+                  .single();
+                if (!existingUser || existingUser.role === 'guest') {
+                  await supabase
+                    .from('users')
+                    .upsert({
+                      id: user.id,
+                      email: user.email,
+                      role: 'member',
+                      updated_at: new Date().toISOString()
+                    }, { onConflict: 'id' });
+                }
+                const { data: reservationData, error: reservationError } = await supabase
+                  .from('reservation')
+                  .insert({
+                    re_user_id: user.id,
+                    re_quote_id: quoteId,
+                    re_type: 'airport',
+                    re_status: 'pending',
+                    re_created_at: new Date().toISOString()
+                  })
+                  .select()
+                  .single();
+                if (reservationError) {
+                  alert('예약 생성 중 오류가 발생했습니다.');
+                  setLoading(false);
+                  return;
+                }
+                const reservationAirportData = {
+                  ra_reservation_id: reservationData.re_id,
+                  airport_price_code: form.airport_price_code,
+                  ra_airport_name: form.ra_airport_name,
+                  ra_pickup_location: form.ra_pickup_location,
+                  ra_dropoff_location: form.ra_dropoff_location,
+                  ra_airport_location: form.ra_airport_location,
+                  ra_flight_number: form.ra_flight_number,
+                  ra_datetime: form.ra_datetime ? new Date(form.ra_datetime).toISOString() : null,
+                  ra_direction: form.ra_direction,
+                  ra_stopover_location: form.ra_stopover_location,
+                  ra_stopover_wait_minutes: form.ra_stopover_wait_minutes,
+                  ra_car_count: form.ra_car_count,
+                  ra_passenger_count: form.ra_passenger_count,
+                  ra_luggage_count: form.ra_luggage_count,
+                  ra_is_processed: false,
+                  request_note: form.request_note
+                };
+                const { error: airportReservationError } = await supabase
+                  .from('reservation_airport')
+                  .insert(reservationAirportData)
+                  .select()
+                  .single();
+                if (airportReservationError) {
+                  alert('공항 예약 저장 중 오류가 발생했습니다.');
+                  setLoading(false);
+                  return;
+                }
+                alert('공항 서비스 예약이 성공적으로 저장되었습니다!');
+                router.push(`/mypage/reservations?quoteId=${quoteId}`);
+              } catch (error) {
+                alert('예약 저장 중 오류가 발생했습니다.');
+              } finally {
+                setLoading(false);
+              }
+            }}
+            className="space-y-6"
+          >
             {/* 구분: 픽업 */}
             <div className="bg-blue-50 rounded-lg p-6">
               <h3 className="text-lg font-bold text-blue-900 mb-4">🚗 구분: 픽업</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    공항명
-                  </label>
-                  <input
-                    type="text"
-                    value={form.ra_airport_name}
-                    onChange={(e) => handleInputChange('ra_airport_name', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    항공편명
+                    항공편 명
                   </label>
                   <input
                     type="text"
@@ -384,7 +460,7 @@ function AirportReservationContent() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    도착일시
+                    도착 일시
                   </label>
                   <input
                     type="datetime-local"
@@ -396,7 +472,7 @@ function AirportReservationContent() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    장소명
+                    목적지
                   </label>
                   <input
                     type="text"
@@ -464,7 +540,7 @@ function AirportReservationContent() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    장소명
+                    출발지
                   </label>
                   <input
                     type="text"
@@ -476,7 +552,7 @@ function AirportReservationContent() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    출발일시
+                    출발 일시
                   </label>
                   <input
                     type="datetime-local"
@@ -512,7 +588,7 @@ function AirportReservationContent() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    탑승인원수
+                    탑승 인원수
                   </label>
                   <input
                     type="number"
@@ -553,20 +629,13 @@ function AirportReservationContent() {
             </div>
 
             {/* 제출 버튼 */}
-            <div className="flex justify-between">
-              <button
-                type="button"
-                onClick={() => router.push('/mypage/reservations')}
-                className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600"
-              >
-                취소
-              </button>
+            <div className="flex justify-end">
               <button
                 type="submit"
                 disabled={loading}
                 className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50"
               >
-                {loading ? '예약 처리 중...' : '공항 서비스 예약 완료'}
+                {loading ? '예약 처리 중...' : '예약추가'}
               </button>
             </div>
           </form>

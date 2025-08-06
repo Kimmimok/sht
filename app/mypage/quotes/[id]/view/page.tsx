@@ -339,10 +339,14 @@ export default function QuoteDetailPage() {
                 .select('*')
                 .eq('room_code', roomData.room_code);
 
+              // 수량 업데이트 - 인원수를 quantity로 설정
+              const actualQuantity = roomData.adult_count || 1;
+
               detailed.rooms.push({
                 ...item,
                 roomInfo: roomData,
-                priceInfo: priceData || []
+                priceInfo: priceData || [],
+                displayQuantity: actualQuantity // 표시용 수량
               });
             }
           } else if (item.service_type === 'car') {
@@ -359,10 +363,14 @@ export default function QuoteDetailPage() {
                 .select('*')
                 .eq('car_code', carData.car_code);
 
+              // 수량 업데이트 - 차량 수를 quantity로 설정
+              const actualQuantity = carData.car_count || 1;
+
               detailed.cars.push({
                 ...item,
                 carInfo: carData,
-                priceInfo: priceData || []
+                priceInfo: priceData || [],
+                displayQuantity: actualQuantity // 표시용 수량
               });
             }
           } else if (item.service_type === 'airport') {
@@ -379,10 +387,14 @@ export default function QuoteDetailPage() {
                 .select('*')
                 .eq('airport_code', airportData.airport_code);
 
+              // 수량 업데이트 - 승객 수를 quantity로 설정
+              const actualQuantity = airportData.passenger_count || 1;
+
               detailed.airports.push({
                 ...item,
                 airportInfo: airportData,
-                priceInfo: priceData || []
+                priceInfo: priceData || [],
+                displayQuantity: actualQuantity // 표시용 수량
               });
             }
           } else if (item.service_type === 'hotel') {
@@ -399,10 +411,14 @@ export default function QuoteDetailPage() {
                 .select('*')
                 .eq('hotel_code', hotelData.hotel_code);
 
+              // 수량 업데이트 - 객실 수를 quantity로 설정
+              const actualQuantity = hotelData.room_count || 1;
+
               detailed.hotels.push({
                 ...item,
                 hotelInfo: hotelData,
-                priceInfo: priceData || []
+                priceInfo: priceData || [],
+                displayQuantity: actualQuantity // 표시용 수량
               });
             }
           } else if (item.service_type === 'rentcar') {
@@ -419,10 +435,14 @@ export default function QuoteDetailPage() {
                 .select('*')
                 .eq('rent_code', rentcarData.rentcar_code);
 
+              // 수량 업데이트 - 차량 수를 quantity로 설정
+              const actualQuantity = rentcarData.vehicle_count || 1;
+
               detailed.rentcars.push({
                 ...item,
                 rentcarInfo: rentcarData,
-                priceInfo: priceData || []
+                priceInfo: priceData || [],
+                displayQuantity: actualQuantity // 표시용 수량
               });
             }
           } else if (item.service_type === 'tour') {
@@ -439,10 +459,14 @@ export default function QuoteDetailPage() {
                 .select('*')
                 .eq('tour_code', tourData.tour_code);
 
+              // 수량 업데이트 - 참가자 수를 quantity로 설정
+              const actualQuantity = tourData.participant_count || 1;
+
               detailed.tours.push({
                 ...item,
                 tourInfo: tourData,
-                priceInfo: priceData || []
+                priceInfo: priceData || [],
+                displayQuantity: actualQuantity // 표시용 수량
               });
             }
           }
@@ -584,14 +608,6 @@ export default function QuoteDetailPage() {
                                 <td className="px-2 py-1 font-medium border-blue-100 border">카테고리</td>
                                 <td className="px-2 py-1 border-blue-100 border">{price.room_category || '-'}</td>
                               </tr>
-                              <tr>
-                                <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '동' : '-'}</td>
-                              </tr>
-                              <tr>
-                                <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
-                              </tr>
                               <tr className="bg-gray-50">
                                 <td className="px-2 py-1 font-medium border-blue-100 border">인원수</td>
                                 <td className="px-2 py-1 border-blue-100 border">{room.roomInfo?.adult_count}명</td>
@@ -600,6 +616,11 @@ export default function QuoteDetailPage() {
                               <tr className="bg-gray-50">
                                 <td className="px-2 py-1 font-medium border-blue-100 border">추가수</td>
                                 <td className="px-2 py-1 border-blue-100 border">{room.roomInfo?.extra_count || 0}명</td>
+                              </tr>
+                              {/* 추가 요금 행이 마지막으로 이동됨 */}
+                              <tr>
+                                <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
+                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                               </tr>
                             </React.Fragment>
                           ))}
@@ -638,17 +659,14 @@ export default function QuoteDetailPage() {
                                 <td className="px-2 py-1 font-medium border-blue-100 border">카테고리</td>
                                 <td className="px-2 py-1 border-blue-100 border">{price.car_category || '-'}</td>
                               </tr>
-                              <tr>
-                                <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '동' : '-'}</td>
-                              </tr>
-                              <tr>
-                                <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
-                              </tr>
                               <tr className="bg-gray-50">
                                 <td className="px-2 py-1 font-medium border-blue-100 border">차량수</td>
                                 <td className="px-2 py-1 border-blue-100 border">{car.carInfo?.car_count}대</td>
+                              </tr>
+                              {/* 추가 요금 행이 마지막으로 이동됨 */}
+                              <tr>
+                                <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
+                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                               </tr>
                             </React.Fragment>
                           ))}
@@ -683,17 +701,14 @@ export default function QuoteDetailPage() {
                                 <td className="px-2 py-1 font-medium border-blue-100 border">차량 타입</td>
                                 <td className="px-2 py-1 border-blue-100 border">{price.airport_car_type || '-'}</td>
                               </tr>
-                              <tr>
-                                <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '동' : '-'}</td>
-                              </tr>
-                              <tr>
-                                <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
-                              </tr>
                               <tr className="bg-gray-50">
                                 <td className="px-2 py-1 font-medium border-blue-100 border">승객수</td>
                                 <td className="px-2 py-1 border-blue-100 border">{airport.airportInfo?.passenger_count}명</td>
+                              </tr>
+                              {/* 추가 요금 행이 마지막으로 이동됨 */}
+                              <tr>
+                                <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
+                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                               </tr>
                             </React.Fragment>
                           ))}
@@ -728,18 +743,12 @@ export default function QuoteDetailPage() {
                                 <td className="px-2 py-1 font-medium border-blue-100 border">객실 타입</td>
                                 <td className="px-2 py-1 border-blue-100 border">{price.room_type || '-'}</td>
                               </tr>
-                              <tr>
-                                <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '동' : '-'}</td>
-                              </tr>
+                              {/* 추가 요금 행이 마지막으로 이동됨 */}
                               <tr>
                                 <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
                                 <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                               </tr>
-                              <tr className="bg-gray-50">
-                                <td className="px-2 py-1 font-medium border-blue-100 border">호텔명</td>
-                                <td className="px-2 py-1 border-blue-100 border">{hotel.hotelInfo?.hotel_name || '호텔 정보 없음'}</td>
-                              </tr>
+
                             </React.Fragment>
                           ))}
                         </tbody>
@@ -773,17 +782,18 @@ export default function QuoteDetailPage() {
                                 <td className="px-2 py-1 font-medium border-blue-100 border">경로</td>
                                 <td className="px-2 py-1 border-blue-100 border">{price.rent_route || '-'}</td>
                               </tr>
-                              <tr>
-                                <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '동' : '-'}</td>
+                              <tr className="bg-gray-50">
+                                <td className="px-2 py-1 font-medium border-blue-100 border">차량 종류</td>
+                                <td className="px-2 py-1 border-blue-100 border">{price.rent_car_type || '-'}</td>
                               </tr>
+                              <tr className="bg-gray-50">
+                                <td className="px-2 py-1 font-medium border-blue-100 border">수량</td>
+                                <td className="px-2 py-1 border-blue-100 border">{rentcar.displayQuantity || rentcar.quantity || 1}대</td>
+                              </tr>
+                              {/* 추가 요금 행이 마지막으로 이동됨 */}
                               <tr>
                                 <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
                                 <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
-                              </tr>
-                              <tr className="bg-gray-50">
-                                <td className="px-2 py-1 font-medium border-blue-100 border">렌트카명</td>
-                                <td className="px-2 py-1 border-blue-100 border">{rentcar.rentcarInfo?.rentcar_name || '렌트카 정보 없음'}</td>
                               </tr>
                             </React.Fragment>
                           ))}
@@ -818,25 +828,18 @@ export default function QuoteDetailPage() {
                                 <td className="px-2 py-1 font-medium border-blue-100 border">차량</td>
                                 <td className="px-2 py-1 border-blue-100 border">{price.tour_vehicle || '-'}</td>
                               </tr>
-                              <tr>
-                                <td className="px-2 py-1 font-medium border-blue-100 border">베이스 가격</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.base_price ? price.base_price.toLocaleString() + '동' : '-'}</td>
-                              </tr>
-                              <tr>
-                                <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
-                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
-                              </tr>
-                              <tr className="bg-gray-50">
-                                <td className="px-2 py-1 font-medium border-blue-100 border">투어명</td>
-                                <td className="px-2 py-1 border-blue-100 border">{tour.tourInfo?.tour_name || '투어 정보 없음'}</td>
-                              </tr>
                               <tr className="bg-gray-50">
                                 <td className="px-2 py-1 font-medium border-blue-100 border">투어 날짜</td>
                                 <td className="px-2 py-1 border-blue-100 border">{tour.tourInfo?.tour_date || '-'}</td>
                               </tr>
                               <tr className="bg-gray-50">
-                                <td className="px-2 py-1 font-medium border-blue-100 border">참가자수</td>
-                                <td className="px-2 py-1 border-blue-100 border">{tour.tourInfo?.participant_count || 0}명</td>
+                                <td className="px-2 py-1 font-medium border-blue-100 border">차량수</td>
+                                <td className="px-2 py-1 border-blue-100 border">{tour.tourInfo?.participant_count || 0}대</td>
+                              </tr>
+                              {/* 추가 요금 행이 마지막으로 이동됨 */}
+                              <tr>
+                                <td className="px-2 py-1 font-medium border-blue-100 border">추가 요금</td>
+                                <td className="px-2 py-1 border-blue-100 border">{price.extra_charge ? price.extra_charge.toLocaleString() + '동' : '-'}</td>
                               </tr>
                             </React.Fragment>
                           ))}

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import supabase from '@/lib/supabase';
+import { calculateServiceQuantity } from '@/lib/calculateServiceQuantity';
 
 function AirportQuoteContent() {
   const router = useRouter();
@@ -161,7 +162,7 @@ function AirportQuoteContent() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!selectedCategory || !selectedRoute || !selectedCarType) {
@@ -207,6 +208,9 @@ function AirportQuoteContent() {
 
       console.log('✅ 공항 서비스 생성 성공:', airportServiceData);
 
+      // 올바른 수량 계산
+      const actualQuantity = calculateServiceQuantity('airport', airportServiceData);
+
       // 2. 견적 아이템 생성
       const { data: itemData, error: itemError } = await supabase
         .from('quote_item')
@@ -214,9 +218,10 @@ function AirportQuoteContent() {
           quote_id: quoteId,
           service_type: 'airport',
           service_ref_id: airportServiceData.id,
-          quantity: 1,
-          unit_price: 0,
-          total_price: 0
+          quantity: actualQuantity, // 승객 수
+          unit_price: parseInt(airportServiceData.price || '0'),
+          total_price: parseInt(airportServiceData.price || '0') * actualQuantity,
+          usage_date: formData.service_date
         })
         .select()
         .single();
@@ -230,7 +235,7 @@ function AirportQuoteContent() {
       console.log('✅ 견적 아이템 생성 성공:', itemData);
 
       alert('공항 서비스가 견적에 추가되었습니다!');
-      // 페이지 이동 없이 그대로 머무름
+      router.push(`/mypage/quotes/${quoteId}/view`);
 
     } catch (error) {
       console.error('❌ 공항 견적 추가 중 오류:', error);

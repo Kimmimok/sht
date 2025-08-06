@@ -421,7 +421,7 @@ function CruiseReservationContent() {
                 <div className="flex justify-between items-center">
                     <div>
                         <h1 className="text-lg font-bold text-gray-800">🚢 크루즈 예약</h1>
-                        <p className="text-sm text-gray-600 mt-1">견적: {quote.title}</p>
+                        <p className="text-sm text-gray-600 mt-1">* 행복 여행 이름: {quote.title}</p>
                     </div>
                     <button
                         onClick={() => router.push('/mypage/reservations')}
@@ -432,103 +432,31 @@ function CruiseReservationContent() {
                 </div>
 
                 {/* 크루즈 객실 정보 */}
-                <SectionBox title="크루즈 객실 정보">
+                <SectionBox title="">
 
-                    {/* 객실 가격 정보 (중복 제거된) */}
+                    {/* 객실 가격 정보 (컬럼이 바뀌면 줄바꿈) */}
                     {roomPriceInfo.length > 0 && (
                         <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
                             <h4 className="text-sm font-medium text-green-800 mb-3">🏨 객실 가격 정보</h4>
-
-                            {/* 공통 정보 표시 */}
-                            {(() => {
-                                const firstPrice = roomPriceInfo[0];
-                                const hasCommonInfo = roomPriceInfo.every(price =>
-                                    price.schedule === firstPrice.schedule &&
-                                    price.cruise === firstPrice.cruise &&
-                                    price.room_type === firstPrice.room_type &&
-                                    price.payment === firstPrice.payment
-                                );
-
+                            {roomPriceInfo.map((priceInfo, index) => {
+                                const roomData = roomsData.find(room => room.room_code === priceInfo.room_code);
+                                const totalGuests = (roomData?.adult_count || 0) + (roomData?.child_count || 0) + (roomData?.extra_count || 0);
+                                const totalPrice = (priceInfo.price || 0) * totalGuests;
                                 return (
-                                    <>
-                                        {hasCommonInfo && (
-                                            <div className="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
-                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                                                    <div>
-                                                        <span className="text-gray-600">일정:</span>
-                                                        <p className="font-medium text-gray-800">{firstPrice.schedule || '-'}</p>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-gray-600">크루즈:</span>
-                                                        <p className="font-medium text-gray-800">{firstPrice.cruise || '-'}</p>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-gray-600">룸 타입:</span>
-                                                        <p className="font-medium text-gray-800">{firstPrice.room_type || '-'}</p>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-gray-600">결제:</span>
-                                                        <p className="font-medium text-gray-800">{firstPrice.payment || '-'}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* 개별 객실 정보 */}
-                                        <div className="space-y-3">
-                                            {roomPriceInfo.map((priceInfo, index) => {
-                                                // 해당 룸 코드의 room 데이터 찾기
-                                                const roomData = roomsData.find(room => room.room_code === priceInfo.room_code);
-                                                const totalGuests = (roomData?.adult_count || 0) + (roomData?.child_count || 0) + (roomData?.extra_count || 0);
-                                                const totalPrice = (priceInfo.price || 0) * totalGuests;
-
-                                                return (
-                                                    <div key={index} className="bg-white p-3 rounded border">
-                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                                                            {!hasCommonInfo && (
-                                                                <>
-                                                                    <div>
-                                                                        <span className="text-gray-600">일정:</span>
-                                                                        <p className="font-medium text-gray-800">{priceInfo.schedule || '-'}</p>
-                                                                    </div>
-                                                                    <div>
-                                                                        <span className="text-gray-600">크루즈:</span>
-                                                                        <p className="font-medium text-gray-800">{priceInfo.cruise || '-'}</p>
-                                                                    </div>
-                                                                    <div>
-                                                                        <span className="text-gray-600">룸 타입:</span>
-                                                                        <p className="font-medium text-gray-800">{priceInfo.room_type || '-'}</p>
-                                                                    </div>
-                                                                    <div>
-                                                                        <span className="text-gray-600">결제:</span>
-                                                                        <p className="font-medium text-gray-800">{priceInfo.payment || '-'}</p>
-                                                                    </div>
-                                                                </>
-                                                            )}
-                                                            <div>
-                                                                <span className="text-gray-600">카테고리:</span>
-                                                                <p className="font-medium text-gray-800">{priceInfo.room_category || '-'}</p>
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-gray-600">인원수:</span>
-                                                                <p className="font-medium text-gray-800">{totalGuests}명</p>
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-gray-600">가격:</span>
-                                                                <p className="font-medium text-blue-600">{priceInfo.price ? `${priceInfo.price.toLocaleString()}동` : '-'}</p>
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-gray-600">합계:</span>
-                                                                <p className="font-medium text-red-600">{totalPrice.toLocaleString()}동</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
+                                    <div key={index} className="bg-white p-3 rounded border mb-2">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-sm">
+                                            <span className="text-gray-600">일정: <span className="font-medium text-gray-800">{priceInfo.schedule || '-'}</span></span>
+                                            <span className="text-gray-600">크루즈: <span className="font-medium text-gray-800">{priceInfo.cruise || '-'}</span></span>
+                                            <span className="text-gray-600">룸 타입: <span className="font-medium text-gray-800">{priceInfo.room_type || '-'}</span></span>
+                                            <span className="text-gray-600">결제: <span className="font-medium text-gray-800">{priceInfo.payment || '-'}</span></span>
+                                            <span className="text-gray-600">카테고리: <span className="font-medium text-gray-800">{priceInfo.room_category || '-'}</span></span>
+                                            <span className="text-gray-600">인원수: <span className="font-medium text-gray-800">{totalGuests}명</span></span>
+                                            <span className="text-gray-600">가격: <span className="font-medium text-blue-600">{priceInfo.price ? `${priceInfo.price.toLocaleString()}동` : '-'}</span></span>
+                                            <span className="text-gray-600">합계: <span className="font-medium text-red-600">{totalPrice.toLocaleString()}동</span></span>
                                         </div>
-                                    </>
+                                    </div>
                                 );
-                            })()}
+                            })}
                         </div>
                     )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -548,37 +476,18 @@ function CruiseReservationContent() {
                 </SectionBox>
 
                 {/* 차량 정보 */}
-                <SectionBox title="차량 정보">
+                <SectionBox title="">
                     {carPriceInfo && (
                         <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
                             <h4 className="text-sm font-medium text-green-800 mb-3">🚗 차량 가격 정보</h4>
                             <div className="bg-white p-3 rounded border">
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                                    <div>
-                                        <span className="text-gray-600">크루즈:</span>
-                                        <p className="font-medium text-gray-800">{carPriceInfo.cruise || '-'}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-600">차량 타입:</span>
-                                        <p className="font-medium text-gray-800">{carPriceInfo.car_type || '-'}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-600">일정:</span>
-                                        <p className="font-medium text-gray-800">{carPriceInfo.schedule || '-'}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-600">카테고리:</span>
-                                        <p className="font-medium text-gray-800">{carPriceInfo.car_category || '-'}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-600">승객수:</span>
-                                        <p className="font-medium text-gray-800">{carPriceInfo.passenger_count || '-'}</p>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-600">가격:</span>
-                                        <p className="font-medium text-green-600">{carPriceInfo.price ? `${carPriceInfo.price.toLocaleString()}동` : '-'}</p>
-                                    </div>
-                                    {/* 합계(총 예약 금액)는 아래 종합 정보에서만 표시, 여기서는 제거 */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1 text-sm">
+                                    <span className="text-gray-600">일정: <span className="font-medium text-gray-800">{carPriceInfo.schedule || '-'}</span></span>
+                                    <span className="text-gray-600">크루즈: <span className="font-medium text-gray-800">{carPriceInfo.cruise || '-'}</span></span>
+                                    <span className="text-gray-600">차량 타입: <span className="font-medium text-gray-800">{carPriceInfo.car_type || '-'}</span></span>
+                                    <span className="text-gray-600">카테고리: <span className="font-medium text-gray-800">{carPriceInfo.car_category || '-'}</span></span>
+                                    <span className="text-gray-600">승객수: <span className="font-medium text-gray-800">{carPriceInfo.passenger_count || '-'}</span></span>
+                                    <span className="text-gray-600">가격: <span className="font-medium text-green-600">{carPriceInfo.price ? `${carPriceInfo.price.toLocaleString()}동` : '-'}</span></span>
                                 </div>
                             </div>
                         </div>
@@ -677,31 +586,36 @@ function CruiseReservationContent() {
 
                     {/* 총 예약 금액 표시 */}
                     <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                        <h4 className="text-sm font-medium text-yellow-800 mb-3">💰 총 예약 금액</h4>
-                        <div className="flex flex-row items-center gap-6 text-sm">
-                            <span className="text-gray-600">룸 비용: <span className="font-medium text-blue-600">{form.room_total_price?.toLocaleString()}원</span></span>
-                            <span className="text-gray-600">차량 비용: <span className="font-medium text-green-600">{form.car_total_price?.toLocaleString()}원</span></span>
-                            <span className="text-gray-600">총 금액: <span className="font-bold text-lg text-red-600">{(form.room_total_price + form.car_total_price)?.toLocaleString()}원</span></span>
+                        <h4 className="text-sm font-medium text-yellow-800 mb-3">💰 크루즈 예약 금액</h4>
+                        <div className="flex flex-col gap-2 text-sm">
+                            <div>
+                                <span className="text-gray-600">객실 비용:</span>
+                                <span className="font-medium text-blue-600 ml-2">{form.room_total_price?.toLocaleString()}원</span>
+                            </div>
+                            <div>
+                                <span className="text-gray-600">차량 비용:</span>
+                                <span className="font-medium text-green-600 ml-2">{form.car_total_price?.toLocaleString()}원</span>
+                            </div>
+                            <div>
+                                <span className="text-gray-600">총 금액:</span>
+                                <span className="font-bold text-lg text-red-600 ml-2">{(form.room_total_price + form.car_total_price)?.toLocaleString()}원</span>
+                            </div>
                         </div>
                     </div>
                 </SectionBox>
 
-
-
-                {/* 제출 버튼 */}
-                <div className="flex justify-center space-x-4 pt-6">
+                {/* 예약 진행 버튼 */}
+                <div className="flex justify-end">
                     <button
-                        onClick={() => router.push('/mypage/reservations')}
-                        className="px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
-                    >
-                        취소
-                    </button>
-                    <button
-                        onClick={handleSubmit}
+                        onClick={async () => {
+                            await handleSubmit();
+                            // 예약 홈으로 이동할 때 quoteId(견적 ID) 쿼리 파라미터를 유지하여 전달
+                            router.push(`/mypage/reservations?quoteId=${quoteId}`);
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 transition-all disabled:opacity-50"
                         disabled={loading}
-                        className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {loading ? '저장 중...' : '크루즈 예약 추가'}
+                        {loading ? '예약 중...' : '예약 추가'}
                     </button>
                 </div>
             </div>
@@ -709,10 +623,4 @@ function CruiseReservationContent() {
     );
 }
 
-export default function CruiseReservationPage() {
-    return (
-        <Suspense fallback={<div className="flex justify-center items-center h-64">로딩 중...</div>}>
-            <CruiseReservationContent />
-        </Suspense>
-    );
-}
+export default CruiseReservationContent;
