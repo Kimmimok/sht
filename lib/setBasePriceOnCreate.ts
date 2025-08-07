@@ -1,6 +1,6 @@
 import supabase from './supabase';
 
-// 서비스 생성 시 베이스 가격 자동 설정 및 quote_item 동기화
+// 서비스 생성 시 베이스 가격 자동 설정 및 quote_item 동기화 (사용일자 포함)
 export const setBasePriceAndSyncQuoteItem = async (
     serviceType: string,
     serviceId: string,
@@ -68,7 +68,19 @@ export const setBasePriceAndSyncQuoteItem = async (
             return { success: false, error: updateServiceError };
         }
 
-        // 3. quote_item 테이블 업데이트 또는 생성
+        // 3. 서비스별 사용일자 조회
+        let usageDate = null;
+        const { data: serviceData, error: serviceDateError } = await supabase
+            .from(serviceType)
+            .select(getUsageDateField(serviceType))
+            .eq('id', serviceId)
+            .single();
+
+        if (!serviceDateError && serviceData) {
+            usageDate = getUsageDateFromService(serviceType, serviceData);
+        }
+
+        // 4. quote_item 테이블 업데이트 또는 생성
         const { data: existingItem, error: itemSelectError } = await supabase
             .from('quote_item')
             .select('id')
@@ -77,14 +89,17 @@ export const setBasePriceAndSyncQuoteItem = async (
             .eq('service_ref_id', serviceId)
             .single();
 
+        const quoteItemData = {
+            unit_price: basePrice,
+            total_price: basePrice * quantity,
+            usage_date: usageDate
+        };
+
         if (existingItem) {
             // 기존 quote_item 업데이트
             const { error: itemUpdateError } = await supabase
                 .from('quote_item')
-                .update({
-                    unit_price: basePrice,
-                    total_price: basePrice * quantity
-                })
+                .update(quoteItemData)
                 .eq('id', existingItem.id);
 
             if (itemUpdateError) {
@@ -100,8 +115,7 @@ export const setBasePriceAndSyncQuoteItem = async (
                     service_type: serviceType,
                     service_ref_id: serviceId,
                     quantity: quantity,
-                    unit_price: basePrice,
-                    total_price: basePrice * quantity
+                    ...quoteItemData
                 });
 
             if (itemInsertError) {
@@ -113,7 +127,8 @@ export const setBasePriceAndSyncQuoteItem = async (
         return {
             success: true,
             basePrice: basePrice,
-            totalPrice: basePrice * quantity
+            totalPrice: basePrice * quantity,
+            usageDate: usageDate
         };
 
     } catch (error) {
@@ -122,7 +137,47 @@ export const setBasePriceAndSyncQuoteItem = async (
     }
 };
 
-// 기존 서비스들의 베이스 가격 일괄 동기화
+// 서비스 타입별 사용일자 필드 반환
+const getUsageDateField = (serviceType: string): string => {
+    switch (serviceType) {
+        case 'room':
+            return 'checkin_date';
+        case 'hotel':
+            return 'checkin_date';
+        case 'tour':
+            return 'tour_date';
+        case 'car':
+            return 'pickup_date';
+        case 'airport':
+            return 'pickup_date';
+        case 'rentcar':
+            return 'pickup_date';
+        default:
+            return 'created_at';
+    }
+};
+
+// 서비스 데이터에서 사용일자 추출
+const getUsageDateFromService = (serviceType: string, serviceData: any): string | null => {
+    switch (serviceType) {
+        case 'room':
+            return serviceData.checkin_date || null;
+        case 'hotel':
+            return serviceData.checkin_date || null;
+        case 'tour':
+            return serviceData.tour_date || null;
+        case 'car':
+            return serviceData.pickup_date || null;
+        case 'airport':
+            return serviceData.pickup_date || null;
+        case 'rentcar':
+            return serviceData.pickup_date || null;
+        default:
+            return null;
+    }
+};
+
+// 기존 서비스들의 베이스 가격 및 사용일자 일괄 동기화
 export const syncAllServicePrices = async (quoteId: string) => {
     try {
         // quote_item에서 모든 서비스 조회
@@ -138,14 +193,17 @@ export const syncAllServicePrices = async (quoteId: string) => {
         const results = [];
 
         for (const item of quoteItems) {
-            // 각 서비스에서 가격 코드 조회
+            // 각 서비스에서 가격 코드 및 사용일자 조회
+            const selectFields = [
+                'id',
+                `${item.service_type}_code`,
+                'base_price',
+                getUsageDateField(item.service_type)
+            ].join(', ');
+
             const { data: serviceData, error: serviceError } = await supabase
                 .from(item.service_type)
-                .select(`
-          id,
-          ${item.service_type}_code,
-          base_price
-        `)
+                .select(selectFields)
                 .eq('id', item.service_ref_id)
                 .single();
 
@@ -173,7 +231,7 @@ export const syncAllServicePrices = async (quoteId: string) => {
         };
 
     } catch (error) {
-        console.error('전체 서비스 가격 동기화 오류:', error);
+        console.error('전체 서비스 가격 및 사용일자 동기화 오류:', error);
         return { success: false, error };
     }
 };

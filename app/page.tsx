@@ -25,10 +25,13 @@ export default function HomePage() {
       const { data: { user: authUser }, error } = await supabase.auth.getUser();
 
       if (error || !authUser) {
+        console.log('❌ 로그인되지 않은 상태');
         setUser(null);
         setLoading(false);
         return;
       }
+
+      console.log('✅ 인증된 사용자:', authUser.email);
 
       // 사용자 테이블에서 권한 확인
       const { data: profile, error: profileError } = await supabase
@@ -58,6 +61,7 @@ export default function HomePage() {
       setUser(userProfile);
 
       // 권한별 자동 리다이렉트
+      console.log('🔄 권한별 리다이렉트 시작...');
       if (userRole === 'admin') {
         console.log('🔧 관리자 계정 - 관리자 페이지로 리다이렉트');
         router.push('/admin/quotes');
@@ -77,7 +81,7 @@ export default function HomePage() {
       }
 
     } catch (error) {
-      console.error('인증 확인 중 오류:', error);
+      console.error('🚨 인증 확인 중 오류:', error);
       setUser(null);
     } finally {
       setLoading(false);
@@ -101,7 +105,10 @@ export default function HomePage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">로딩 중...</p>
+        </div>
       </div>
     );
   }

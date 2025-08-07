@@ -21,6 +21,7 @@ export default function QuoteForm({
   const [paymentCode, setPaymentCode] = useState('');
   const [discountRate, setDiscountRate] = useState(0);
   const [rooms, setRooms] = useState<any[]>([{}]);
+  const [quoteId, setQuoteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (mode === 'edit' && initialData) {
@@ -29,6 +30,7 @@ export default function QuoteForm({
       setCruiseCode(initialData.cruise_code ?? '');
       setPaymentCode(initialData.payment_code ?? '');
       setDiscountRate(initialData.discount_rate ?? 0);
+      setQuoteId(initialData.id?.toString() ?? null);
 
       const parsedRooms = (initialData.quote_room ?? []).map((room: any) => ({
         room_code: room.room_code,
@@ -44,17 +46,13 @@ export default function QuoteForm({
     }
   }, [mode, initialData]);
 
-  const handleAddRoom = async () => {
-    if (rooms.length < 3) setRooms([...rooms, {}]);
-  };
-
   const handleSubmit = async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return alert('로그인 필요');
 
-    let quoteId = initialData?.id;
+    let currentQuoteId = quoteId;
     if (mode === 'new') {
       const { data: quote, error } = await supabase
         .from('quote')
@@ -69,7 +67,8 @@ export default function QuoteForm({
         .select()
         .single();
       if (error || !quote) return alert('견적 저장 실패');
-      quoteId = quote.id;
+      currentQuoteId = quote.id.toString();
+      setQuoteId(quote.id.toString());
     } else {
       // 수정: quote 테이블만 업데이트
       await supabase
@@ -134,19 +133,17 @@ export default function QuoteForm({
           .from('room')
           .select('id')
           .eq('quote_id', quoteId)
-          .order('created_at')
-          .limit(1)
-          .offset(roomIndex)
-          .single();
+          .order('created_at');
 
-        if (roomError || !roomData) return;
+        if (roomError || !roomData || !roomData[roomIndex]) return;
+        const targetRoom = roomData[roomIndex];
 
         // 베이스 가격 설정 및 동기화
         const result = await setBasePriceAndSyncQuoteItem(
           'room',
-          roomData.id,
+          targetRoom.id,
           newRoomCode,
-          quoteId,
+          quoteId!,
           1
         );
 
@@ -174,18 +171,16 @@ export default function QuoteForm({
           .from('car')
           .select('id')
           .eq('quote_id', quoteId)
-          .order('created_at')
-          .limit(1)
-          .offset(carIndex)
-          .single();
+          .order('created_at');
 
-        if (carError || !carData) return;
+        if (carError || !carData || !carData[carIndex]) return;
+        const targetCar = carData[carIndex];
 
         const result = await setBasePriceAndSyncQuoteItem(
           'car',
-          carData.id,
+          targetCar.id,
           newCarCode,
-          quoteId,
+          quoteId!,
           1
         );
 
@@ -198,7 +193,7 @@ export default function QuoteForm({
     }
   };
 
-  // Room 추가 시 자동 베이스 가격 설정
+  // Room 추가 시 체크인 날짜와 함께 자동 베이스 가격 설정
   const handleAddRoom = async () => {
     if (rooms.length >= 3) {
       alert('객실은 최대 3개까지 추가할 수 있습니다.');
@@ -209,6 +204,7 @@ export default function QuoteForm({
       const newRoom = {
         room_code: '',
         categoryCounts: { 성인: 0, 아동: 0, 유아: 0 },
+        checkin_date: checkin || '', // 견적의 체크인 날짜 사용
       };
 
       // 1. 견적이 이미 저장된 경우에만 실제 room 데이터 생성
@@ -221,6 +217,7 @@ export default function QuoteForm({
             adult_count: newRoom.categoryCounts.성인,
             child_count: newRoom.categoryCounts.아동,
             infant_count: newRoom.categoryCounts.유아,
+            checkin_date: newRoom.checkin_date,
           })
           .select()
           .single();
@@ -230,15 +227,19 @@ export default function QuoteForm({
           return;
         }
 
-        // 2. 베이스 가격 설정 및 quote_item 동기화
+        // 2. 베이스 가격 설정 및 quote_item 동기화 (사용일자 포함)
         if (newRoom.room_code) {
-          await setBasePriceAndSyncQuoteItem(
+          const result = await setBasePriceAndSyncQuoteItem(
             'room',
             roomData.id,
             newRoom.room_code,
             quoteId,
             1
           );
+
+          if (result.success) {
+            console.log(`Room 가격 및 사용일자 업데이트 완료: ${result.basePrice}, ${result.usageDate}`);
+          }
         }
       }
 

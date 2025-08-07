@@ -197,6 +197,78 @@ export default function BasePricesPage() {
         }
     };
 
+    // 사용일자 동기화 함수 추가
+    const handleSyncUsageDates = async () => {
+        setUpdateLoading('usage-dates');
+        try {
+            // 모든 quote_item의 사용일자 업데이트
+            const { data: quoteItems, error: itemsError } = await supabase
+                .from('quote_item')
+                .select('id, service_type, service_ref_id');
+
+            if (itemsError) {
+                alert('Quote Item 조회 중 오류가 발생했습니다.');
+                return;
+            }
+
+            let updatedCount = 0;
+
+            for (const item of quoteItems || []) {
+                try {
+                    // 서비스별 사용일자 조회
+                    const usageDateField = getUsageDateField(item.service_type);
+
+                    const { data: serviceData, error: serviceError } = await supabase
+                        .from(item.service_type)
+                        .select(usageDateField)
+                        .eq('id', item.service_ref_id)
+                        .single();
+
+                    if (serviceError || !serviceData) continue;
+
+                    const usageDate = serviceData[usageDateField];
+                    if (usageDate) {
+                        // quote_item의 usage_date 업데이트
+                        const { error: updateError } = await supabase
+                            .from('quote_item')
+                            .update({ usage_date: usageDate })
+                            .eq('id', item.id);
+
+                        if (!updateError) {
+                            updatedCount++;
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Quote Item ${item.id} 사용일자 업데이트 오류:`, error);
+                }
+            }
+
+            alert(`${updatedCount}개 견적 아이템의 사용일자가 동기화되었습니다.`);
+
+        } catch (error) {
+            alert('사용일자 동기화 중 오류가 발생했습니다.');
+        } finally {
+            setUpdateLoading(null);
+        }
+    };
+
+    // 서비스 타입별 사용일자 필드 반환 (helper 함수)
+    const getUsageDateField = (serviceType: string): string => {
+        switch (serviceType) {
+            case 'room':
+            case 'hotel':
+                return 'checkin_date';
+            case 'tour':
+                return 'tour_date';
+            case 'car':
+            case 'airport':
+            case 'rentcar':
+                return 'pickup_date';
+            default:
+                return 'created_at';
+        }
+    };
+
     if (loading) {
         return (
             <AdminLayout title="베이스 가격 관리" activeTab="base-prices">
@@ -236,7 +308,7 @@ export default function BasePricesPage() {
                 <div className="bg-gray-50 rounded border border-gray-200 p-6 space-y-4">
                     <h3 className="text-base font-medium text-gray-800">일괄 업데이트</h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {/* 베이스 가격 업데이트 */}
                         <div className="bg-white rounded border border-gray-200 p-4">
                             <h4 className="text-sm font-medium text-gray-800 mb-2">베이스 가격 업데이트</h4>
@@ -266,17 +338,36 @@ export default function BasePricesPage() {
                                 {updateLoading === 'quote-sync' ? '동기화 중...' : '견적 아이템 가격 동기화'}
                             </button>
                         </div>
+
+                        {/* 사용일자 동기화 */}
+                        <div className="bg-white rounded border border-gray-200 p-4">
+                            <h4 className="text-sm font-medium text-gray-800 mb-2">사용일자 동기화</h4>
+                            <p className="text-xs text-gray-600 mb-3">
+                                룸/호텔은 체크인, 투어는 투어일자를 견적 아이템에 동기화합니다.
+                            </p>
+                            <button
+                                onClick={handleSyncUsageDates}
+                                disabled={updateLoading === 'usage-dates'}
+                                className="w-full bg-purple-50 text-purple-600 px-3 py-2 rounded border text-sm hover:bg-purple-100 disabled:opacity-50"
+                            >
+                                {updateLoading === 'usage-dates' ? '동기화 중...' : '사용일자 일괄 동기화'}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 {/* 안내 메시지 */}
                 <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
-                    <h4 className="text-sm font-medium text-yellow-800 mb-2">📋 가격 동기화 프로세스</h4>
+                    <h4 className="text-sm font-medium text-yellow-800 mb-2">📋 동기화 프로세스</h4>
                     <ol className="text-xs text-yellow-700 space-y-1 list-decimal list-inside">
                         <li>각 서비스의 *_code로 가격 테이블에서 가격 조회</li>
                         <li>서비스 테이블의 base_price 필드 업데이트</li>
                         <li>quote_item의 unit_price와 total_price 자동 동기화</li>
-                        <li>새로운 서비스 추가 시 자동으로 가격 설정 및 동기화</li>
+                        <li><strong>quote_item의 usage_date에 서비스별 사용일자 자동 설정:</strong></li>
+                        <li className="ml-4">• 룸/호텔: checkin_date → usage_date</li>
+                        <li className="ml-4">• 투어: tour_date → usage_date</li>
+                        <li className="ml-4">• 차량/공항/렌트카: pickup_date → usage_date</li>
+                        <li>새로운 서비스 추가 시 자동으로 가격 설정 및 사용일자 동기화</li>
                     </ol>
                 </div>
             </div>
