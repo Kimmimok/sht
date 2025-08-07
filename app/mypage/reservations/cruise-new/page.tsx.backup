@@ -1,0 +1,347 @@
+﻿'use client';
+
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/n  return (
+    <PageWrapper>
+      <div className="max-w-4xl mx-auto">
+        <SectionBox title="크루즈 예약하기">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* 객실 예약 정보 */}
+            <div className="bg-blue-50 rounded-lg p-6">
+              <h3 className="text-lg font-bold text-blue-900 mb-4">객실 예약</h3>n';
+import supabase from '@/lib/supabase';
+import PageWrapper from '@/components/PageWrapper';
+import SectionBox from '@/components/SectionBox';
+
+interface CruiseReservationForm {
+  room_price_code: string;
+  checkin: string;
+  guest_count: number;
+  unit_price: number;
+  boarding_assist: string;
+  car_price_code: string;
+  car_count: number;
+  passenger_count: number;
+  pickup_datetime: string;
+  pickup_location: string;
+  dropoff_location: string;
+  room_total_price: number;
+  car_total_price: number;
+  request_note: string;
+}
+
+export default function CruiseReservationPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64">濡쒕뵫 以?..</div>}>
+      <CruiseReservationContent />
+    </Suspense>
+  );
+}
+
+function CruiseReservationContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const quoteId = searchParams.get('quoteId');
+  
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [formData, setFormData] = useState<CruiseReservationForm>({
+    room_price_code: '',
+    checkin: '',
+    guest_count: 1,
+    unit_price: 0,
+    boarding_assist: '',
+    car_price_code: '',
+    car_count: 0,
+    passenger_count: 0,
+    pickup_datetime: '',
+    pickup_location: '',
+    dropoff_location: '',
+    room_total_price: 0,
+    car_total_price: 0,
+    request_note: ''
+  });
+
+  useEffect(() => {
+    checkAuthAndLoadData();
+  }, []);
+
+  const checkAuthAndLoadData = async () => {
+    try {
+      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
+      if (userError || !authUser) {
+        alert('濡쒓렇?몄씠 ?꾩슂?⑸땲??');
+        router.push('/login');
+        return;
+      }
+      setUser(authUser);
+    } catch (error) {
+      console.error('?몄쬆 ?뺤씤 ?ㅻ쪟:', error);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setLoading(true);
+    try {
+      // 1. 硫붿씤 ?덉빟 ?덉퐫???앹꽦
+      const { data: reservationData, error: reservationError } = await supabase
+        .from('reservation')
+        .insert({
+          re_user_id: user.id,
+          re_quote_id: quoteId,
+          re_type: 'cruise',
+          re_status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (reservationError) throw reservationError;
+
+      // 2. ?щ（利??덉빟 ?곸꽭 ?뺣낫 ???
+      const { error: cruiseError } = await supabase
+        .from('reservation_cruise')
+        .insert({
+          reservation_id: reservationData.re_id,
+          ...formData
+        });
+
+      if (cruiseError) throw cruiseError;
+
+      alert('?щ（利??덉빟???깃났?곸쑝濡??깅줉?섏뿀?듬땲??');
+      router.push('/mypage/reservations');
+      
+    } catch (error) {
+      console.error('?щ（利??덉빟 ?ㅻ쪟:', error);
+      alert('?덉빟 泥섎━ 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (field: keyof CruiseReservationForm, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  return (
+    <PageWrapper>
+      <div className="max-w-4xl mx-auto">
+        <SectionBox title="?슓 ?щ（利??덉빟">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* 媛앹떎 ?뺣낫 ?뱀뀡 */}
+            <div className="bg-blue-50 rounded-lg p-6">
+              <h3 className="text-lg font-bold text-blue-900 mb-4">媛앹떎 ?뺣낫</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    媛앹떎 媛寃?肄붾뱶
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.room_price_code}
+                    onChange={(e) => handleInputChange('room_price_code', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    泥댄겕???좎쭨
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.checkin}
+                    onChange={(e) => handleInputChange('checkin', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ?ъ닕 ?몃룞 ??
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={formData.guest_count}
+                    onChange={(e) => handleInputChange('guest_count', parseInt(e.target.value))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ?④? (??
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.unit_price}
+                    onChange={(e) => handleInputChange('unit_price', parseFloat(e.target.value))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ?뱀꽑 吏???쒕퉬??
+                  </label>
+                  <select
+                    value={formData.boarding_assist}
+                    onChange={(e) => handleInputChange('boarding_assist', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="">?좏깮?섏꽭??/option>
+                    <option value="?꾩슂">?꾩슂</option>
+                    <option value="遺덊븘??>遺덊븘??/option>
+                    <option value="?좎껜??>?좎껜??吏??/option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    媛앹떎 珥?湲덉븸 (??
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.room_total_price}
+                    onChange={(e) => handleInputChange('room_total_price', parseFloat(e.target.value))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 李⑤웾 ?쒕퉬???뱀뀡 */}
+            <div className="bg-green-50 rounded-lg p-6">
+              <h3 className="text-lg font-bold text-green-900 mb-4">李⑤웾 ?쒕퉬??/h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    李⑤웾 媛寃?肄붾뱶
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.car_price_code}
+                    onChange={(e) => handleInputChange('car_price_code', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    李⑤웾 ???
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.car_count}
+                    onChange={(e) => handleInputChange('car_count', parseInt(e.target.value))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ?묒듅 ?몃룞 ??
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.passenger_count}
+                    onChange={(e) => handleInputChange('passenger_count', parseInt(e.target.value))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ?쎌뾽 ?쇱떆
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={formData.pickup_datetime}
+                    onChange={(e) => handleInputChange('pickup_datetime', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ?쎌뾽 ?μ냼
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.pickup_location}
+                    onChange={(e) => handleInputChange('pickup_location', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ?쒕∼?ㅽ봽 ?μ냼
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.dropoff_location}
+                    onChange={(e) => handleInputChange('dropoff_location', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    李⑤웾 珥?湲덉븸 (??
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.car_total_price}
+                    onChange={(e) => handleInputChange('car_total_price', parseFloat(e.target.value))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* ?밸퀎 ?붿껌 ?ы빆 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                ?밸퀎 ?붿껌 ?ы빆
+              </label>
+              <textarea
+                value={formData.request_note}
+                onChange={(e) => handleInputChange('request_note', e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                placeholder="異붽? ?붿껌?ы빆?대굹 ?밸퀎???붽뎄?ы빆???낅젰?댁＜?몄슂..."
+              />
+            </div>
+
+            {/* ?쒖텧 踰꾪듉 */}
+            <div className="flex justify-between">
+              <button
+                type="button"
+                onClick={() => router.push('/mypage/reservations')}
+                className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600"
+              >
+                痍⑥냼
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50"
+              >
+                {loading ? '?덉빟 泥섎━ 以?..' : '?щ（利??덉빟 ?꾨즺'}
+              </button>
+            </div>
+          </form>
+        </SectionBox>
+      </div>
+    </PageWrapper>
+  );
+}
+
+
+
+
+
