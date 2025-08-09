@@ -29,6 +29,35 @@ function ReservationHomeContent() {
   const [showTitleInput, setShowTitleInput] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [reservationStatus, setReservationStatus] = useState<{ [key: string]: boolean }>({});
+
+  // 예약 상태 확인 함수 (각 서비스별로 예약이 완료되었는지 확인)
+  const checkReservationStatus = async (quoteId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // 각 서비스별 예약 상태 확인
+      const serviceTypes = ['cruise', 'airport', 'hotel', 'tour', 'rentcar', 'vehicle'];
+      const statusMap: { [key: string]: boolean } = {};
+
+      for (const serviceType of serviceTypes) {
+        const { data: reservation } = await supabase
+          .from('reservation')
+          .select('re_id')
+          .eq('re_user_id', user.id)
+          .eq('re_quote_id', quoteId)
+          .eq('re_type', serviceType)
+          .maybeSingle();
+
+        statusMap[serviceType] = !!reservation;
+      }
+
+      setReservationStatus(statusMap);
+    } catch (error) {
+      console.error('예약 상태 확인 오류:', error);
+    }
+  };
 
   // 기존 예약 로드 함수
   const loadExistingQuote = async (quoteId: string) => {
@@ -37,6 +66,8 @@ function ReservationHomeContent() {
       if (quoteData) {
         setQuote(quoteData);
         setQuoteId(quoteId);
+        // 예약 상태도 함께 확인
+        await checkReservationStatus(quoteId);
       }
     } catch (error) {
       console.error('예약 로드 오류:', error);
@@ -84,11 +115,16 @@ function ReservationHomeContent() {
   useEffect(() => {
     const handleFocus = () => {
       loadUserProfile();
+      // 예약 상태도 다시 확인
+      const currentQuoteId = quoteId || existingQuoteId;
+      if (currentQuoteId) {
+        checkReservationStatus(currentQuoteId);
+      }
     };
 
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, []);
+  }, [quoteId, existingQuoteId]);
 
   // 예약 제목 입력 시작
   const handleStartQuoteCreation = () => {
@@ -122,6 +158,8 @@ function ReservationHomeContent() {
         setQuoteId(newQuote.id);
         setQuote(newQuote);
         setShowTitleInput(false);
+        // 새 예약이므로 예약 상태 초기화
+        setReservationStatus({});
         // URL도 업데이트
         router.replace(`/mypage/quotes/new?quoteId=${newQuote.id}`);
       } else {
@@ -201,19 +239,19 @@ function ReservationHomeContent() {
         router.push(`/mypage/reservations/cruise?quoteId=${currentQuoteId}`);
         break;
       case 'hotel':
-        router.push(`/mypage/reservations/hotel-new?quoteId=${currentQuoteId}`);
+        router.push(`/mypage/reservations/hotel?quoteId=${currentQuoteId}`);
         break;
       case 'rentcar':
-        router.push(`/mypage/reservations/rentcar-new?quoteId=${currentQuoteId}`);
+        router.push(`/mypage/reservations/rentcar?quoteId=${currentQuoteId}`);
         break;
       case 'airport':
-        router.push(`/mypage/reservations/airport-new?quoteId=${currentQuoteId}`);
+        router.push(`/mypage/reservations/airport?quoteId=${currentQuoteId}`);
         break;
       case 'tour':
-        router.push(`/mypage/reservations/tour-new?quoteId=${currentQuoteId}`);
+        router.push(`/mypage/reservations/tour?quoteId=${currentQuoteId}`);
         break;
       case 'vehicle':
-        router.push(`/mypage/reservations/vehicle-new?quoteId=${currentQuoteId}`);
+        router.push(`/mypage/reservations/vehicle?quoteId=${currentQuoteId}`);
         break;
       default:
         alert('해당 서비스는 준비 중입니다.');
@@ -385,13 +423,16 @@ function ReservationHomeContent() {
           {menuList.map((menu, index) => {
             const isProfileComplete = userProfile && userProfile.name && userProfile.english_name;
             const isDisabled = (existingQuoteId || quoteId) && !isProfileComplete;
+            const isReservationComplete = reservationStatus[menu.key] || false;
 
             return (
               <div
                 key={menu.key}
-                className={`group rounded-xl shadow-lg transform transition-all duration-300 overflow-hidden border border-gray-200 ${isDisabled
-                  ? 'bg-gray-100/80 cursor-not-allowed opacity-60'
-                  : 'bg-white/80 hover:shadow-2xl hover:scale-105 cursor-pointer'
+                className={`group relative rounded-xl shadow-lg transform transition-all duration-300 overflow-hidden border-2 ${isReservationComplete
+                    ? 'border-green-300 bg-green-50/80'
+                    : isDisabled
+                      ? 'border-gray-200 bg-gray-100/80 cursor-not-allowed opacity-60'
+                      : 'border-gray-200 bg-white/80 hover:shadow-2xl hover:scale-105 cursor-pointer'
                   }`}
                 onClick={() => handleServiceSelect(menu)}
                 style={{
@@ -399,6 +440,13 @@ function ReservationHomeContent() {
                   animation: 'fadeInUp 0.6s ease-out forwards'
                 }}
               >
+                {/* 완료 배지 */}
+                {isReservationComplete && (
+                  <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-bold">
+                    ✅ 완료
+                  </div>
+                )}
+
                 <div className={`h-20 bg-gradient-to-br ${getGradientClass(menu.key, true)} flex items-center justify-center ${isDisabled ? 'opacity-50' : ''
                   }`}>
                   <span className="text-4xl">{menu.label.split(' ')[0]}</span>
@@ -406,7 +454,9 @@ function ReservationHomeContent() {
                 <div className="p-2">
                   <h3 className={`text-lg font-bold mb-2 transition-colors ${isDisabled
                     ? 'text-gray-500'
-                    : 'text-gray-800 group-hover:text-blue-500'
+                    : isReservationComplete
+                      ? 'text-green-700 group-hover:text-green-600'
+                      : 'text-gray-800 group-hover:text-blue-500'
                     }`}>
                     {menu.label}
                   </h3>
@@ -415,15 +465,26 @@ function ReservationHomeContent() {
                     {menu.description}
                   </p>
                   <div className="flex items-center justify-between">
-                    <span className={`font-semibold text-xs ${isDisabled ? 'text-gray-400' : 'text-blue-400'
+                    <span className={`font-semibold text-xs ${isDisabled
+                        ? 'text-gray-400'
+                        : isReservationComplete
+                          ? 'text-green-600'
+                          : 'text-blue-400'
                       }`}>
-                      {isDisabled ? '신상정보 입력 필요' : '예약 신청하기'}
+                      {isDisabled
+                        ? '신상정보 입력 필요'
+                        : isReservationComplete
+                          ? '예약 완료 - 수정하기'
+                          : '예약 신청하기'
+                      }
                     </span>
                     <span className={`text-base transition-transform ${isDisabled
-                      ? 'text-gray-400'
-                      : 'text-blue-400 group-hover:transform group-hover:translate-x-1'
+                        ? 'text-gray-400'
+                        : isReservationComplete
+                          ? 'text-green-600 group-hover:transform group-hover:translate-x-1'
+                          : 'text-blue-400 group-hover:transform group-hover:translate-x-1'
                       }`}>
-                      {isDisabled ? '🔒' : '→'}
+                      {isDisabled ? '🔒' : isReservationComplete ? '✏️' : '→'}
                     </span>
                   </div>
                 </div>
@@ -463,8 +524,8 @@ function ReservationHomeContent() {
                 onClick={handleSubmitReservation}
                 disabled={loading || !userProfile?.name}
                 className={`px-8 py-4 rounded-lg font-bold text-lg transition-all duration-200 shadow-lg ${loading || !userProfile?.name
-                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white transform hover:scale-105'
+                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white transform hover:scale-105'
                   }`}
               >
                 {loading ? '신청 중...' : '🚀 매니저에게 예약 신청하기'}

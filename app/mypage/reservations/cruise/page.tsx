@@ -11,7 +11,7 @@ function CruiseReservationContent() {
     const searchParams = useSearchParams();
     const quoteId = searchParams.get('quoteId');
 
-    // 폼 상태 - reservation_cruise 테이블 컬럼 기반
+    // 폼 상태 - reservation_cruise 테이블 컬럼 기반 (요청사항 분리)
     const [form, setForm] = useState({
         room_price_code: '',
         checkin: '',
@@ -25,7 +25,8 @@ function CruiseReservationContent() {
         dropoff_location: '',
         room_total_price: 0,
         car_total_price: 0,
-        request_note: ''
+        room_request_note: '', // 객실 요청사항
+        car_request_note: ''   // 차량 요청사항
     });
 
     // 옵션 데이터
@@ -36,6 +37,8 @@ function CruiseReservationContent() {
     // 로딩 상태
     const [loading, setLoading] = useState(false);
     const [quote, setQuote] = useState<any>(null);
+    const [existingReservation, setExistingReservation] = useState<any>(null);
+    const [isEditMode, setIsEditMode] = useState(false);
 
     useEffect(() => {
         if (!quoteId) {
@@ -45,6 +48,7 @@ function CruiseReservationContent() {
         }
         loadQuote();
         loadQuoteLinkedData();
+        checkExistingReservation();
     }, [quoteId, router]);
 
     // 견적 정보 로드
@@ -66,6 +70,73 @@ function CruiseReservationContent() {
         } catch (error) {
             console.error('견적 로드 오류:', error);
             alert('견적 정보를 불러오는 중 오류가 발생했습니다.');
+        }
+    };
+
+    // 기존 예약 확인 (중복 방지) - 차량 분리 구조 지원
+    const checkExistingReservation = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data: existingRes } = await supabase
+                .from('reservation')
+                .select(`
+                    *,
+                    reservation_cruise (*),
+                    reservation_cruise_car (*)
+                `)
+                .eq('re_user_id', user.id)
+                .eq('re_quote_id', quoteId)
+                .eq('re_type', 'cruise')
+                .maybeSingle();
+
+            if (existingRes) {
+                setExistingReservation(existingRes);
+                setIsEditMode(true);
+
+                // 크루즈 객실 데이터로 폼 초기화
+                if (existingRes.reservation_cruise && existingRes.reservation_cruise.length > 0) {
+                    const cruiseRows = existingRes.reservation_cruise;
+
+                    // 객실 총 가격 계산 (모든 행의 room_total_price 합산)
+                    const totalRoomPrice = cruiseRows.reduce((sum: number, row: any) => sum + (row.room_total_price || 0), 0);
+
+                    // 총 투숙객 수 계산 (모든 행의 guest_count 합산)
+                    const totalGuestCount = cruiseRows
+                        .filter((row: any) => row.room_price_code)
+                        .reduce((sum: number, row: any) => sum + (row.guest_count || 0), 0);
+
+                    setForm(prev => ({
+                        ...prev,
+                        room_price_code: cruiseRows[0]?.room_price_code || '',
+                        checkin: cruiseRows[0]?.checkin || '',
+                        guest_count: totalGuestCount,
+                        unit_price: cruiseRows[0]?.unit_price || 0,
+                        room_total_price: totalRoomPrice,
+                        room_request_note: cruiseRows[0]?.request_note || ''
+                    }));
+                }
+
+                // 별도 차량 데이터로 폼 초기화
+                if (existingRes.reservation_cruise_car && existingRes.reservation_cruise_car.length > 0) {
+                    const carData = existingRes.reservation_cruise_car[0]; // 차량은 보통 단일 행
+
+                    setForm(prev => ({
+                        ...prev,
+                        car_price_code: carData.car_price_code || '',
+                        car_count: carData.car_count || 0,
+                        passenger_count: carData.passenger_count || 0,
+                        pickup_datetime: carData.pickup_datetime || '',
+                        pickup_location: carData.pickup_location || '',
+                        dropoff_location: carData.dropoff_location || '',
+                        car_total_price: carData.car_total_price || 0,
+                        car_request_note: carData.request_note || ''
+                    }));
+                }
+            }
+        } catch (error) {
+            console.error('기존 예약 확인 오류:', error);
         }
     };
 
@@ -234,12 +305,11 @@ function CruiseReservationContent() {
 
                 if (carPriceData) {
                     setCarPriceInfo(carPriceData);
-                    // 폼에 차량 코드와 기본 차량 가격 설정 (quote_item의 quantity와 가격 정보 활용)
-                    const carPriceCode = `${carPriceData.car_code}-${carPriceData.cruise}-${carPriceData.car_type}`;
+                    // 폼에 차량 코드와 기본 차량 가격 설정 (단순 car_code만 저장)
                     const quantity = quoteItem?.quantity || 1;
                     setForm(prev => ({
                         ...prev,
-                        car_price_code: carPriceCode,
+                        car_price_code: carPriceData.car_code,
                         car_count: quantity,
                         car_total_price: quoteItem?.total_price || (carPriceData.price * quantity)
                     }));
@@ -291,7 +361,7 @@ function CruiseReservationContent() {
         });
     };
 
-    // 폼 제출
+    // 폼 제출/수정 (카테고리별 다중 행 저장 + 차량 분리)
     const handleSubmit = async () => {
         try {
             setLoading(true);
@@ -302,97 +372,165 @@ function CruiseReservationContent() {
                 return;
             }
 
-            if (form.guest_count === 0) {
-                alert('투숙객 인동은 최소 1명 이상이어야 합니다.');
-                return;
-            }
-
-            // 먼저 reservation 테이블에 메인 예약 데이터 생성
+            // 사용자 인증 및 역할 확인
             const { data: { user }, error: userError } = await supabase.auth.getUser();
             if (userError || !user) {
                 router.push(`/mypage/reservations?quoteId=${quoteId}`);
                 return;
             }
 
-            // 기존 사용자 정보 확인
+            // 사용자 역할 업데이트
             const { data: existingUser, error: fetchError } = await supabase
                 .from('users')
                 .select('id, role')
                 .eq('id', user.id)
                 .single();
 
-            // 사용자가 없거나 'guest'일 경우에만 'member'로 승급 또는 등록
             if (!existingUser || existingUser.role === 'guest') {
                 const { error: upsertError } = await supabase
                     .from('users')
                     .upsert({
                         id: user.id,
                         email: user.email,
-                        role: 'member', // 예약 시 'member'로 승급
+                        role: 'member',
                         updated_at: new Date().toISOString()
                     }, { onConflict: 'id' });
 
                 if (upsertError) {
                     console.error('사용자 역할 업데이트 오류:', upsertError);
-                    // 에러가 발생해도 예약을 중단하지 않고 계속 진행할 수 있음
                 }
             }
-            // 기존 'member', 'manager', 'admin' 역할은 그대로 유지
 
-            // reservation 테이블에 메인 예약 생성
-            const { data: reservationData, error: reservationError } = await supabase
-                .from('reservation')
-                .insert({
-                    re_user_id: user.id,
-                    re_quote_id: quoteId,
-                    re_type: 'cruise',
-                    re_status: 'pending',
-                    re_created_at: new Date().toISOString()
-                })
-                .select()
-                .single();
+            let reservationData;
 
-            if (reservationError) {
-                console.error('예약 생성 오류:', reservationError);
-                alert('예약 생성 중 오류가 발생했습니다.');
+            if (isEditMode && existingReservation) {
+                // 수정 모드: 기존 예약 사용
+                reservationData = existingReservation;
+
+                // 기존 reservation_cruise 모든 행 삭제
+                console.log('🗑️ 기존 크루즈 예약 데이터 삭제 중...');
+                await supabase
+                    .from('reservation_cruise')
+                    .delete()
+                    .eq('reservation_id', existingReservation.re_id);
+
+                // 기존 reservation_cruise_car 모든 행 삭제
+                console.log('🗑️ 기존 크루즈 차량 예약 데이터 삭제 중...');
+                await supabase
+                    .from('reservation_cruise_car')
+                    .delete()
+                    .eq('reservation_id', existingReservation.re_id);
+            } else {
+                // 새 예약 생성 (중복 확인)
+                const { data: duplicateCheck } = await supabase
+                    .from('reservation')
+                    .select('re_id')
+                    .eq('re_user_id', user.id)
+                    .eq('re_quote_id', quoteId)
+                    .eq('re_type', 'cruise')
+                    .maybeSingle();
+
+                if (duplicateCheck) {
+                    // 기존 예약이 있으면 업데이트 모드로 전환
+                    console.log('🔄 기존 크루즈 예약 발견 - 업데이트 모드로 전환');
+                    reservationData = { re_id: duplicateCheck.re_id };
+
+                    // 기존 크루즈 예약 데이터 모든 행 삭제
+                    await supabase
+                        .from('reservation_cruise')
+                        .delete()
+                        .eq('reservation_id', duplicateCheck.re_id);
+
+                    // 기존 크루즈 차량 예약 데이터 모든 행 삭제
+                    await supabase
+                        .from('reservation_cruise_car')
+                        .delete()
+                        .eq('reservation_id', duplicateCheck.re_id);
+                } else {
+                    // 완전히 새로운 예약 생성
+                    const { data: newReservation, error: reservationError } = await supabase
+                        .from('reservation')
+                        .insert({
+                            re_user_id: user.id,
+                            re_quote_id: quoteId,
+                            re_type: 'cruise',
+                            re_status: 'pending',
+                            re_created_at: new Date().toISOString()
+                        })
+                        .select()
+                        .single();
+
+                    if (reservationError) {
+                        console.error('예약 생성 오류:', reservationError);
+                        alert('예약 생성 중 오류가 발생했습니다.');
+                        return;
+                    }
+                    reservationData = newReservation;
+                }
+            }
+
+            // 🎯 카테고리별 다중 행 저장 (객실만)
+            let errors = [];
+
+            // 1. 객실 예약 - 카테고리별 다중 행 저장 (차량 정보 제외)
+            console.log('🏨 객실 예약 데이터 저장 중...');
+            for (const roomData of roomsData) {
+                // 각 객실 카테고리별로 별도 행 생성 (차량 정보 제거됨)
+                const roomReservationData = {
+                    reservation_id: reservationData.re_id,
+                    room_price_code: roomData.room_code,
+                    checkin: form.checkin,
+                    guest_count: (roomData.adult_count || 0) + (roomData.child_count || 0) + (roomData.extra_count || 0),
+                    unit_price: roomData.priceInfo?.price || 0,
+                    room_total_price: roomData.quoteItem?.total_price || 0,
+                    request_note: form.room_request_note || null
+                };
+
+                console.log(`📋 ${roomData.room_code} 객실 데이터:`, roomReservationData);
+                const { error: roomError } = await supabase
+                    .from('reservation_cruise')
+                    .insert(roomReservationData);
+
+                if (roomError) {
+                    console.error(`${roomData.room_code} 객실 저장 오류:`, roomError);
+                    errors.push(`객실 ${roomData.room_code} 저장 오류: ${roomError.message}`);
+                }
+            }
+
+            // 2. 차량 예약 - 별도 테이블에 저장 (reservation_cruise_car)
+            if (form.car_price_code && form.car_count > 0) {
+                console.log('🚗 차량 예약 데이터 저장 중...');
+                const carReservationData = {
+                    reservation_id: reservationData.re_id,
+                    car_price_code: form.car_price_code,
+                    car_count: form.car_count,
+                    passenger_count: form.passenger_count,
+                    pickup_datetime: form.pickup_datetime ? new Date(form.pickup_datetime).toISOString() : null,
+                    pickup_location: form.pickup_location,
+                    dropoff_location: form.dropoff_location,
+                    car_total_price: form.car_total_price,
+                    request_note: form.car_request_note || null
+                };
+
+                console.log('🚗 차량 예약 데이터:', carReservationData);
+                const { error: carError } = await supabase
+                    .from('reservation_cruise_car')
+                    .insert(carReservationData);
+
+                if (carError) {
+                    console.error('차량 예약 저장 오류:', carError);
+                    errors.push(`차량 저장 오류: ${carError.message}`);
+                }
+            }
+
+            // 에러 체크
+            if (errors.length > 0) {
+                console.error('💥 크루즈 예약 저장 중 오류 발생:', errors);
+                alert('크루즈 예약 저장 중 오류가 발생했습니다:\n' + errors.join('\n'));
                 return;
             }
 
-            // reservation_cruise 데이터 생성
-            // boarding_assist 값 처리 - CHECK 제약조건 문제 해결을 위해 필드를 완전히 제거
-            // boarding_assist가 ''이면 null로 전달, 아니면 'y'/'n'만 전달
-            const reservationCruiseData: { [key: string]: any } = {
-                reservation_id: reservationData.re_id,
-                room_price_code: form.room_price_code,
-                checkin: form.checkin,
-                guest_count: form.guest_count,
-                unit_price: form.unit_price,
-                car_price_code: form.car_price_code,
-                car_count: form.car_count,
-                passenger_count: form.passenger_count,
-                pickup_datetime: form.pickup_datetime ? new Date(form.pickup_datetime).toISOString() : null,
-                pickup_location: form.pickup_location,
-                dropoff_location: form.dropoff_location,
-                room_total_price: form.room_total_price,
-                car_total_price: form.car_total_price,
-                request_note: form.request_note
-            };
-            console.log('reservationCruiseData (final):', reservationCruiseData); // 실제 값 확인
-
-            // reservation_cruise 테이블에 삽입
-            const { data: reservationResult, error: cruiseReservationError } = await supabase
-                .from('reservation_cruise')
-                .insert(reservationCruiseData)
-                .select()
-                .single();
-
-            if (cruiseReservationError) {
-                console.error('크루즈 예약 저장 오류:', cruiseReservationError);
-                alert('크루즈 예약 저장 중 오류가 발생했습니다.');
-                return;
-            }
-
-            alert('크루즈 예약이 성공적으로 저장되었습니다!');
+            alert(isEditMode ? '크루즈 예약이 성공적으로 수정되었습니다!' : '크루즈 예약이 성공적으로 저장되었습니다!');
             router.push(`/mypage/reservations?quoteId=${quoteId}`);
 
         } catch (error) {
@@ -471,7 +609,23 @@ function CruiseReservationContent() {
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none"
                             />
                         </div>
+                    </div>
 
+                    {/* 객실 요청사항 - 체크인 바로 아래로 이동 */}
+                    <div className="mt-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            🏨 객실 관련 요청사항
+                        </label>
+                        <textarea
+                            value={form.room_request_note}
+                            onChange={(e) => handleInputChange('room_request_note', e.target.value)}
+                            placeholder="예) 높은 층 객실 희망, 조용한 객실 선호, 바다 전망 객실 요청, 특별한 침구류 요청 등"
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-vertical"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                            * 객실 배치, 뷰, 편의시설 등 크루즈 객실 관련 요청사항을 입력해 주세요.
+                        </p>
                     </div>
                 </SectionBox>
 
@@ -584,9 +738,27 @@ function CruiseReservationContent() {
                         </div>
                     </div>
 
-                    {/* 총 예약 금액 표시 */}
-                    <div className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                        <h4 className="text-sm font-medium text-yellow-800 mb-3">💰 크루즈 예약 금액</h4>
+                    {/* 차량 요청사항 - 차량 섹션 내로 이동 */}
+                    <div className="mt-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            🚗 차량 관련 요청사항
+                        </label>
+                        <textarea
+                            value={form.car_request_note}
+                            onChange={(e) => handleInputChange('car_request_note', e.target.value)}
+                            placeholder="예) 대형 차량 선호, 시간 조정 가능 여부, 특별한 픽업/드롭오프 장소, 짐 보관 요청 등"
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-vertical"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                            * 차량 타입, 픽업/드롭오프 관련, 운전 서비스 등 차량 관련 요청사항을 입력해 주세요.
+                        </p>
+                    </div>
+                </SectionBox>
+
+                {/* 총 예약 금액 표시 - 가장 아래로 이동 */}
+                <SectionBox title="� 크루즈 예약 금액">
+                    <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                         <div className="flex flex-col gap-2 text-sm">
                             <div>
                                 <span className="text-gray-600">객실 비용:</span>
@@ -596,11 +768,14 @@ function CruiseReservationContent() {
                                 <span className="text-gray-600">차량 비용:</span>
                                 <span className="font-medium text-green-600 ml-2">{form.car_total_price?.toLocaleString()}원</span>
                             </div>
-                            <div>
-                                <span className="text-gray-600">총 금액:</span>
+                            <div className="border-t border-yellow-300 pt-2 mt-2">
+                                <span className="text-gray-800 font-medium">총 예상 금액:</span>
                                 <span className="font-bold text-lg text-red-600 ml-2">{(form.room_total_price + form.car_total_price)?.toLocaleString()}원</span>
                             </div>
                         </div>
+                        <p className="mt-3 text-xs text-gray-600">
+                            * 위 금액은 견적 기준 예상 금액이며, 실제 결제 금액은 다를 수 있습니다.
+                        </p>
                     </div>
                 </SectionBox>
 
@@ -615,7 +790,7 @@ function CruiseReservationContent() {
                         className="px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 transition-all disabled:opacity-50"
                         disabled={loading}
                     >
-                        {loading ? '예약 중...' : '예약 추가'}
+                        {loading ? (isEditMode ? '수정 중...' : '예약 중...') : (isEditMode ? '예약 수정' : '예약 추가')}
                     </button>
                 </div>
             </div>
@@ -623,17 +798,4 @@ function CruiseReservationContent() {
     );
 }
 
-export default function CruiseReservationPage() {
-    return (
-        <Suspense fallback={
-            <PageWrapper>
-                <div className="flex justify-center items-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">데이터를 불러오는 중...</p>
-                </div>
-            </PageWrapper>
-        }>
-            <CruiseReservationContent />
-        </Suspense>
-    );
-}
+export default CruiseReservationContent;

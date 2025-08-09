@@ -1,224 +1,414 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useCruiseStore } from '@/lib/useCruiseStore';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import supabase from '@/lib/supabase';
+import PageWrapper from '@/components/PageWrapper';
+import SectionBox from '@/components/SectionBox';
 
-export default function VehiclePage() {
-  const router = useRouter();
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+function VehicleReservationContent() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const quoteId = searchParams.get('quoteId');
 
-  // 전역 상태에서 schedule_code, cruise_code 가져오기
-  const { schedule_code, cruise_code } = useCruiseStore();
-  // 폼 데이터
-  const [form, setForm] = useState({
-    schedule_code: schedule_code || '',
-    cruise_code: cruise_code || '',
-    vehicle_category_code: '',
-    vehicle_code: '',
-    passenger_count: 1,
-    discount_rate: 0
-  });
-
-  // 옵션 데이터
-  const [schedules, setSchedules] = useState<any[]>([]);
-  const [cruises, setCruises] = useState<any[]>([]);
-  const [vehicles, setVehicles] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
-
-  // 사용자 인증 체크
-  useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }: any) => {
-      if (!user) {
-        alert('로그인이 필요합니다.');
-        router.push('/login');
-      } else {
-        setUser(user);
-        loadBasicData();
-      }
+    // 폼 상태 - reservation_vehicle_sht 테이블 컬럼 기반
+    const [form, setForm] = useState({
+        vehicle_number: '',
+        seat_number: '',
+        color_label: ''
     });
-  }, [router]);
 
-  // 기본 데이터 로드
-  const loadBasicData = async () => {
-    try {
-      const [scheduleRes, categoryRes] = await Promise.all([
-        supabase.from('schedule_info').select('*'),
-        supabase.from('category_info').select('*')
-      ]);
+    // 옵션 데이터
+    const [vehicleData, setVehicleData] = useState<any[]>([]);
 
-      setSchedules(scheduleRes.data || []);
-      setCategories(categoryRes.data?.filter((c: any) => ['왕복', '편도', '기본'].includes(c.name)) || []);
-    } catch (error) {
-      console.error('기본 데이터 로드 실패:', error);
-    }
-  };
+    // 로딩 상태
+    const [loading, setLoading] = useState(false);
+    const [quote, setQuote] = useState<any>(null);
 
-  // 크루즈 옵션 로드
-  useEffect(() => {
-    const fetchCruiseOptions = async () => {
-      if (!form.schedule_code) return;
+    // 중복 방지 상태
+    const [existingReservation, setExistingReservation] = useState<any>(null);
+    const [isEditMode, setIsEditMode] = useState(false);
 
-      const { data: cruiseList } = await supabase
-        .from('cruise_info')
-        .select('code, name');
-      setCruises(cruiseList || []);
-    };
-
-    fetchCruiseOptions();
-  }, [form.schedule_code]);
-
-  // 차량 옵션 로드 (전역 상태와 차량구분으로 필터링)
-  useEffect(() => {
-    const fetchVehicleOptions = async () => {
-      if (schedule_code && cruise_code && form.vehicle_category_code) {
-        const category = categories.find(c => c.name === form.vehicle_category_code);
-        if (!category) return;
-
-        const { data: carPrices } = await supabase
-          .from('car_price')
-          .select('car_code')
-          .eq('schedule_code', schedule_code)
-          .eq('cruise_code', cruise_code)
-          .eq('category_code', category.code);
-
-        const carCodes = [...new Set(carPrices?.map((v: any) => v.car_code))];
-        if (carCodes.length > 0) {
-          const { data: carInfo } = await supabase
-            .from('car_info')
-            .select('code, name')
-            .in('code', carCodes);
-          setVehicles(carInfo || []);
-        } else {
-          setVehicles([]);
+    useEffect(() => {
+        if (!quoteId) {
+            alert('견적 ID가 필요합니다.');
+            router.push('/mypage/reservations');
+            return;
         }
-      } else {
-        setVehicles([]);
-      }
+        loadQuote();
+        loadQuoteLinkedData();
+        checkExistingReservation();
+    }, [quoteId, router]);
+
+    // 견적 정보 로드
+    const loadQuote = async () => {
+        try {
+            const { data: quoteData, error } = await supabase
+                .from('quote')
+                .select('id, title, status')
+                .eq('id', quoteId)
+                .single();
+
+            if (error || !quoteData) {
+                alert('견적을 찾을 수 없습니다.');
+                router.push('/mypage/reservations');
+                return;
+            }
+
+            setQuote(quoteData);
+        } catch (error) {
+            console.error('견적 로드 오류:', error);
+            alert('견적 정보를 불러오는 중 오류가 발생했습니다.');
+        }
     };
-    fetchVehicleOptions();
-  }, [schedule_code, cruise_code, form.vehicle_category_code, categories]);
 
-  // 폼 제출
-  const handleSubmit = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    try {
-      const { error } = await supabase.from('quote_car').insert({ 
-        ...form, 
-        user_id: user.id 
-      });
-      
-      if (error) {
-        alert('저장 실패: ' + error.message);
-      } else {
-        alert('차량 견적이 저장되었습니다!');
-        router.push('/mypage/quotes');
-      }
-    } catch (error) {
-      console.error('견적 저장 오류:', error);
-      alert('견적 저장 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
+    // 견적에 연결된 차량 데이터 로드
+    const loadQuoteLinkedData = async () => {
+        try {
+            // 견적에 연결된 quote_item들 조회 (usage_date 포함)
+            const { data: quoteItems } = await supabase
+                .from('quote_item')
+                .select('service_type, service_ref_id, quantity, unit_price, total_price, usage_date')
+                .eq('quote_id', quoteId)
+                .eq('service_type', 'vehicle');
+
+            if (quoteItems && quoteItems.length > 0) {
+                await loadAllVehicleInfo(quoteItems);
+            }
+        } catch (error) {
+            console.error('견적 연결 데이터 로드 오류:', error);
+        }
+    };
+
+    // 모든 차량 정보 로드
+    const loadAllVehicleInfo = async (vehicleItems: any[]) => {
+        try {
+            const allVehicleData = [];
+
+            // 각 vehicle item에 대해 정보 조회
+            for (const vehicleItem of vehicleItems) {
+                // vehicle 테이블에서 차량 정보 조회
+                const { data: vehicleData } = await supabase
+                    .from('vehicle')
+                    .select('*')
+                    .eq('id', vehicleItem.service_ref_id)
+                    .single();
+
+                if (vehicleData) {
+                    // quote_item 정보와 함께 저장
+                    allVehicleData.push({
+                        ...vehicleData,
+                        quoteItem: vehicleItem
+                    });
+                }
+            }
+
+            setVehicleData(allVehicleData);
+
+            // 첫 번째 차량 정보로 폼 기본값 설정
+            if (allVehicleData.length > 0) {
+                const firstVehicle = allVehicleData[0];
+                setForm(prev => ({
+                    ...prev,
+                    vehicle_number: firstVehicle.vehicle_number || '',
+                    seat_number: firstVehicle.seat_number || '',
+                    color_label: firstVehicle.color_label || ''
+                }));
+            }
+
+        } catch (error) {
+            console.error('차량 정보 로드 오류:', error);
+        }
+    };
+
+    // 기존 예약 확인 (중복 방지)
+    const checkExistingReservation = async () => {
+        try {
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError || !user) return;
+
+            const { data: existingRes, error: reservationError } = await supabase
+                .from('reservation')
+                .select(`
+                    *,
+                    reservation_vehicle_sht (
+                        vehicle_number,
+                        seat_number,
+                        color_label
+                    )
+                `)
+                .eq('re_user_id', user.id)
+                .eq('re_quote_id', quoteId)
+                .eq('re_type', 'vehicle')
+                .maybeSingle();
+
+            if (existingRes && existingRes.reservation_vehicle_sht) {
+                setExistingReservation(existingRes);
+                setIsEditMode(true);
+
+                // 기존 예약 데이터를 폼에 채우기
+                const vehicleData = existingRes.reservation_vehicle_sht;
+                setForm({
+                    vehicle_number: vehicleData.vehicle_number || '',
+                    seat_number: vehicleData.seat_number || '',
+                    color_label: vehicleData.color_label || ''
+                });
+            }
+        } catch (error) {
+            console.error('기존 예약 확인 오류:', error);
+        }
+    };
+
+    // 예약 제출 처리
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+
+        try {
+            // 유효성 검사
+            if (!form.vehicle_number) {
+                alert('차량 번호는 필수 입력 항목입니다.');
+                return;
+            }
+
+            // 먼저 reservation 테이블에 메인 예약 데이터 생성
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError || !user) {
+                router.push(`/mypage/reservations?quoteId=${quoteId}`);
+                return;
+            }
+
+            // 기존 사용자 정보 확인
+            const { data: existingUser, error: fetchError } = await supabase
+                .from('users')
+                .select('id, role')
+                .eq('id', user.id)
+                .single();
+
+            // 사용자가 없거나 'guest'일 경우에만 'member'로 승급 또는 등록
+            if (!existingUser || existingUser.role === 'guest') {
+                const { error: upsertError } = await supabase
+                    .from('users')
+                    .upsert({
+                        id: user.id,
+                        email: user.email,
+                        role: 'member', // 예약 시 'member'로 승급
+                        updated_at: new Date().toISOString()
+                    }, { onConflict: 'id' });
+
+                if (upsertError) {
+                    console.error('사용자 역할 업데이트 오류:', upsertError);
+                    // 에러가 발생해도 예약을 중단하지 않고 계속 진행할 수 있음
+                }
+            }
+
+            // 중복 예약 방지: 기존 예약이 있으면 업데이트, 없으면 새로 생성
+            if (existingReservation) {
+                // 기존 예약 업데이트
+                const reservationVehicleData = {
+                    vehicle_number: form.vehicle_number,
+                    seat_number: form.seat_number,
+                    color_label: form.color_label
+                };
+
+                // reservation_car_sht 테이블 업데이트
+                const { error: updateError } = await supabase
+                    .from('reservation_car_sht')
+                    .update(reservationVehicleData)
+                    .eq('reservation_id', existingReservation.re_id);
+
+                if (updateError) {
+                    console.error('차량 예약 업데이트 오류:', updateError);
+                    alert('차량 예약 업데이트 중 오류가 발생했습니다.');
+                    return;
+                }
+
+                alert('차량 예약이 성공적으로 수정되었습니다!');
+                router.push(`/mypage/reservations?quoteId=${quoteId}`);
+                return;
+            }
+
+            // reservation 테이블에 메인 예약 생성
+            const { data: reservationData, error: reservationError } = await supabase
+                .from('reservation')
+                .insert({
+                    re_user_id: user.id,
+                    re_quote_id: quoteId,
+                    re_type: 'vehicle',
+                    re_status: 'pending',
+                    re_created_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+            if (reservationError) {
+                console.error('예약 생성 오류:', reservationError);
+                alert('예약 생성 중 오류가 발생했습니다.');
+                return;
+            }
+
+            // reservation_vehicle_sht 데이터 생성
+            const reservationVehicleData = {
+                reservation_id: reservationData.re_id,
+                vehicle_number: form.vehicle_number,
+                seat_number: form.seat_number,
+                color_label: form.color_label
+            };
+
+            // reservation_car_sht 테이블에 삽입
+            const { data: reservationResult, error: vehicleReservationError } = await supabase
+                .from('reservation_car_sht')
+                .insert(reservationVehicleData)
+                .select()
+                .single();
+
+            if (vehicleReservationError) {
+                console.error('차량 예약 저장 오류:', vehicleReservationError);
+                alert('차량 예약 저장 중 오류가 발생했습니다.');
+                return;
+            }
+
+            alert('차량 예약이 성공적으로 저장되었습니다!');
+            router.push(`/mypage/reservations?quoteId=${quoteId}`);
+
+        } catch (error) {
+            console.error('예약 저장 오류:', error);
+            alert('예약 저장 중 오류가 발생했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleInputChange = (field: string, value: any) => {
+        setForm(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    };
+
+    if (!quote) {
+        return (
+            <PageWrapper>
+                <div className="flex justify-center items-center h-64">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                    <p className="mt-4 text-gray-600">데이터를 불러오는 중...</p>
+                </div>
+            </PageWrapper>
+        );
     }
-  };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 그라데이션 헤더 */}
-      <div className="bg-gradient-to-r from-green-600 via-teal-600 to-green-800 text-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold">🚐 크루즈 차량 예약</h1>
-            <button 
-              onClick={() => router.push('/mypage/quotes/new')}
-              className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
-            >
-              🏠 홈으로
-            </button>
-          </div>
-          
-          <div className="bg-white/10 backdrop-blur rounded-lg p-6">
-            <p className="text-lg opacity-90">편리한 차량 서비스를 예약해보세요.</p>
-            <p className="text-sm opacity-75 mt-2">크루즈 선착장까지 안전하고 편안한 차량을 제공합니다.</p>
-          </div>
-        </div>
-      </div>
+    return (
+        <PageWrapper>
+            <div className="space-y-6">
+                {/* 헤더 */}
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-lg font-bold text-gray-800">
+                            🚐 차량 예약 {isEditMode ? '수정' : '등록'}
+                        </h1>
+                        <p className="text-sm text-gray-600 mt-1">견적: {quote.title}</p>
+                    </div>
+                    <button
+                        onClick={() => router.push('/mypage/reservations')}
+                        className="px-3 py-1 bg-gray-50 text-gray-600 rounded border text-sm hover:bg-gray-100"
+                    >
+                        목록으로
+                    </button>
+                </div>
 
-      {/* 입력 폼 영역 */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-lg p-6 space-y-6">
+                {/* 차량 정보 */}
+                {vehicleData.length > 0 && (
+                    <SectionBox title="차량 정보">
+                        <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                            <h4 className="text-sm font-medium text-indigo-800 mb-3">🚐 차량 정보</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                {vehicleData.map((vehicle, index) => (
+                                    <div key={index} className="space-y-2">
+                                        <div><span className="text-gray-600">차량번호:</span> <span className="font-medium">{vehicle.vehicle_number}</span></div>
+                                        <div><span className="text-gray-600">좌석번호:</span> <span className="font-medium">{vehicle.seat_number}</span></div>
+                                        <div><span className="text-gray-600">색상:</span> <span className="font-medium">{vehicle.color_label}</span></div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </SectionBox>
+                )}
 
+                {/* 차량 예약 폼 */}
+                <SectionBox title="차량 예약 정보">
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        {/* 차량 기본 정보 */}
+                        <div className="bg-indigo-50 rounded-lg p-6">
+                            <h3 className="text-lg font-bold text-indigo-900 mb-4">차량 기본 정보</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        차량 번호
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={form.vehicle_number}
+                                        onChange={(e) => handleInputChange('vehicle_number', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        placeholder="예: 12가 3456"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        좌석 번호
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={form.seat_number}
+                                        onChange={(e) => handleInputChange('seat_number', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        placeholder="예: A1, B2"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        색상 라벨
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={form.color_label}
+                                        onChange={(e) => handleInputChange('color_label', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        placeholder="예: 흰색, 검정, 은색"
+                                    />
+                                </div>
+                            </div>
+                        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">🚐 차량 구분</label>
-            <div className="grid grid-cols-3 gap-2">
-              {[...categories.reduce((acc, cur) => acc.set(cur.name, cur), new Map()).values()].map(c => (
-                <button 
-                  key={c.code} 
-                  onClick={() => setForm({ ...form, vehicle_category_code: c.name })} 
-                  className={`border p-3 rounded-lg transition-colors ${
-                    form.vehicle_category_code === c.name ? 'bg-green-500 text-white border-green-500' : 'bg-gray-50 border-gray-300 hover:bg-gray-100'
-                  }`}
-                >
-                  {c.name}
-                </button>
-              ))}
+                        {/* 제출 버튼 */}
+                        <div className="flex justify-between">
+                            <button
+                                type="button"
+                                onClick={() => router.push('/mypage/reservations')}
+                                className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600"
+                            >
+                                취소
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="bg-indigo-500 text-white px-6 py-3 rounded-lg hover:bg-indigo-600 disabled:opacity-50"
+                            >
+                                {loading ? '처리 중...' : (isEditMode ? '차량 예약 수정' : '차량 예약 완료')}
+                            </button>
+                        </div>
+                    </form>
+                </SectionBox>
             </div>
-          </div>
+        </PageWrapper>
+    );
+}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">🚗 차량 선택</label>
-            <select 
-              value={form.vehicle_code} 
-              onChange={e => setForm({ ...form, vehicle_code: e.target.value })} 
-              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-            >
-              <option value="">차량을 선택하세요</option>
-              {vehicles.map(v => <option key={v.code} value={v.code}>{v.name}</option>)}
-            </select>
-          </div>
-
-          {/* 승객 수 선택 */}
-          <div className="bg-gradient-to-r from-green-600 to-teal-600 rounded-lg p-6">
-            <h3 className="text-white text-lg font-semibold mb-4">👥 승객 수</h3>
-            <div className="grid grid-cols-8 gap-2">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
-                <button
-                  key={n}
-                  onClick={() => setForm({ ...form, passenger_count: n })}
-                  className={`border rounded px-3 py-2 transition-colors ${
-                    form.passenger_count === n ? 'bg-white text-green-600 border-white' : 'bg-green-600/20 text-white border-white/30 hover:bg-green-600/40'
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          </div>
-
-
-          {/* 제출 버튼 */}
-          <div className="flex gap-4">
-            <button 
-              onClick={() => router.push('/mypage/quotes/new')}
-              className="flex-1 bg-gray-500 text-white py-3 rounded-lg hover:bg-gray-600 transition-colors"
-            >
-              ← 뒤로가기
-            </button>
-            <button 
-              onClick={handleSubmit} 
-              disabled={loading}
-              className="flex-1 bg-gradient-to-r from-green-500 to-teal-600 text-white py-3 rounded-lg hover:from-green-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-all"
-            >
-              {loading ? '저장 중...' : '🚐 차량 예약하기'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+export default function VehicleReservationPage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center items-center h-64">로딩 중...</div>}>
+            <VehicleReservationContent />
+        </Suspense>
+    );
 }

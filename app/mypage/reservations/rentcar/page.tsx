@@ -1,537 +1,536 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import supabase from '@/lib/supabase';
+import PageWrapper from '@/components/PageWrapper';
+import SectionBox from '@/components/SectionBox';
 
-
-export default function RentCarPage() {
+function RentcarReservationContent() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  // quote_rentcar 테이블 컬럼에 맞춘 폼 구조
+  const searchParams = useSearchParams();
+  const quoteId = searchParams.get('quoteId');
+
+  // 폼 상태 - 크루즈 패턴 적용 (서비스 정보 입력)
   const [form, setForm] = useState({
-    rc_category_code: '', // 구분 (rc_category)는 별도 처리
-    rc_type_code: '',     // 분류 (rc_vehicle_type)는 별도 처리  
-    rc_route_code: '',    // 경로 (rc_route)는 별도 처리
-    rc_car_code: '',      // 차량종류
-    rc_car_count: 1,
-    rc_boarding_date: '',
-    rc_boarding_time: '',
-    rc_pickup_location: '',
-    rc_carrier_count: 0,
-    rc_dropoff_location: '',
-    rc_via_location: '',
-    rc_passenger_count: 1,
-    rc_usage_period: 1
+    // 서비스 타입별 폼 데이터
+    serviceData: {
+      pickup_date: '',
+      return_date: '',
+      pickup_location: '',
+      destination: '',
+      rental_days: 1,
+      driver_count: 1,
+      passenger_count: 1,
+      luggage_count: 0,
+      via_location: '',
+      via_waiting: ''
+    },
+    request_note: ''
   });
 
-  // 드롭다운 옵션 데이터 - 렌트카 가격 테이블에서 가져오기
-  // 구분 옵션: [{ code, name }]
-  const [categoryOptions, setCategoryOptions] = useState<{ code: string; name: string }[]>([]);
-  // 분류, 경로, 차량종류 옵션: [{ code, name }]
-  const [typeOptions, setTypeOptions] = useState<{ code: string; name: string }[]>([]);
-  const [routeOptions, setRouteOptions] = useState<{ code: string; name: string }[]>([]);
-  const [carOptions, setCarOptions] = useState<{ code: string; name: string }[]>([]);
-
-  // 초기 데이터 로드 - 구분(rc_category_code, name) 옵션
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        // rentcar_category 테이블에서 code, name 컬럼 조회
-        const { data: categories } = await supabase
-          .from('rentcar_category')
-          .select('code, name')
-          .not('code', 'is', null);
-        // 중복 제거 (code 기준)
-        const uniqueCategories = Array.from(
-          new Map((categories || []).map((c: any) => [c.code, { code: c.code, name: c.name }])).values()
-        );
-        setCategoryOptions(uniqueCategories as { code: string; name: string }[]);
-      } catch (error) {
-          // ...
-        setCategoryOptions([]);
-      }
-    };
-    loadInitialData();
-  }, []);
-
-  // 분류 옵션: rentcar_price에서 구분별 rc_type_code 조회 후, rentcar_type 테이블에서 이름 가져오기
-  useEffect(() => {
-    const loadTypeOptions = async () => {
-      if (!form.rc_category_code) {
-        setTypeOptions([]);
-        return;
-      }
-      try {
-        // 1. rentcar_price에서 구분별 rc_type_code 목록 조회
-        const { data: priceData, error: priceError } = await supabase
-          .from('rentcar_price')
-        let typeError = priceError;
-        let typeData = priceData;
-          {/* 렌트카 서비스 카드들 - 원래 스타일로 복동 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            <div className="bg-white/80 backdrop-blur rounded-lg p-4 hover:bg-white/90 transition-colors">
-              <div className="flex items-center mb-2">
-                <span className="text-2xl mr-2">🚙</span>
-                <h3 className="font-semibold text-gray-800">프리미엄 차량</h3>
-              </div>
-              <p className="text-sm text-gray-600">최신 모델의 고급 차량으로 편안한 여행을</p>
-            </div>
-            <div className="bg-white/80 backdrop-blur rounded-lg p-4 hover:bg-white/90 transition-colors">
-              <div className="flex items-center mb-2">
-                <span className="text-2xl mr-2">🗺️</span>
-                <h3 className="font-semibold text-gray-800">맞춤 경로</h3>
-              </div>
-              <p className="text-sm text-gray-600">원하는 목적지까지 최적의 경로 제공</p>
-            </div>
-            <div className="bg-white/80 backdrop-blur rounded-lg p-4 hover:bg-white/90 transition-colors">
-              <div className="flex items-center mb-2">
-                <span className="text-2xl mr-2">⭐</span>
-                <h3 className="font-semibold text-gray-800">전문 기사</h3>
-              </div>
-              <p className="text-sm text-gray-600">숙련된 전문 기사가 안전하게 모시겠습니다</p>
-            </div>
-          </div>
-        if (typeError) {
-          setTypeOptions([]);
-          return;
-        }
-        setTypeOptions((typeData || []).map((t: any) => ({ code: t.code, name: t.name })));
-      } catch (error) {
-        // ...
-        setTypeOptions([]);
-      }
-    };
-    loadTypeOptions();
-    setForm(prev => ({ ...prev, rc_type_code: '', rc_route_code: '', rc_car_code: '' }));
-  }, [form.rc_category_code]);
-
-  // 경로 옵션: rentcar_price에서 구분+분류별 rc_route_code 조회 후, route_info 테이블에서 이름 가져오기
-  useEffect(() => {
-    const loadRouteOptions = async () => {
-      if (!form.rc_category_code || !form.rc_type_code) {
-        setRouteOptions([]);
-        return;
-      }
-      try {
-        // 1. rentcar_price에서 구분+분류별 rc_route_code 목록 조회
-        const { data: priceData, error: priceError } = await supabase
-          .from('rentcar_price')
-          .select('rc_route_code')
-          .eq('rc_category_code', form.rc_category_code)
-          .eq('rc_type_code', form.rc_type_code)
-          .not('rc_route_code', 'is', null);
-        
-        if (priceError) {
-          // ...
-          setRouteOptions([]);
-          return;
-        }
-
-        // 2. 중복 제거된 rc_route_code 목록
-        const uniqueRouteCodes = [...new Set((priceData || []).map((d: any) => d.rc_route_code))];
-        
-        if (uniqueRouteCodes.length === 0) {
-          setRouteOptions([]);
-          return;
-        }
-
-        // 3. route_info 테이블에서 해당 코드들의 이름 조회
-        const { data: routeData, error: routeError } = await supabase
-          .from('route_info')
-          .select('code, name')
-          .in('code', uniqueRouteCodes);
-
-        if (routeError) {
-          // ...
-          setRouteOptions([]);
-          return;
-        }
-
-        setRouteOptions((routeData || []).map((r: any) => ({ code: r.code, name: r.name })));
-      } catch (error) {
-        // ...
-        setRouteOptions([]);
-      }
-    };
-    loadRouteOptions();
-    setForm(prev => ({ ...prev, rc_route_code: '', rc_car_code: '' }));
-  }, [form.rc_category_code, form.rc_type_code]);
-
-  // 차량종류 옵션: rentcar_price에서 구분+분류+경로별 rc_car_code 조회 후, car_info 테이블에서 이름 가져오기
-  useEffect(() => {
-    const loadCarOptions = async () => {
-      if (!form.rc_category_code || !form.rc_type_code || !form.rc_route_code) {
-        setCarOptions([]);
-        return;
-      }
-      try {
-        // 1. rentcar_price에서 구분+분류+경로별 rc_car_code 목록 조회
-        const { data: priceData, error: priceError } = await supabase
-          .from('rentcar_price')
-          .select('rc_car_code')
-          .eq('rc_category_code', form.rc_category_code)
-          .eq('rc_type_code', form.rc_type_code)
-          .eq('rc_route_code', form.rc_route_code)
-          .not('rc_car_code', 'is', null);
-        
-        if (priceError) {
-          // ...
-          setCarOptions([]);
-          return;
-        }
-
-        // 2. 중복 제거된 rc_car_code 목록
-        const uniqueCarCodes = [...new Set((priceData || []).map((d: any) => d.rc_car_code))];
-        
-        if (uniqueCarCodes.length === 0) {
-          setCarOptions([]);
-          return;
-        }
-
-        // 3. car_info 테이블에서 해당 코드들의 이름 조회
-        const { data: carData, error: carError } = await supabase
-          .from('car_info')
-          .select('code, name')
-          .in('code', uniqueCarCodes);
-
-        if (carError) {
-          // ...
-          setCarOptions([]);
-          return;
-        }
-
-        setCarOptions((carData || []).map((c: any) => ({ code: c.code, name: c.name })));
-      } catch (error) {
-        // ...
-        setCarOptions([]);
-      }
-    };
-    loadCarOptions();
-  }, [form.rc_category_code, form.rc_type_code, form.rc_route_code]);
+  // 데이터 상태
+  const [availableServices, setAvailableServices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [quote, setQuote] = useState<any>(null);
+  const [existingReservation, setExistingReservation] = useState<any>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }: any) => {
-      if (!user) {
-        alert('로그인이 필요합니다.');
-        router.push('/login');
-      } else {
-        setUser(user);
-      }
-    });
-  }, [router]);
+    if (!quoteId) {
+      alert('견적 ID가 필요합니다.');
+      router.push('/mypage/reservations');
+      return;
+    }
+    loadQuote();
+    loadAvailableRentcarServices();
+    checkExistingReservation();
+  }, [quoteId, router]);
 
-  const handleSubmit = async () => {
-    if (!user) return;
-    setLoading(true);
+  // 견적 정보 로드
+  const loadQuote = async () => {
     try {
-      // 1. 먼저 quote 테이블에 기본 견적 정보 저장
-      const { data: quoteData, error: quoteError } = await supabase
+      const { data: quoteData, error } = await supabase
         .from('quote')
-        .insert({ 
-          user_id: user.id,
-          quote_type: 'rentcar',
-          checkin: form.rc_boarding_date
-        })
-        .select('id')
+        .select('id, title, status')
+        .eq('id', quoteId)
         .single();
-      
-      if (quoteError) {
-        alert('견적 저장 실패: ' + quoteError.message);
+
+      if (error || !quoteData) {
+        alert('견적을 찾을 수 없습니다.');
+        router.push('/mypage/reservations');
         return;
       }
 
-      // 2. quote_rentcar 테이블에 렌트카 상세 정보 저장
-      const { error: rentcarError } = await supabase
-        .from('quote_rentcar')
-        .insert({
-          quote_id: quoteData.id,
-          rc_car_code: form.rc_car_code,
-          rc_category: form.rc_category_code, // rc_category 컬럼에 저장
-          rc_car_category_code: form.rc_category_code, // rc_car_category_code 컬럼에도 저장
-          rc_route: form.rc_route_code, // rc_route 컬럼에 저장
-          rc_vehicle_type: form.rc_type_code, // rc_vehicle_type 컬럼에 저장
-          rc_car_count: form.rc_car_count,
-          rc_boarding_date: form.rc_boarding_date, // 날짜 저장
-          rc_boarding_time: form.rc_boarding_time, // 시간 저장
-          rc_pickup_location: form.rc_pickup_location,
-          rc_carrier_count: form.rc_carrier_count,
-          rc_dropoff_location: form.rc_dropoff_location,
-          rc_via_location: form.rc_via_location,
-          rc_passenger_count: form.rc_passenger_count,
-          rc_usage_period: form.rc_usage_period
-        });
-      
-      if (rentcarError) {
-        alert('렌트카 정보 저장 실패: ' + rentcarError.message);
-      } else {
-        alert('렌트카 견적이 저장되었습니다!');
-        router.push('/mypage/quotes/new');
+      setQuote(quoteData);
+    } catch (error) {
+      console.error('견적 로드 오류:', error);
+      alert('견적 정보를 불러오는 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 기존 예약 확인 (중복 방지)
+  const checkExistingReservation = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: existingRes } = await supabase
+        .from('reservation')
+        .select(`
+          *,
+          reservation_rentcar (*)
+        `)
+        .eq('re_user_id', user.id)
+        .eq('re_quote_id', quoteId)
+        .eq('re_type', 'rentcar')
+        .maybeSingle();
+
+      if (existingRes) {
+        setExistingReservation(existingRes);
+        setIsEditMode(true);
+
+        // 기존 데이터로 폼 초기화
+        if (existingRes.reservation_rentcar && existingRes.reservation_rentcar.length > 0) {
+          const rentcarData = existingRes.reservation_rentcar[0];
+          setForm(prev => ({
+            ...prev,
+            serviceData: {
+              pickup_date: rentcarData.pickup_datetime ? new Date(rentcarData.pickup_datetime).toISOString().split('T')[0] : '',
+              return_date: rentcarData.return_datetime ? new Date(rentcarData.return_datetime).toISOString().split('T')[0] : '',
+              pickup_location: rentcarData.pickup_location || '',
+              destination: rentcarData.destination || '',
+              rental_days: rentcarData.rental_days || 1,
+              driver_count: rentcarData.driver_count || 1,
+              passenger_count: rentcarData.passenger_count || 1,
+              luggage_count: rentcarData.luggage_count || 0,
+              via_location: rentcarData.via_location || '',
+              via_waiting: rentcarData.via_waiting || '',
+            },
+            request_note: rentcarData.request_note || ''
+          }));
+        }
       }
     } catch (error) {
-      alert('견적 저장 중 오류가 발생했습니다.');
+      console.error('기존 예약 확인 오류:', error);
+    }
+  };
+
+  // 사용 가능한 렌터카 서비스 로드 (크루즈의 객실 가격 로드 방식과 동일)
+  const loadAvailableRentcarServices = async () => {
+    try {
+      // 견적에 연결된 렌터카 서비스들 조회
+      const { data: quoteItems } = await supabase
+        .from('quote_item')
+        .select('service_type, service_ref_id, usage_date')
+        .eq('quote_id', quoteId)
+        .eq('service_type', 'rentcar');
+
+      if (quoteItems && quoteItems.length > 0) {
+        const allServices = [];
+
+        // 각 렌터카 아이템에 대해 가격 옵션들 조회 (크루즈의 room_price 방식)
+        for (const item of quoteItems) {
+          const { data: rentcarData } = await supabase
+            .from('rentcar')
+            .select('rentcar_code')
+            .eq('id', item.service_ref_id)
+            .single();
+
+          if (rentcarData?.rentcar_code) {
+            // 해당 렌터카 코드의 모든 가격 옵션 조회 (크루즈의 카테고리별 가격과 동일)
+            const { data: priceOptions } = await supabase
+              .from('rent_price')
+              .select('*')
+              .eq('rent_code', rentcarData.rentcar_code);
+
+            if (priceOptions) {
+              allServices.push(...priceOptions.map(option => ({
+                ...option,
+                usage_date: item.usage_date
+              })));
+            }
+          }
+        }
+
+        setAvailableServices(allServices);
+
+        // 첫 번째 서비스 정보로 픽업 날짜 설정
+        if (allServices.length > 0 && quoteItems[0]?.usage_date) {
+          setForm(prev => ({
+            ...prev,
+            serviceData: {
+              ...prev.serviceData,
+              pickup_date: quoteItems[0].usage_date
+            }
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('렌터카 서비스 로드 오류:', error);
+    }
+  };
+
+  // 폼 입력 핸들러
+  const handleInputChange = (field: string, value: any) => {
+    setForm(prev => ({
+      ...prev,
+      serviceData: {
+        ...prev.serviceData,
+        [field]: value
+      }
+    }));
+  };
+
+  // 예약 제출/수정 (중복 방지 적용)
+  const handleSubmit = async () => {
+    if (availableServices.length === 0) {
+      alert('예약할 렌터카 서비스가 없습니다.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // 사용자 인증 및 역할 확인
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        router.push(`/mypage/reservations?quoteId=${quoteId}`);
+        return;
+      }
+
+      // 사용자 역할 업데이트 (크루즈와 동일)
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id, role')
+        .eq('id', user.id)
+        .single();
+
+      if (!existingUser || existingUser.role === 'guest') {
+        await supabase
+          .from('users')
+          .upsert({
+            id: user.id,
+            email: user.email,
+            role: 'member',
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'id' });
+      }
+
+      let reservationData;
+
+      if (isEditMode && existingReservation) {
+        // 수정 모드: 기존 예약 사용
+        reservationData = existingReservation;
+
+        // 기존 reservation_rentcar의 모든 행 삭제
+        await supabase
+          .from('reservation_rentcar')
+          .delete()
+          .eq('reservation_id', existingReservation.re_id);
+      } else {
+        // 새 예약 생성 (중복 확인 강화)
+        const { data: duplicateCheck } = await supabase
+          .from('reservation')
+          .select('re_id')
+          .eq('re_user_id', user.id)
+          .eq('re_quote_id', quoteId)
+          .eq('re_type', 'rentcar')
+          .maybeSingle();
+
+        if (duplicateCheck) {
+          // 기존 예약이 있으면 해당 예약의 rentcar 데이터도 삭제하고 재생성
+          console.log('🔄 기존 렌터카 예약 발견 - 업데이트 모드로 전환');
+          reservationData = { re_id: duplicateCheck.re_id };
+
+          // 기존 렌터카 예약 데이터 삭제
+          await supabase
+            .from('reservation_rentcar')
+            .delete()
+            .eq('reservation_id', duplicateCheck.re_id);
+        } else {
+          // 완전히 새로운 예약 생성
+          const { data: newReservation, error: reservationError } = await supabase
+            .from('reservation')
+            .insert({
+              re_user_id: user.id,
+              re_quote_id: quoteId,
+              re_type: 'rentcar',
+              re_status: 'pending',
+              re_created_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+          if (reservationError) {
+            console.error('예약 생성 오류:', reservationError);
+            alert('예약 생성 중 오류가 발생했습니다.');
+            return;
+          }
+          reservationData = newReservation;
+        }
+      }
+
+      // 선택된 렌터카 서비스들 저장 (크루즈와 같은 패턴)
+      let errors = [];
+
+      if (availableServices.length > 0) {
+        console.log('🚗 렌터카 서비스 저장 중...', availableServices.length, '개');
+
+        // 첫 번째 렌터카 서비스를 메인으로 저장 (크루즈의 객실 선택 방식)
+        const mainRentcar = availableServices[0];
+        const rentcarData = {
+          reservation_id: reservationData.re_id,
+          rentcar_price_code: mainRentcar.rent_code,
+          rentcar_count: 1,
+          unit_price: mainRentcar.price || 0,
+          car_count: form.serviceData.driver_count || 1,
+          passenger_count: form.serviceData.passenger_count || 1,
+          pickup_datetime: form.serviceData.pickup_date ? new Date(form.serviceData.pickup_date).toISOString() : null,
+          pickup_location: form.serviceData.pickup_location || null,
+          destination: form.serviceData.destination || null,
+          via_location: form.serviceData.via_location || null,
+          via_waiting: form.serviceData.via_waiting || null,
+          luggage_count: form.serviceData.luggage_count || 0,
+          total_price: mainRentcar.price || 0,
+          request_note: form.request_note || null
+        };
+
+        console.log('🚗 렌터카 데이터:', rentcarData);
+        const { error: rentcarError } = await supabase
+          .from('reservation_rentcar')
+          .insert(rentcarData);
+
+        if (rentcarError) {
+          console.error('렌터카 서비스 저장 오류:', rentcarError);
+          errors.push(`렌터카 서비스 오류: ${rentcarError.message}`);
+        }
+      }
+
+      if (errors.length > 0) {
+        console.error('💥 렌터카서비스 예약 저장 중 오류 발생:', errors);
+        alert('렌터카 예약 저장 중 오류가 발생했습니다:\n' + errors.join('\n'));
+        return;
+      }
+
+      alert(isEditMode ? '렌터카 서비스 예약이 성공적으로 수정되었습니다!' : '렌터카 서비스 예약이 성공적으로 저장되었습니다!');
+      router.push(`/mypage/reservations?quoteId=${quoteId}`);
+
+    } catch (error) {
+      console.error('💥 렌터카서비스 예약 전체 처리 오류:', error);
+      alert('예약 저장 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
   };
+
+  if (!quote) {
+    return (
+      <PageWrapper>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          <p className="mt-4 text-gray-600">데이터를 불러오는 중...</p>
+        </div>
+      </PageWrapper>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-red-50">
-      <div className="bg-gradient-to-r from-red-100 via-rose-100 to-red-100 text-gray-800">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-bold text-rose-600">🚗 렌트카</h1>
-            <button 
-              onClick={() => router.push('/mypage/quotes/new')}
-              className="bg-white/60 hover:bg-white/80 px-4 py-2 rounded-lg transition-colors text-gray-800"
-            >
-              🏠 홈으로
-            </button>
-          </div>
-          <div className="bg-white/70 backdrop-blur rounded-lg p-6">
-            <p className="text-lg text-rose-700 opacity-90">자유로운 여행을 위한 렌트카 서비스.</p>
-            <p className="text-sm text-rose-500 opacity-75 mt-2">다양한 차종과 합리적인 가격으로 편안한 드라이브를 즐기세요.</p>
-          </div>
-
-          {/* 렌트카 서비스 카드들 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            <div className="bg-white/80 backdrop-blur rounded-lg p-4 hover:bg-white/90 transition-colors">
-              <div className="flex items-center mb-2">
-                <span className="text-2xl mr-2">🚙</span>
-                <h3 className="font-semibold text-gray-800">프리미엄 차량</h3>
-              </div>
-              <p className="text-sm text-gray-600">최신 모델의 고급 차량으로 편안한 여행을</p>
-            </div>
-            <div className="bg-white/80 backdrop-blur rounded-lg p-4 hover:bg-white/90 transition-colors">
-              <div className="flex items-center mb-2">
-                <span className="text-2xl mr-2">🗺️</span>
-                <h3 className="font-semibold text-gray-800">맞춤 경로</h3>
-              </div>
-              <p className="text-sm text-gray-600">원하는 목적지까지 최적의 경로 제공</p>
-            </div>
-            <div className="bg-white/80 backdrop-blur rounded-lg p-4 hover:bg-white/90 transition-colors">
-              <div className="flex items-center mb-2">
-                <span className="text-2xl mr-2">⭐</span>
-                <h3 className="font-semibold text-gray-800">전문 기사</h3>
-              </div>
-              <p className="text-sm text-gray-600">숙련된 전문 기사가 안전하게 모시겠습니다</p>
-            </div>
+    <PageWrapper>
+      <div className="space-y-6">
+        {/* 헤더 */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-lg font-bold text-gray-800">
+              🚗 렌터카 서비스 {isEditMode ? '수정' : '예약'}
+            </h1>
+            <p className="text-sm text-gray-600 mt-1">행복 여행 이름: {quote.title}</p>
+            {isEditMode && (
+              <p className="text-sm text-blue-600 mt-1">📝 기존 예약을 수정하고 있습니다</p>
+            )}
           </div>
         </div>
-      </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-lg p-6 space-y-6">
-          {/* 승차일자 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">📅 승차일자</label>
-            <input
-              type="date"
-              value={form.rc_boarding_date}
-              onChange={e => setForm({ ...form, rc_boarding_date: e.target.value })}
-              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-            />
-          </div>
-
-          {/* 승차시간 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">⏰ 승차시간</label>
-            <input
-              type="time"
-              value={form.rc_boarding_time}
-              onChange={e => setForm({ ...form, rc_boarding_time: e.target.value })}
-              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-            />
-          </div>
-
-          {/* 구분 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">🏷️ 구분</label>
-            <div className="flex gap-2 flex-wrap">
-              {categoryOptions.map(option => (
-                <button
-                  key={option.code}
-                  type="button"
-                  className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors
-                    ${form.rc_category_code === option.code
-                      ? 'bg-rose-500 text-white border-rose-500'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-rose-100'}
-                  `}
-                  onClick={() => setForm(prev => ({ ...prev, rc_category_code: option.code }))}
-                >
-                  {option.name}
-                </button>
-              ))}
+        {/* 사용 가능한 서비스 옵션들 - 정보 표시만 (선택 불가) */}
+        <SectionBox title="견적에 포함된 렌터카 서비스">
+          {availableServices.length > 0 && (
+            <div className="mb-6">
+              <h4 className="text-md font-medium text-green-800 mb-3">🚗 렌터카 서비스</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {availableServices.map((service, index) => (
+                  <div
+                    key={index}
+                    className="p-4 rounded-lg border-2 border-green-200 bg-green-50"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-medium text-gray-800">{service.rent_type}</span>
+                      <span className="text-green-600 font-bold">{service.price?.toLocaleString()}원</span>
+                    </div>
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <div>카테고리: {service.rent_category}</div>
+                      <div>경로: {service.rent_route}</div>
+                      <div>차량: {service.rent_car_type}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+        </SectionBox>
 
-          {/* 분류 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">📋 분류</label>
-            <div className="flex gap-2 flex-wrap">
-              {typeOptions.length === 0 && form.rc_category_code ? (
-                <span className="text-sm text-rose-500">분류 데이터가 없습니다.</span>
-              ) : null}
-              {typeOptions.map(option => (
-                <button
-                  key={option.code}
-                  type="button"
-                  className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors
-                    ${form.rc_type_code === option.code
-                      ? 'bg-rose-500 text-white border-rose-500'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-rose-100'}
-                  `}
-                  onClick={() => setForm(prev => ({ ...prev, rc_type_code: option.code }))}
-                  disabled={!form.rc_category_code}
-                >
-                  {option.name || option.code}
-                </button>
-              ))}
+        {/* 입력 폼 - 서비스 존재 여부에 따라 자동 표시 */}
+        {availableServices.length > 0 && (
+          <SectionBox title="렌터카 상세 정보">
+            <div className="space-y-6">
+              {/* 렌터카 기본 정보 */}
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="text-md font-medium text-green-800 mb-3">렌터카 기본 정보</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">픽업 날짜 *</label>
+                    <input
+                      type="date"
+                      value={form.serviceData.pickup_date}
+                      onChange={(e) => handleInputChange('pickup_date', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">반납 날짜</label>
+                    <input
+                      type="date"
+                      value={form.serviceData.return_date}
+                      onChange={(e) => handleInputChange('return_date', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">렌탈 일수</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={form.serviceData.rental_days}
+                      onChange={(e) => handleInputChange('rental_days', parseInt(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">운전자 수</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={form.serviceData.driver_count}
+                      onChange={(e) => handleInputChange('driver_count', parseInt(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">탑승 인원 *</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={form.serviceData.passenger_count}
+                      onChange={(e) => handleInputChange('passenger_count', parseInt(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">수하물 개수</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.serviceData.luggage_count}
+                      onChange={(e) => handleInputChange('luggage_count', parseInt(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 위치 정보 */}
+              <div className="bg-yellow-50 rounded-lg p-4">
+                <h4 className="text-md font-medium text-yellow-800 mb-3">위치 정보</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">픽업 장소 *</label>
+                    <input
+                      type="text"
+                      value={form.serviceData.pickup_location}
+                      onChange={(e) => handleInputChange('pickup_location', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder="픽업 희망 장소를 입력해주세요"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">목적지</label>
+                    <input
+                      type="text"
+                      value={form.serviceData.destination}
+                      onChange={(e) => handleInputChange('destination', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder="최종 목적지를 입력해주세요"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">경유지</label>
+                    <input
+                      type="text"
+                      value={form.serviceData.via_location}
+                      onChange={(e) => handleInputChange('via_location', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder="경유지가 있을 경우 입력"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">경유지 대기시간</label>
+                    <input
+                      type="text"
+                      value={form.serviceData.via_waiting}
+                      onChange={(e) => handleInputChange('via_waiting', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder="예: 30분, 1시간"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 특별 요청사항 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">특별 요청사항</label>
+                <textarea
+                  value={form.request_note}
+                  onChange={(e) => setForm(prev => ({ ...prev, request_note: e.target.value }))}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="차량 종류, 어린이 카시트, 기타 요청사항을 입력해주세요..."
+                />
+              </div>
             </div>
-          </div>
+          </SectionBox>
+        )}
 
-          {/* 경로 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">🛣️ 경로</label>
-          <select
-            value={form.rc_route_code}
-            onChange={e => setForm({ ...form, rc_route_code: e.target.value })}
-            className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-            disabled={!form.rc_category_code || !form.rc_type_code}
+        {/* 예약 버튼 */}
+        <div className="flex justify-end">
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            className="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 disabled:opacity-50"
           >
-            <option value="">{!form.rc_category_code || !form.rc_type_code ? '먼저 구분과 분류를 선택해주세요' : '선택해주세요'}</option>
-            {routeOptions.map(option => (
-              <option key={option.code} value={option.code}>{option.name}</option>
-            ))}
-          </select>
-          </div>
-
-          {/* 차량종류 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">🚗 차량종류</label>
-          <select
-            value={form.rc_car_code}
-            onChange={e => setForm({ ...form, rc_car_code: e.target.value })}
-            className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-            disabled={!form.rc_category_code || !form.rc_type_code || !form.rc_route_code}
-          >
-            <option value="">{!form.rc_category_code || !form.rc_type_code || !form.rc_route_code ? '먼저 구분, 분류, 경로를 선택해주세요' : '선택해주세요'}</option>
-            {carOptions.map(option => (
-              <option key={option.code} value={option.code}>{option.name}</option>
-            ))}
-          </select>
-          </div>
-
-          {/* 차량대수 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">🔢 차량대수</label>
-            <input
-              type="number"
-              min={1}
-              value={form.rc_car_count}
-              onChange={e => setForm({ ...form, rc_car_count: Number(e.target.value) })}
-              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              placeholder="차량 대수"
-            />
-          </div>
-
-          {/* 캐리어갯수 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">🧳 캐리어갯수</label>
-            <input
-              type="number"
-              min={0}
-              value={form.rc_carrier_count}
-              onChange={e => setForm({ ...form, rc_carrier_count: Number(e.target.value) })}
-              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              placeholder="캐리어 개수"
-            />
-          </div>
-
-          {/* 승차장소 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">📍 승차장소</label>
-            <input
-              type="text"
-              value={form.rc_pickup_location}
-              onChange={e => setForm({ ...form, rc_pickup_location: e.target.value })}
-              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              placeholder="승차장소를 입력해주세요"
-            />
-          </div>
-
-          {/* 목적지 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">🏁 목적지</label>
-            <input
-              type="text"
-              value={form.rc_dropoff_location}
-              onChange={e => setForm({ ...form, rc_dropoff_location: e.target.value })}
-              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              placeholder="목적지를 입력해주세요"
-            />
-          </div>
-
-          {/* 경유지 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">🚏 경유지</label>
-            <input
-              type="text"
-              value={form.rc_via_location}
-              onChange={e => setForm({ ...form, rc_via_location: e.target.value })}
-              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              placeholder="경유지를 입력해주세요 (선택사항)"
-            />
-          </div>
-
-          {/* 승차인동 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">👥 승차인동</label>
-            <input
-              type="number"
-              min={1}
-              value={form.rc_passenger_count}
-              onChange={e => setForm({ ...form, rc_passenger_count: Number(e.target.value) })}
-              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              placeholder="승차 인동"
-            />
-          </div>
-
-          {/* 사용기간 */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">📆 사용기간(일)</label>
-            <input
-              type="number"
-              min={1}
-              value={form.rc_usage_period}
-              onChange={e => setForm({ ...form, rc_usage_period: Number(e.target.value) })}
-              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              placeholder="사용 기간 (일수)"
-            />
-          </div>
-
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-yellow-800">💡 견적 신청 후 담당자가 연락드립니다.</p>
-          </div>
-
-          <div className="flex gap-4">
-            <button 
-              onClick={() => router.push('/mypage/quotes/new')}
-              className="flex-1 bg-gray-500 text-white py-3 rounded-lg hover:bg-gray-600 transition-colors"
-            >
-              ← 뒤로가기
-            </button>
-            <button 
-              onClick={handleSubmit} 
-              disabled={loading}
-              className="flex-1 bg-gradient-to-r from-red-500 to-rose-600 text-white py-3 rounded-lg hover:from-red-600 hover:to-rose-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition-all"
-            >
-              {loading ? '저장 중...' : '🚗 렌트카 예약 신청'}
-            </button>
-          </div>
+            {loading ? (isEditMode ? '수정 처리 중...' : '예약 처리 중...') : (isEditMode ? '예약 수정' : '예약 추가')}
+          </button>
         </div>
       </div>
-    </div>
+    </PageWrapper>
   );
 }
 
+export default function RentcarReservationPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-64">로딩 중...</div>}>
+      <RentcarReservationContent />
+    </Suspense>
+  );
+}

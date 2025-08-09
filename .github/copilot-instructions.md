@@ -34,14 +34,151 @@ if (userRole === 'admin') {
 }
 ```
 
-### 데이터베이스 구조 (중요!)
+### 데이터베이스 구조 (중요!) - 2025.08.08 업데이트
+#### **핵심 테이블 구조**
 - **중앙 집중식 견적 모델**: `quote` → `quote_item` → 서비스 테이블들
 - **quote_item 구조**: 모든 서비스(객실, 차량, 공항, 호텔 등)는 quote_item을 통해 관리
-- **서비스 관계**: `quote_item(service_type, service_ref_id)` → `airport`, `hotel`, `rentcar`, `quote_room`, `quote_car`
-- **가격 코드 시스템**: `*_price_code` 테이블들이 동적 가격 계산의 핵심
-- **관계**: `room_price_code(room_info:room_code)`, `car_price_code(car_info:car_code)` 등 중첩 조인 활용
-- **예약 시스템**: `reservation` → `reservation_room`, `reservation_car` 테이블 구조
+- **서비스 관계**: `quote_item(service_type, service_ref_id)` → `airport`, `hotel`, `rentcar`, `room`, `car`
+- **가격 코드 시스템**: `*_price` 테이블들이 동적 가격 계산의 핵심
+- **관계**: `room_price(room_code)`, `car_price(car_code)` 등 중첩 조인 활용
 - **역할 기반 권한**: `users.role` → 'guest', 'member'(customer), 'manager', 'admin' 4단계
+
+#### **예약 시스템 테이블 구조 (실제 DB 기준)**
+- **메인 예약**: `reservation` 테이블
+  - `re_id`: 예약 ID (uuid)
+  - `re_user_id`: 사용자 ID (uuid)
+  - `re_quote_id`: 견적 ID (uuid)
+  - `re_type`: 서비스 타입 ('airport', 'cruise', 'hotel', 'rentcar', 'tour')
+  - `re_status`: 예약 상태 (text)
+  - `re_created_at`: 생성일시
+
+- **서비스별 상세 예약 테이블**:
+  - `reservation_airport`: 공항 서비스 (`reservation_id` → `reservation.re_id`)
+  - `reservation_cruise`: 크루즈 서비스 (`reservation_id` → `reservation.re_id`)
+  - `reservation_hotel`: 호텔 서비스 (`reservation_id` → `reservation.re_id`)
+  - `reservation_rentcar`: 렌터카 서비스 (`reservation_id` → `reservation.re_id`)
+  - `reservation_tour`: 투어 서비스 (`reservation_id` → `reservation.re_id`)
+  - `reservation_car_sht`: 차량 서비스 (`reservation_id` → `reservation.re_id`)
+
+#### **중요 컬럼명 규칙 (통일된 구조)**
+- **모든 예약 테이블**: `reservation_id` (외래키) → `reservation.re_id`
+- **공항**: `ra_*` 접두사 (ra_airport_location, ra_flight_number, ra_datetime 등)
+- **크루즈**: 접두사 없음 (room_price_code, car_price_code, checkin 등)
+- **호텔**: 접두사 없음 (hotel_price_code, checkin_date, guest_count 등)
+- **렌터카**: 접두사 없음 (rentcar_price_code, pickup_datetime, destination 등)
+- **투어**: 접두사 없음 (tour_price_code, tour_capacity, pickup_location 등)
+- **차량**: 접두사 없음 (vehicle_number, seat_number, color_label)
+
+### 🎯 표준 예약 저장 패턴 (2025.08.08 업데이트) - 모든 서비스 필수 적용
+#### **크루즈 기반 통합 저장 모델**
+모든 서비스는 크루즈와 동일한 패턴으로 저장: **카테고리별 가격 옵션 선택 → 단일 행 저장**
+
+```tsx
+// ✅ 표준 예약 저장 패턴 - 모든 서비스 적용
+// 1. 가격 옵션 로드 (크루즈의 room_price 방식)
+const { data: priceOptions } = await supabase
+  .from('service_price') // room_price, car_price, airport_price, hotel_price 등
+  .select('*')
+  .eq('service_code', serviceCode);
+
+// 2. 카테고리별 서비스 분류 및 선택 UI 제공
+const pickupServices = priceOptions.filter(p => p.category?.includes('픽업'));
+const sendingServices = priceOptions.filter(p => p.category?.includes('샌딩'));
+const roomTypeServices = priceOptions.filter(p => p.room_type);
+
+// 3. 메인 예약 생성 (모든 서비스 공통)
+const { data: reservationData } = await supabase
+  .from('reservation')
+  .insert({
+    re_user_id: user.id,
+    re_quote_id: quoteId,
+    re_type: 'service_type', // 'cruise', 'airport', 'hotel', 'rentcar'
+    re_status: 'pending'
+  })
+  .select()
+  .single();
+
+// 4. 서비스별 상세 예약 저장 (단일 행)
+const serviceReservationData = {
+  reservation_id: reservationData.re_id,
+  service_price_code: selectedPrimaryService.service_code,
+  // 메인 서비스 데이터
+  main_location: primaryServiceData.location,
+  main_datetime: primaryServiceData.datetime,
+  // 추가 서비스는 request_note에 기록 (크루즈 방식)
+  request_note: [
+    baseRequestNote,
+    ...additionalServices.map(service => 
+      `추가 서비스: ${service.category} - ${service.route} (${service.price?.toLocaleString()}동)`
+    )
+  ].filter(Boolean).join('\n')
+};
+```
+
+#### **서비스별 구체적 적용 패턴**
+```tsx
+// ✅ 크루즈 (기준 모델)
+// room_price: 객실 타입별 여러 행 → reservation_cruise: 단일 행 저장
+room_price_code, guest_count, room_total_price + request_note(추가 서비스)
+
+// ✅ 공항 서비스 (크루즈 패턴 적용)  
+// airport_price: 카테고리별 여러 행 → reservation_airport: 단일 행 저장
+airport_price_code, ra_airport_location, ra_datetime + request_note(샌딩/픽업 추가 서비스)
+
+// ✅ 호텔 서비스 (크루즈 패턴 적용)
+// hotel_price: 호텔별/룸타입별 여러 행 → reservation_hotel: 단일 행 저장  
+hotel_price_code, checkin_date, nights, guest_count + request_note(추가 옵션)
+
+// ✅ 렌터카 서비스 (크루즈 패턴 적용)
+// car_price: 차량타입별 여러 행 → reservation_rentcar: 단일 행 저장
+car_price_code, pickup_date, rental_days, driver_count + request_note(추가 차량)
+
+// ✅ 투어 서비스 (크루즈 패턴 적용)  
+// tour_price: 투어별/옵션별 여러 행 → reservation_tour: 단일 행 저장
+tour_price_code, tour_date, participant_count + request_note(추가 옵션)
+```
+
+#### **UI 패턴 (모든 서비스 공통)**
+```tsx
+// ✅ 카테고리별 서비스 선택 UI (크루즈 객실 선택과 동일)
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  {priceOptions.map((option) => (
+    <div
+      key={option.service_code}
+      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+        selectedServices.includes(option.service_code)
+          ? 'border-blue-500 bg-blue-50'
+          : 'border-gray-200 bg-white hover:border-blue-300'
+      }`}
+      onClick={() => toggleService(option)}
+    >
+      <div className="flex justify-between items-start mb-2">
+        <span className="font-medium">{option.category || option.service_type}</span>
+        <span className="text-blue-600 font-bold">{option.price?.toLocaleString()}동</span>
+      </div>
+      <div className="text-sm text-gray-600">
+        <div>상세: {option.route || option.description}</div>
+        <div>조건: {option.conditions || option.vehicle_type}</div>
+      </div>
+    </div>
+  ))}
+</div>
+
+// ✅ 총 금액 표시 (크루즈와 동일)
+<div className="bg-yellow-50 rounded-lg p-4">
+  <h4 className="text-md font-medium text-yellow-800 mb-2">💰 예상 총 금액</h4>
+  <div className="text-lg font-bold text-red-600">
+    {selectedServices.reduce((sum, service) => sum + (service.price || 0), 0).toLocaleString()}동
+  </div>
+</div>
+```
+
+#### **데이터베이스 설계 원칙**
+1. **가격 테이블**: `*_price` (복수 행) - 서비스별/카테고리별/옵션별 가격 정의
+2. **예약 테이블**: `reservation_*` (단일 행) - 선택된 메인 서비스 + 추가 서비스는 request_note
+3. **관계 설정**: `reservation.re_id` ← `reservation_service.reservation_id` (1:1)
+4. **가격 코드**: 선택된 메인 서비스의 `service_code`를 `*_price_code` 필드에 저장
+5. **확장성**: 새로운 서비스 추가시 동일한 패턴으로 `*_price`, `reservation_*` 테이블 생성
 
 ### 서비스 생성 패턴 (quote_item 구조)
 ```tsx
@@ -261,8 +398,10 @@ app/
 - **TypeScript 에러**: 인터페이스 정의 확인 (`QuoteFormData`, `UserProfile`)
 - **배열 상태 관리**: `rooms.map()` 업데이트 시 불변성 유지
 - **비동기 처리**: `Promise.all()` 병렬 조회, `try-catch` 에러 핸들링
+- **테이블 구조 문제**: sql/db.csv 파일의 실제 컬럼명 확인, API 호출 대신 파일 참조
+- **컬럼명 불일치**: `reservation_car_sht` (차량), `ra_reservation_id` (공항) 등 실제 DB 구조 준수
 
-## 필수 개발 패턴 요약 (2025.07.30 업데이트)
+## 필수 개발 패턴 요약 (2025.08.08 업데이트)
 1. **데이터 조회**: quote_item 중심, 중첩 조인 활용
 2. **인증**: 견적자(Supabase 인증만) → 예약자(users 테이블 등록) → 매니저 → 관리자
 3. **UI**: PageWrapper + SectionBox 조합, 로딩 상태 표준화
@@ -271,3 +410,61 @@ app/
 6. **라우팅**: 동적 라우팅, 역할별 레이아웃 사용
 7. **권한 관리**: 역할별 자동 리다이렉트, RLS 정책으로 데이터 보안
 8. **사용자 플로우**: 견적자 → 예약시 자동 회원 등록 → 역할별 대시보드 이동
+9. **🎯 예약 저장 (필수)**: 크루즈 패턴 - 카테고리별 서비스 선택 → 단일 행 저장 → 추가 서비스는 request_note
+
+## 🚫 절대 금지 사항
+### 폴더 구조 변경 절대 금지
+- **기존 폴더 구조를 임의로 변경하거나 새로운 폴더를 생성하지 말 것**
+- **예시**: `airport/`, `cruise/`, `hotel/`, `rentcar/`, `tour/`, `vehicle/` 등의 서비스 폴더
+- **예외**: 명시적으로 폴더 구조 변경을 요청받은 경우에만 수행
+- **이유**: 프로젝트 구조의 일관성 유지 및 혼란 방지를 위함
+- **원칙**: 기존 파일 편집은 허용, 새 폴더 생성은 금지
+
+### 데이터베이스 구조 확인 금지
+- **매번 데이터베이스 테이블 구조를 확인하지 말 것**
+- **sql/db.csv 파일에 정의된 구조를 참조할 것**
+- **실제 DB와 코드 불일치시에만 구조 확인 수행**
+- **이유**: 불필요한 API 호출 방지 및 개발 효율성 향상
+- **원칙**: 위 데이터베이스 구조 섹션의 정보를 우선 사용
+
+## 🎯 크루즈 패턴 적용 체크리스트 (모든 서비스 필수)
+### ✅ 데이터베이스 구조
+- [ ] `*_price` 테이블: 서비스별/카테고리별 여러 행으로 가격 옵션 정의
+- [ ] `reservation_*` 테이블: 단일 행으로 선택된 메인 서비스 저장
+- [ ] `*_price_code` 필드: 선택된 주요 서비스의 코드 저장
+- [ ] `request_note` 필드: 추가 선택된 서비스들의 상세 정보 기록
+
+### ✅ 예약 중복 방지 원칙 (모든 서비스 필수)
+- [ ] **하나의 견적 ID당 하나의 예약만 허용**: `re_quote_id`별로 중복 예약 방지
+- [ ] **기존 예약 확인**: 예약 생성 전 해당 견적의 기존 예약 존재 여부 검사
+- [ ] **수정 모드 지원**: 기존 예약이 있으면 새로 생성하지 않고 수정 페이지로 리다이렉트
+- [ ] **UI 상태 표시**: 기존 예약이 있으면 "수정하기" 버튼으로 변경
+- [ ] **데이터 무결성**: `reservation` 테이블에서 `(re_user_id, re_quote_id, re_type)` 유니크 제약 조건 권장
+
+### ✅ UI 구현
+- [ ] 카테고리별 서비스 선택 카드 UI (크루즈 객실 선택과 동일)
+- [ ] 다중 선택 가능한 토글 방식 인터페이스
+- [ ] 실시간 총 금액 계산 및 표시
+- [ ] 선택된 서비스 개수 및 상세 정보 표시
+
+### ✅ 데이터 처리
+- [ ] 가격 옵션 로드: `*_price` 테이블에서 카테고리별 조회
+- [ ] 서비스 분류: 카테고리별로 필터링 및 그룹화
+- [ ] 메인 예약 생성: `reservation` 테이블에 기본 예약 정보
+- [ ] 서비스 예약 저장: 선택된 메인 서비스 + 추가 서비스 요청사항
+
+### ✅ 코드 검증 포인트
+```tsx
+// 1. 가격 옵션 로드 확인
+const priceOptions = await loadServicePriceOptions(serviceCode);
+console.log('📋 로드된 가격 옵션:', priceOptions.length, '개');
+
+// 2. 선택된 서비스 확인  
+console.log('🎯 선택된 서비스:', selectedServices.map(s => s.service_code));
+
+// 3. 저장 데이터 확인
+console.log('💾 예약 데이터:', reservationServiceData);
+
+// 4. request_note 내용 확인
+console.log('📝 요청사항:', reservationServiceData.request_note);
+```
