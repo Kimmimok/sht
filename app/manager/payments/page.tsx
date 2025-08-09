@@ -345,8 +345,8 @@ export default function ManagerPaymentsPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">총 결제 금액</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  ₩{totalAmount.toLocaleString()}
+                <p className="text-lg font-bold text-gray-900">
+                  {totalAmount.toLocaleString()} 동
                 </p>
               </div>
             </div>
@@ -359,8 +359,8 @@ export default function ManagerPaymentsPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">완료된 결제</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  ₩{completedAmount.toLocaleString()}
+                <p className="text-lg font-bold text-gray-900">
+                  {completedAmount.toLocaleString()} 동
                 </p>
               </div>
             </div>
@@ -373,7 +373,7 @@ export default function ManagerPaymentsPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">결제 건수</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-lg font-bold text-gray-900">
                   {payments.length}건
                 </p>
               </div>
@@ -721,7 +721,7 @@ export default function ManagerPaymentsPage() {
                         </span>
                       </div>
                       <p className="text-lg font-bold text-gray-900">
-                        ₩{Number(payment.amount || 0).toLocaleString()}
+                        {Number(payment.amount || 0).toLocaleString()}
                       </p>
                       <p className="text-sm text-gray-600">
                         {getPaymentMethodText(payment.payment_method)}

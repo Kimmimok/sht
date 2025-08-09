@@ -12,6 +12,7 @@ interface Reservation {
   re_type: string;
   re_status: string;
   re_created_at: string;
+  re_quote_id: string | null;
   contact_name: string | null;
   contact_phone: string | null;
   contact_email: string | null;
@@ -37,6 +38,8 @@ export default function MyReservationsListPage() {
   const [hotelPricesByCode, setHotelPricesByCode] = useState<Record<string, any[]>>({});
   const [rentPricesByCode, setRentPricesByCode] = useState<Record<string, any[]>>({});
   const [tourPricesByCode, setTourPricesByCode] = useState<Record<string, any[]>>({});
+  // 견적 타이틀 맵
+  const [quotesById, setQuotesById] = useState<Record<string, { title: string; status?: string }>>({});
 
   // payment modal state
   const [showPay, setShowPay] = useState(false);
@@ -82,6 +85,7 @@ export default function MyReservationsListPage() {
           re_type,
           re_status,
           re_created_at,
+          re_quote_id,
           contact_name,
           contact_phone,
           contact_email
@@ -93,6 +97,22 @@ export default function MyReservationsListPage() {
 
       const rows = (reservationsData as Reservation[]) || [];
       setReservations(rows);
+
+      // 견적 타이틀 배치 조회
+      const quoteIds = Array.from(new Set(rows.map(r => r.re_quote_id).filter(Boolean))) as string[];
+      if (quoteIds.length) {
+        const { data: quotes } = await supabase
+          .from('quote')
+          .select('id, title, status')
+          .in('id', quoteIds);
+        const map: Record<string, { title: string; status?: string }> = {};
+        for (const q of (quotes as any[]) || []) {
+          map[q.id] = { title: q.title ?? '제목 없음', status: q.status };
+        }
+        setQuotesById(map);
+      } else {
+        setQuotesById({});
+      }
 
       // 크루즈 메타 정보 (체크인, 인원) 보조 조회
       const cruiseIds = rows.filter(r => r.re_type === 'cruise').map(r => r.re_id);
@@ -170,6 +190,9 @@ export default function MyReservationsListPage() {
         for (const cc of ((cruiseCarRes.data as any[]) || [])) {
           const rid = cc.reservation_id; amounts[rid] = (amounts[rid] || 0) + Number(cc.car_total_price || 0);
         }
+        for (const a of ((airportRes.data as any[]) || [])) {
+          const rid = a.reservation_id; amounts[rid] = (amounts[rid] || 0) + Number(a.total_price || 0);
+        }
         for (const h of ((hotelRes.data as any[]) || [])) {
           const rid = h.reservation_id; amounts[rid] = (amounts[rid] || 0) + Number(h.total_price || 0);
         }
@@ -217,6 +240,17 @@ export default function MyReservationsListPage() {
       case 'cancelled': return 'text-red-600 bg-red-25';
       case 'completed': return 'text-purple-600 bg-purple-25';
       default: return 'text-gray-600 bg-gray-25';
+    }
+  };
+
+  const getTypeName = (type: string) => {
+    switch (type) {
+      case 'cruise': return '크루즈';
+      case 'airport': return '공항';
+      case 'hotel': return '호텔';
+      case 'tour': return '투어';
+      case 'rentcar': return '렌터카';
+      default: return type;
     }
   };
 
@@ -444,8 +478,8 @@ export default function MyReservationsListPage() {
               <p className="text-gray-500">예약 내역이 없습니다.</p>
             </div>
           ) : (
-            <div className="space-y-8">
-              {/* 기본 정보 요약 */}
+            <div className="space-y-6">
+              {/* 요약 카드 */}
               <div className="bg-white rounded-lg border p-4">
                 <div className="flex justify-between items-center">
                   <div>
@@ -459,77 +493,75 @@ export default function MyReservationsListPage() {
                 </div>
               </div>
 
-              {/* 크루즈 */}
-              <div className="bg-white rounded-lg border">
-                <div className="p-4 border-b"><h3 className="font-semibold">🛳️ 크루즈</h3></div>
-                {cruiseDetails.length === 0 ? (
-                  <div className="p-4 text-gray-500">데이터 없음</div>
-                ) : (
-                  <div className="p-4">
-                    {renderServiceWithPricesByCode(cruiseDetails, 'cruise', 'room_price', (it) => it.room_price_code, roomPricesByCode)}
-                  </div>
-                )}
-              </div>
-
-              {/* 크루즈 차량 */}
-              <div className="bg-white rounded-lg border">
-                <div className="p-4 border-b"><h3 className="font-semibold">🚐 크루즈 차량</h3></div>
-                {cruiseCarDetails.length === 0 ? (
-                  <div className="p-4 text-gray-500">데이터 없음</div>
-                ) : (
-                  <div className="p-4">
-                    {renderServiceWithPricesByCode(cruiseCarDetails, 'cruise_car', 'car_price', (it) => it.car_price_code, carPricesByCode)}
-                  </div>
-                )}
-              </div>
-
-              {/* 공항 */}
-              <div className="bg-white rounded-lg border">
-                <div className="p-4 border-b"><h3 className="font-semibold">✈️ 공항</h3></div>
-                {airportDetails.length === 0 ? (
-                  <div className="p-4 text-gray-500">데이터 없음</div>
-                ) : (
-                  <div className="p-4">
-                    {renderServiceWithPricesByCode(airportDetails, 'airport', 'airport_price', (it) => it.airport_price_code, airportPricesByCode)}
-                  </div>
-                )}
-              </div>
-
-              {/* 호텔 */}
-              <div className="bg-white rounded-lg border">
-                <div className="p-4 border-b"><h3 className="font-semibold">🏨 호텔</h3></div>
-                {hotelDetails.length === 0 ? (
-                  <div className="p-4 text-gray-500">데이터 없음</div>
-                ) : (
-                  <div className="p-4">
-                    {renderServiceWithPricesByCode(hotelDetails, 'hotel', 'hotel_price', (it) => it.hotel_price_code, hotelPricesByCode)}
-                  </div>
-                )}
-              </div>
-
-              {/* 투어 */}
-              <div className="bg-white rounded-lg border">
-                <div className="p-4 border-b"><h3 className="font-semibold">🏝️ 투어</h3></div>
-                {tourDetails.length === 0 ? (
-                  <div className="p-4 text-gray-500">데이터 없음</div>
-                ) : (
-                  <div className="p-4">
-                    {renderServiceWithPricesByCode(tourDetails, 'tour', 'tour_price', (it) => it.tour_price_code, tourPricesByCode)}
-                  </div>
-                )}
-              </div>
-
-              {/* 렌터카 */}
-              <div className="bg-white rounded-lg border">
-                <div className="p-4 border-b"><h3 className="font-semibold">🚗 렌터카</h3></div>
-                {rentcarDetails.length === 0 ? (
-                  <div className="p-4 text-gray-500">데이터 없음</div>
-                ) : (
-                  <div className="p-4">
-                    {renderServiceWithPricesByCode(rentcarDetails, 'rentcar', 'rent_price', (it) => it.rentcar_price_code, rentPricesByCode)}
-                  </div>
-                )}
-              </div>
+              {/* 견적 ID별 그룹 목록 */}
+              {(() => {
+                const grouped = reservations.reduce((acc, r) => {
+                  const key = r.re_quote_id || 'no-quote';
+                  (acc[key] ||= []).push(r);
+                  return acc;
+                }, {} as Record<string, Reservation[]>);
+                const entries = Object.entries(grouped).sort(([, a], [, b]) => {
+                  const ta = Math.max(...a.map(x => new Date(x.re_created_at).getTime()));
+                  const tb = Math.max(...b.map(x => new Date(x.re_created_at).getTime()));
+                  return tb - ta;
+                });
+                return entries.map(([qid, list]) => {
+                  const title = qid !== 'no-quote' ? (quotesById[qid]?.title || '제목 없음') : '연결된 견적 없음';
+                  const shortId = qid !== 'no-quote' ? `${qid.slice(0, 8)}...` : '';
+                  const typeOrder = ['cruise', 'airport', 'hotel', 'tour', 'rentcar'];
+                  const sorted = list.slice().sort((a, b) => {
+                    const ta = typeOrder.indexOf(a.re_type); const tb = typeOrder.indexOf(b.re_type);
+                    if (ta !== tb) return ta - tb;
+                    return new Date(b.re_created_at).getTime() - new Date(a.re_created_at).getTime();
+                  });
+                  return (
+                    <div key={qid} className="bg-white rounded-lg border overflow-hidden">
+                      <div className="px-4 py-3 bg-blue-50 border-b flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-blue-800">견적: {title}</span>
+                          {shortId && <span className="text-xs text-blue-600">({shortId})</span>}
+                          <div className="flex items-center gap-1 ml-2">
+                            {['cruise', 'airport', 'hotel', 'tour', 'rentcar'].map(t => {
+                              const cnt = list.filter(x => x.re_type === t).length;
+                              if (!cnt) return null;
+                              const color = t === 'cruise' ? 'bg-blue-100 text-blue-700' : t === 'airport' ? 'bg-green-100 text-green-700' : t === 'hotel' ? 'bg-purple-100 text-purple-700' : t === 'tour' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700';
+                              return <span key={t} className={`px-2 py-0.5 rounded-full text-xs ${color}`}>{getTypeName(t)} {cnt}</span>;
+                            })}
+                          </div>
+                        </div>
+                        {qid !== 'no-quote' && (
+                          <button onClick={() => router.push(`/mypage/quotes/${qid}/view`)} className="text-xs px-3 py-1 rounded border border-blue-300 text-blue-700 hover:bg-blue-100">견적 보기</button>
+                        )}
+                      </div>
+                      <div className="p-3 space-y-2">
+                        {sorted.map(r => {
+                          const meta = r.re_type === 'cruise' ? cruiseMeta[r.re_id] : undefined;
+                          const dateMain = meta?.checkin ? new Date(meta.checkin).toLocaleDateString('ko-KR') : new Date(r.re_created_at).toLocaleDateString('ko-KR');
+                          const amount = Number(amountsByReservation[r.re_id] || 0);
+                          return (
+                            <div key={r.re_id} className="flex items-center justify-between p-3 border rounded">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-gray-900">{getTypeName(r.re_type)}</span>
+                                  <span className={`px-2 py-0.5 rounded text-xs ${getStatusColor(r.re_status)}`}>{getStatusText(r.re_status)}</span>
+                                </div>
+                                <div className="text-xs text-gray-600 mt-0.5 flex gap-3">
+                                  <span>{dateMain}</span>
+                                  <span className="text-gray-400">ID: {r.re_id.slice(0, 8)}...</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {amount > 0 && <span className="text-sm font-semibold text-orange-600">{amount.toLocaleString()}동</span>}
+                                <button onClick={() => router.push(`/mypage/reservations/${r.re_id}/view`)} className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600">상세</button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           )}
         </SectionBox>

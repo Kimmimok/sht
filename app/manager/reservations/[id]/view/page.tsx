@@ -679,10 +679,10 @@ function ReservationViewContent() {
                             onClick={handleConfirmReservation}
                             disabled={reservation.re_status === 'confirmed' || savingConfirm}
                             className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${reservation.re_status === 'confirmed' || savingConfirm ? 'bg-gray-200 text-gray-500' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                            title="예약 확정"
+                            title="예약 확인"
                         >
                             <CheckCircle className="w-4 h-4" />
-                            {reservation.re_status === 'confirmed' ? '확정됨' : '예약 확정'}
+                            {reservation.re_status === 'confirmed' ? '확정됨' : '예약 확인'}
                         </button>
                         <button
                             onClick={() => router.push(`/manager/reservations/${reservation.re_id}/edit`)}
@@ -690,6 +690,13 @@ function ReservationViewContent() {
                         >
                             <Edit className="w-4 h-4" />
                             수정
+                        </button>
+                        <button
+                            onClick={() => router.push(`/manager/reservations/${reservation.re_id}/confirm`)}
+                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                            title="예약 확인서"
+                        >
+                            <FileText className="w-4 h-4" /> 확인서
                         </button>
                     </div>
                 </div>

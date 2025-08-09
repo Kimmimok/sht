@@ -97,6 +97,7 @@ export default function MyPage() {
     { icon: '✅', label: '확정 견적', href: '/mypage/quotes/confirmed' },
     { icon: '📅', label: '예약 신청', href: '/mypage/reservations' },
     { icon: '📜', label: '예약 목록', href: '/mypage/reservations/list' },
+    { icon: '💳', label: '결제하기', href: '/mypage/payments' },
   ];
 
   // 견적 상태에 따른 색상 표시
