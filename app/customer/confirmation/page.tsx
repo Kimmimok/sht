@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import supabase from '@/lib/supabase';
 
@@ -23,7 +23,7 @@ interface QuoteData {
     reservations: ReservationDetail[];
 }
 
-export default function CustomerConfirmationPage() {
+function CustomerConfirmationClient() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const quoteId = searchParams.get('quote_id');
@@ -385,8 +385,8 @@ export default function CustomerConfirmationPage() {
                                             </td>
                                             <td className="border border-gray-300 px-3 py-4 text-center">
                                                 <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${reservation.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                                                        reservation.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                                            'bg-gray-100 text-gray-800'
+                                                    reservation.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                                        'bg-gray-100 text-gray-800'
                                                     }`}>
                                                     {reservation.status === 'confirmed' ? '확정' :
                                                         reservation.status === 'pending' ? '대기' : reservation.status}
@@ -509,5 +509,22 @@ export default function CustomerConfirmationPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export const dynamic = 'force-dynamic';
+
+export default function CustomerConfirmationPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                    <p className="text-gray-600">페이지를 불러오는 중...</p>
+                </div>
+            </div>
+        }>
+            <CustomerConfirmationClient />
+        </Suspense>
     );
 }

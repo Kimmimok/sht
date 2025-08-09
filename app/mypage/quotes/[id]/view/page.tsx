@@ -8,6 +8,7 @@ import { upgradeGuestToMember } from '@/lib/userRoleUtils';
 interface QuoteDetail {
   id: string;
   status: string;
+  payment_status?: string;
   total_price: number;
   created_at: string;
   updated_at: string;
@@ -35,7 +36,11 @@ interface QuoteDetail {
 export default function QuoteDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const quoteId = params.id as string;
+  const quoteId = (
+    Array.isArray((params as any)?.id)
+      ? (params as any).id[0]
+      : (params as any)?.id
+  ) as string;
 
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -98,7 +103,7 @@ export default function QuoteDetailPage() {
       // 견적 기본 정보 조회
       const { data: quoteData, error: quoteError } = await supabase
         .from('quote')
-        .select('*')
+        .select('*, payment_status')
         .eq('id', quoteId)
         .single();
 
@@ -180,17 +185,18 @@ export default function QuoteDetailPage() {
         }
       });
 
-      // 결과 처리 및 상세 로깅 (견적 룸 테이블 제거됨)
+      // 결과 처리 및 상세 로깅
 
-      // quote_item 데이터에서 서비스별로 분류
-      const carItems = serviceQueries[0].status === 'fulfilled' ? (serviceQueries[0].value.data || []) : [];
-      const cruiseItems = serviceQueries[1].status === 'fulfilled' ? (serviceQueries[1].value.data || []) : [];
-      const airportItems = serviceQueries[2].status === 'fulfilled' ? (serviceQueries[2].value.data || []) : [];
-      const hotelItems = serviceQueries[3].status === 'fulfilled' ? (serviceQueries[3].value.data || []) : [];
-      const tourItems = serviceQueries[4].status === 'fulfilled' ? (serviceQueries[4].value.data || []) : [];
+      // serviceQueries 인덱스 매핑
+      // [0]=quote_room, [1]=rentcar(items), [2]=cruise(items), [3]=airport(items), [4]=hotel(items), [5]=tour(items)
+      const rentcarItems = serviceQueries[1].status === 'fulfilled' ? (serviceQueries[1].value.data || []) : [];
+      const cruiseItems = serviceQueries[2].status === 'fulfilled' ? (serviceQueries[2].value.data || []) : [];
+      const airportItems = serviceQueries[3].status === 'fulfilled' ? (serviceQueries[3].value.data || []) : [];
+      const hotelItems = serviceQueries[4].status === 'fulfilled' ? (serviceQueries[4].value.data || []) : [];
+      const tourItems = serviceQueries[5].status === 'fulfilled' ? (serviceQueries[5].value.data || []) : [];
 
       // quote_item 데이터를 그대로 사용 (조인 없이)
-      const carData = carItems.map((item: any) => ({
+      const carData = rentcarItems.map((item: any) => ({
         id: item.id,
         service_ref_id: item.service_ref_id,
         quantity: item.quantity,
@@ -893,14 +899,35 @@ export default function QuoteDetailPage() {
               </div>
             )}
 
-            {/* 예약하기 버튼 - 페이지 하단 */}
-            <div className="flex justify-center mt-10">
+            {/* 액션 버튼 - 페이지 하단 */}
+            <div className="flex justify-center items-center gap-4 mt-10">
               <button
                 onClick={handleSubmitQuote}
                 className="bg-green-300 text-black px-4 py-2 rounded text-xs hover:bg-green-400 transition-colors font-bold shadow-sm"
               >
-                � 견적 제출
+                📝 견적 제출
               </button>
+
+              {quote?.payment_status === 'paid' && (
+                <button
+                  onClick={() => {
+                    const confirmationUrl = `/customer/confirmation?quote_id=${quote.id}&token=customer`;
+                    window.open(confirmationUrl, '_blank');
+                  }}
+                  className="bg-blue-500 text-white px-4 py-2 rounded text-xs hover:bg-blue-600 transition-colors font-bold shadow-sm"
+                >
+                  📄 예약확인서 보기
+                </button>
+              )}
+
+              {quote?.payment_status !== 'paid' && (quote?.total_price || 0) > 0 && (
+                <button
+                  onClick={() => router.push('/mypage/payments')}
+                  className="bg-yellow-500 text-white px-4 py-2 rounded text-xs hover:bg-yellow-600 transition-colors font-bold shadow-sm"
+                >
+                  💳 결제하기
+                </button>
+              )}
             </div>
           </div>
         </div>
