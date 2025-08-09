@@ -114,44 +114,50 @@ export default function ReservationExportPage() {
 
         setLoading(true);
         try {
-            const { data, error: queryError } = await supabase
+            // 1) 예약 기본 행 조회 (미리보기 10건)
+            const { data: rows, error: baseError } = await supabase
                 .from('reservation')
-                .select(`
-          re_id,
-          re_type,
-          re_status,
-          re_created_at,
-          re_quote_id,
-          users!inner(
-            name,
-            email,
-            phone
-          ),
-          quote:re_quote_id(
-            title
-          )
-        `)
+                .select('re_id, re_type, re_status, re_created_at, re_quote_id, re_user_id')
                 .gte('re_created_at', options.startDate + 'T00:00:00.000Z')
                 .lte('re_created_at', options.endDate + 'T23:59:59.999Z')
                 .in('re_status', options.status)
                 .in('re_type', options.types)
                 .order('re_created_at', { ascending: false })
-                .limit(10); // 미리보기는 최대 10건
+                .limit(10);
+            if (baseError) throw baseError;
 
-            if (queryError) {
-                throw queryError;
+            const userIds = Array.from(new Set((rows || []).map((r: any) => r.re_user_id).filter(Boolean)));
+            const quoteIds = Array.from(new Set((rows || []).map((r: any) => r.re_quote_id).filter(Boolean)));
+
+            let usersById: Record<string, any> = {};
+            let quotesById: Record<string, any> = {};
+
+            if (userIds.length > 0) {
+                const { data: usersData } = await supabase
+                    .from('users')
+                    .select('id, name, email, phone')
+                    .in('id', userIds);
+                (usersData || []).forEach((u: any) => { usersById[u.id] = u; });
             }
 
-            const formattedData: ReservationExportData[] = (data || []).map(item => ({
-                re_id: item.re_id,
-                re_type: item.re_type,
-                re_status: item.re_status,
-                re_created_at: item.re_created_at,
-                customer_name: item.users?.name || 'N/A',
-                customer_email: item.users?.email || 'N/A',
-                customer_phone: item.users?.phone || 'N/A',
-                quote_title: item.quote?.title || 'N/A',
-                quote_id: item.re_quote_id || 'N/A'
+            if (quoteIds.length > 0) {
+                const { data: quotesData } = await supabase
+                    .from('quote')
+                    .select('id, title')
+                    .in('id', quoteIds);
+                (quotesData || []).forEach((q: any) => { quotesById[q.id] = q; });
+            }
+
+            const formattedData: ReservationExportData[] = (rows || []).map((r: any) => ({
+                re_id: r.re_id,
+                re_type: r.re_type,
+                re_status: r.re_status,
+                re_created_at: r.re_created_at,
+                customer_name: r.re_user_id ? (usersById[r.re_user_id]?.name || 'N/A') : 'N/A',
+                customer_email: r.re_user_id ? (usersById[r.re_user_id]?.email || 'N/A') : 'N/A',
+                customer_phone: r.re_user_id ? (usersById[r.re_user_id]?.phone || 'N/A') : 'N/A',
+                quote_title: r.re_quote_id ? (quotesById[r.re_quote_id]?.title || 'N/A') : 'N/A',
+                quote_id: r.re_quote_id || 'N/A'
             }));
 
             setPreviewData(formattedData);
@@ -171,22 +177,8 @@ export default function ReservationExportPage() {
         } catch (error) {
             console.error('미리보기 데이터 로드 실패:', error);
             setError('데이터를 불러오는 중 오류가 발생했습니다.');
-
-            // 테스트 데이터
-            setPreviewData([
-                {
-                    re_id: 'test-1',
-                    re_type: 'cruise',
-                    re_status: 'confirmed',
-                    re_created_at: new Date().toISOString(),
-                    customer_name: '김고객',
-                    customer_email: 'kim@example.com',
-                    customer_phone: '010-1234-5678',
-                    quote_title: '부산 크루즈 여행',
-                    quote_id: 'quote-1'
-                }
-            ]);
-            setTotalCount(15);
+            setPreviewData([]);
+            setTotalCount(0);
         } finally {
             setLoading(false);
         }
@@ -260,43 +252,48 @@ export default function ReservationExportPage() {
         setExporting(true);
         try {
             // 전체 데이터 조회 (제한 없음)
-            const { data, error: queryError } = await supabase
+            const { data: rows, error: baseError } = await supabase
                 .from('reservation')
-                .select(`
-          re_id,
-          re_type,
-          re_status,
-          re_created_at,
-          re_quote_id,
-          users!inner(
-            name,
-            email,
-            phone
-          ),
-          quote:re_quote_id(
-            title
-          )
-        `)
+                .select('re_id, re_type, re_status, re_created_at, re_quote_id, re_user_id')
                 .gte('re_created_at', options.startDate + 'T00:00:00.000Z')
                 .lte('re_created_at', options.endDate + 'T23:59:59.999Z')
                 .in('re_status', options.status)
                 .in('re_type', options.types)
                 .order('re_created_at', { ascending: false });
+            if (baseError) throw baseError;
 
-            if (queryError) {
-                throw queryError;
+            const userIds = Array.from(new Set((rows || []).map((r: any) => r.re_user_id).filter(Boolean)));
+            const quoteIds = Array.from(new Set((rows || []).map((r: any) => r.re_quote_id).filter(Boolean)));
+
+            let usersById: Record<string, any> = {};
+            let quotesById: Record<string, any> = {};
+
+            if (userIds.length > 0) {
+                const { data: usersData } = await supabase
+                    .from('users')
+                    .select('id, name, email, phone')
+                    .in('id', userIds);
+                (usersData || []).forEach((u: any) => { usersById[u.id] = u; });
             }
 
-            const exportData: ReservationExportData[] = (data || []).map(item => ({
-                re_id: item.re_id,
-                re_type: item.re_type,
-                re_status: item.re_status,
-                re_created_at: item.re_created_at,
-                customer_name: item.users?.name || 'N/A',
-                customer_email: item.users?.email || 'N/A',
-                customer_phone: item.users?.phone || 'N/A',
-                quote_title: item.quote?.title || 'N/A',
-                quote_id: item.re_quote_id || 'N/A'
+            if (quoteIds.length > 0) {
+                const { data: quotesData } = await supabase
+                    .from('quote')
+                    .select('id, title')
+                    .in('id', quoteIds);
+                (quotesData || []).forEach((q: any) => { quotesById[q.id] = q; });
+            }
+
+            const exportData: ReservationExportData[] = (rows || []).map((r: any) => ({
+                re_id: r.re_id,
+                re_type: r.re_type,
+                re_status: r.re_status,
+                re_created_at: r.re_created_at,
+                customer_name: r.re_user_id ? (usersById[r.re_user_id]?.name || 'N/A') : 'N/A',
+                customer_email: r.re_user_id ? (usersById[r.re_user_id]?.email || 'N/A') : 'N/A',
+                customer_phone: r.re_user_id ? (usersById[r.re_user_id]?.phone || 'N/A') : 'N/A',
+                quote_title: r.re_quote_id ? (quotesById[r.re_quote_id]?.title || 'N/A') : 'N/A',
+                quote_id: r.re_quote_id || 'N/A'
             }));
 
             // 파일 생성 및 다운로드
@@ -562,8 +559,8 @@ export default function ReservationExportPage() {
                                             <td className="px-4 py-2">{getTypeName(item.re_type)}</td>
                                             <td className="px-4 py-2">
                                                 <span className={`px-2 py-1 rounded text-xs ${item.re_status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                                                        item.re_status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                                            'bg-yellow-100 text-yellow-800'
+                                                    item.re_status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                                        'bg-yellow-100 text-yellow-800'
                                                     }`}>
                                                     {getStatusText(item.re_status)}
                                                 </span>
@@ -596,8 +593,8 @@ export default function ReservationExportPage() {
                             onClick={handleExport}
                             disabled={exporting || totalCount === 0 || loading}
                             className={`px-6 py-3 rounded-lg font-medium transition-colors ${exporting || totalCount === 0 || loading
-                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    : 'bg-purple-500 text-white hover:bg-purple-600'
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-purple-500 text-white hover:bg-purple-600'
                                 }`}
                         >
                             {exporting ? (

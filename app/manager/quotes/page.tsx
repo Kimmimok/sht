@@ -386,7 +386,7 @@ function ManagerQuotesContent() {
                     {/* 작성 중 견적 - 수정 버튼 */}
                     {quote.status === 'draft' && (
                       <button
-                        onClick={() => router.push(`/quote/${quote.id}/edit`)}
+                        onClick={() => router.push(`/manager/quotes/${quote.id}/edit`)}
                         className="bg-blue-50 text-blue-600 px-3 py-1 rounded border text-xs hover:bg-blue-100"
                       >
                         ✏️ 수정

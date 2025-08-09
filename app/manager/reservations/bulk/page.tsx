@@ -23,16 +23,16 @@ interface ReservationItem {
     re_type: string;
     re_status: string;
     re_created_at: string;
-    re_quote_id: string;
+    re_quote_id: string | null;
     users: {
         id: string;
         name: string;
         email: string;
         phone: string;
-    };
+    } | null;
     quote: {
         title: string;
-    };
+    } | null;
 }
 
 type BulkAction = 'confirm' | 'cancel' | 'delete' | 'status_update';
@@ -75,81 +75,64 @@ export default function BulkReservationPage() {
                 return;
             }
 
-            // 예약 데이터 조회 (필터 적용)
-            let query = supabase
+            // 1) 예약 데이터 조회 (기본 컬럼만)
+            let baseQuery = supabase
                 .from('reservation')
-                .select(`
-          re_id,
-          re_type,
-          re_status,
-          re_created_at,
-          re_quote_id,
-          users!inner(
-            id,
-            name,
-            email,
-            phone
-          ),
-          quote:re_quote_id(
-            title
-          )
-        `)
+                .select('re_id, re_type, re_status, re_created_at, re_quote_id, re_user_id')
                 .order('re_created_at', { ascending: false });
 
             if (filter !== 'all') {
-                query = query.eq('re_status', filter);
+                baseQuery = baseQuery.eq('re_status', filter);
             }
 
-            const { data, error: queryError } = await query;
+            const { data: reservationsRows, error: reservationsError } = await baseQuery;
+            if (reservationsError) throw reservationsError;
 
-            if (queryError) {
-                throw queryError;
+            const rows = reservationsRows || [];
+
+            // 2) 관련 사용자 / 견적 일괄 조회
+            const userIds = Array.from(new Set(rows.map((r: any) => r.re_user_id).filter(Boolean)));
+            const quoteIds = Array.from(new Set(rows.map((r: any) => r.re_quote_id).filter(Boolean)));
+
+            let usersById: Record<string, any> = {};
+            let quotesById: Record<string, any> = {};
+
+            if (userIds.length > 0) {
+                const { data: usersData } = await supabase
+                    .from('users')
+                    .select('id, name, email, phone')
+                    .in('id', userIds);
+                (usersData || []).forEach((u: any) => { usersById[u.id] = u; });
             }
 
-            setReservations(data || []);
+            if (quoteIds.length > 0) {
+                const { data: quotesData } = await supabase
+                    .from('quote')
+                    .select('id, title')
+                    .in('id', quoteIds);
+                (quotesData || []).forEach((q: any) => { quotesById[q.id] = q; });
+            }
+
+            // 3) 최종 목록 구성
+            const list: ReservationItem[] = rows.map((r: any) => ({
+                re_id: r.re_id,
+                re_type: r.re_type,
+                re_status: r.re_status,
+                re_created_at: r.re_created_at,
+                re_quote_id: r.re_quote_id,
+                users: r.re_user_id ? (usersById[r.re_user_id] || null) : null,
+                quote: r.re_quote_id ? (quotesById[r.re_quote_id] || null) : null,
+            }));
+
+            setReservations(list);
             setSelectedItems(new Set()); // 선택 초기화
             setError(null);
 
         } catch (error) {
             console.error('예약 목록 로드 실패:', error);
             setError('예약 목록을 불러오는 중 오류가 발생했습니다.');
-
-            // 테스트 데이터
-            const testData: ReservationItem[] = [
-                {
-                    re_id: 'test-1',
-                    re_type: 'cruise',
-                    re_status: 'pending',
-                    re_created_at: new Date().toISOString(),
-                    re_quote_id: 'quote-1',
-                    users: {
-                        id: 'user-1',
-                        name: '김고객',
-                        email: 'kim@example.com',
-                        phone: '010-1234-5678'
-                    },
-                    quote: {
-                        title: '부산 크루즈 여행'
-                    }
-                },
-                {
-                    re_id: 'test-2',
-                    re_type: 'airport',
-                    re_status: 'pending',
-                    re_created_at: new Date(Date.now() - 86400000).toISOString(),
-                    re_quote_id: 'quote-2',
-                    users: {
-                        id: 'user-2',
-                        name: '이고객',
-                        email: 'lee@example.com',
-                        phone: '010-9876-5432'
-                    },
-                    quote: {
-                        title: '제주도 여행'
-                    }
-                }
-            ];
-            setReservations(testData);
+            setReservations([]);
+            setSelectedItems(new Set());
         } finally {
             setLoading(false);
         }
@@ -390,10 +373,10 @@ export default function BulkReservationPage() {
                                     onClick={handleBulkAction}
                                     disabled={selectedItems.size === 0 || processing}
                                     className={`px-6 py-2 rounded-lg font-medium transition-colors ${selectedItems.size === 0
-                                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                            : bulkAction === 'delete'
-                                                ? 'bg-red-500 hover:bg-red-600 text-white'
-                                                : 'bg-green-500 hover:bg-green-600 text-white'
+                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        : bulkAction === 'delete'
+                                            ? 'bg-red-500 hover:bg-red-600 text-white'
+                                            : 'bg-green-500 hover:bg-green-600 text-white'
                                         }`}
                                 >
                                     {processing ? '처리 중...' :
@@ -473,7 +456,7 @@ export default function BulkReservationPage() {
 
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-600">
                                                 <div>
-                                                    <strong>고객:</strong> {reservation.users.name}
+                                                    <strong>고객:</strong> {reservation.users?.name || 'N/A'}
                                                 </div>
                                                 <div>
                                                     <strong>견적:</strong> {reservation.quote?.title || 'N/A'}
@@ -482,10 +465,10 @@ export default function BulkReservationPage() {
                                                     <strong>예약일:</strong> {new Date(reservation.re_created_at).toLocaleDateString('ko-KR')}
                                                 </div>
                                                 <div>
-                                                    <strong>이메일:</strong> {reservation.users.email}
+                                                    <strong>이메일:</strong> {reservation.users?.email || 'N/A'}
                                                 </div>
                                                 <div>
-                                                    <strong>전화:</strong> {reservation.users.phone}
+                                                    <strong>전화:</strong> {reservation.users?.phone || 'N/A'}
                                                 </div>
                                                 <div>
                                                     <strong>ID:</strong> {reservation.re_id.slice(0, 8)}...

@@ -28,19 +28,19 @@ interface ReservationDetail {
     re_type: string;
     re_status: string;
     re_created_at: string;
-    re_quote_id: string;
+    re_quote_id: string | null;
     re_user_id: string;
     users: {
         id: string;
         name: string;
         email: string;
         phone: string;
-    };
+    } | null;
     quote: {
         title: string;
         status: string;
         total_price: number;
-    };
+    } | null;
     serviceDetails: any;
 }
 
@@ -97,28 +97,10 @@ function ReservationEditContent() {
                 return;
             }
 
-            // 예약 상세 정보 조회
-            const { data, error: queryError } = await supabase
+            // 예약 원본 조회
+            const { data: reservationRow, error: queryError } = await supabase
                 .from('reservation')
-                .select(`
-          re_id,
-          re_type,
-          re_status,
-          re_created_at,
-          re_quote_id,
-          re_user_id,
-          users!inner(
-            id,
-            name,
-            email,
-            phone
-          ),
-          quote:re_quote_id(
-            title,
-            status,
-            total_price
-          )
-        `)
+                .select('*')
                 .eq('re_id', reservationId)
                 .single();
 
@@ -126,10 +108,32 @@ function ReservationEditContent() {
                 throw queryError;
             }
 
-            if (!data) {
+            if (!reservationRow) {
                 alert('예약 정보를 찾을 수 없습니다.');
                 router.push('/manager/reservations');
                 return;
+            }
+
+            // 관련 사용자 정보 조회 (있으면)
+            let userInfo: ReservationDetail['users'] = null;
+            if (reservationRow.re_user_id) {
+                const { data: u } = await supabase
+                    .from('users')
+                    .select('id, name, email, phone')
+                    .eq('id', reservationRow.re_user_id)
+                    .maybeSingle();
+                if (u) userInfo = u as any;
+            }
+
+            // 연결된 견적 정보 조회 (있으면)
+            let quoteInfo: ReservationDetail['quote'] = null;
+            if (reservationRow.re_quote_id) {
+                const { data: q } = await supabase
+                    .from('quote')
+                    .select('title, status, total_price')
+                    .eq('id', reservationRow.re_quote_id)
+                    .maybeSingle();
+                if (q) quoteInfo = q as any;
             }
 
             // 서비스별 상세 정보 조회
@@ -142,18 +146,25 @@ function ReservationEditContent() {
                 rentcar: 'reservation_rentcar'
             };
 
-            const tableName = serviceTableMap[data.re_type];
+            const tableName = serviceTableMap[reservationRow.re_type];
             if (tableName) {
                 const { data: serviceData } = await supabase
                     .from(tableName)
                     .select('*')
                     .eq('reservation_id', reservationId);
 
-                serviceDetails = serviceData?.[0] || null;
+                serviceDetails = Array.isArray(serviceData) ? serviceData[0] : (serviceData ?? null);
             }
 
-            const reservationData = {
-                ...data,
+            const reservationData: ReservationDetail = {
+                re_id: reservationRow.re_id,
+                re_type: reservationRow.re_type,
+                re_status: reservationRow.re_status,
+                re_created_at: reservationRow.re_created_at,
+                re_quote_id: reservationRow.re_quote_id,
+                re_user_id: reservationRow.re_user_id,
+                users: userInfo,
+                quote: quoteInfo,
                 serviceDetails
             };
 
@@ -161,7 +172,7 @@ function ReservationEditContent() {
 
             // 폼 데이터 초기화
             setFormData({
-                re_status: data.re_status || 'pending',
+                re_status: reservationRow.re_status || 'pending',
                 serviceDetails: serviceDetails || {},
                 admin_note: ''
             });
@@ -283,6 +294,81 @@ function ReservationEditContent() {
         }
     };
 
+    // 서비스 상세 한글 라벨 맵
+    const serviceLabelMap: Record<string, Record<string, string>> = {
+        cruise: {
+            reservation_id: '예약 ID',
+            room_price_code: '객실 가격 코드',
+            checkin: '체크인',
+            guest_count: '탑승객 수',
+            unit_price: '단가',
+            boarding_assist: '승선 지원',
+            room_total_price: '객실 총액',
+            request_note: '요청사항',
+            created_at: '생성일시',
+            updated_at: '수정일시'
+        },
+        airport: {
+            reservation_id: '예약 ID',
+            airport_price_code: '공항 가격 코드',
+            ra_airport_location: '공항 위치',
+            ra_flight_number: '항공편 번호',
+            ra_datetime: '일시',
+            ra_stopover_location: '경유지',
+            ra_stopover_wait_minutes: '경유 대기(분)',
+            ra_car_count: '차량 수',
+            ra_passenger_count: '승객 수',
+            ra_luggage_count: '수하물 수',
+            request_note: '요청사항',
+            ra_is_processed: '처리 여부',
+            created_at: '생성일시',
+            updated_at: '수정일시'
+        },
+        hotel: {
+            reservation_id: '예약 ID',
+            hotel_price_code: '호텔 가격 코드',
+            schedule: '스케줄',
+            room_count: '객실 수',
+            checkin_date: '체크인',
+            breakfast_service: '조식 서비스',
+            hotel_category: '호텔 카테고리',
+            guest_count: '투숙객 수',
+            total_price: '총액',
+            request_note: '요청사항',
+            created_at: '생성일시',
+            updated_at: '수정일시'
+        },
+        rentcar: {
+            reservation_id: '예약 ID',
+            rentcar_price_code: '렌터카 가격 코드',
+            rentcar_count: '렌터카 수',
+            unit_price: '단가',
+            car_count: '차량 수',
+            passenger_count: '승객 수',
+            pickup_datetime: '픽업 일시',
+            pickup_location: '픽업 장소',
+            destination: '목적지',
+            via_location: '경유지',
+            via_waiting: '경유 대기',
+            luggage_count: '수하물 수',
+            total_price: '총액',
+            request_note: '요청사항',
+            created_at: '생성일시',
+            updated_at: '수정일시'
+        },
+        tour: {
+            reservation_id: '예약 ID',
+            tour_price_code: '투어 가격 코드',
+            tour_capacity: '투어 정원',
+            pickup_location: '픽업 장소',
+            dropoff_location: '하차 장소',
+            total_price: '총액',
+            request_note: '요청사항',
+            created_at: '생성일시',
+            updated_at: '수정일시'
+        }
+    };
+
     if (loading) {
         return (
             <ManagerLayout title="예약 수정" activeTab="reservations">
@@ -366,7 +452,7 @@ function ReservationEditContent() {
                             <label className="block text-sm font-medium text-gray-700 mb-1">고객명</label>
                             <input
                                 type="text"
-                                value={reservation.users.name}
+                                value={reservation.users?.name || ''}
                                 disabled
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
                             />
@@ -375,7 +461,7 @@ function ReservationEditContent() {
                             <label className="block text-sm font-medium text-gray-700 mb-1">전화번호</label>
                             <input
                                 type="text"
-                                value={reservation.users.phone}
+                                value={reservation.users?.phone || ''}
                                 disabled
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
                             />
@@ -384,7 +470,7 @@ function ReservationEditContent() {
                             <label className="block text-sm font-medium text-gray-700 mb-1">이메일</label>
                             <input
                                 type="email"
-                                value={reservation.users.email}
+                                value={reservation.users?.email || ''}
                                 disabled
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
                             />
@@ -421,8 +507,8 @@ function ReservationEditContent() {
                                         key={status.value}
                                         onClick={() => handleStatusChange(status.value)}
                                         className={`p-3 rounded-lg border-2 transition-colors flex items-center gap-2 ${formData.re_status === status.value
-                                                ? `border-${status.color}-500 bg-${status.color}-50 text-${status.color}-700`
-                                                : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                                            ? `border-${status.color}-500 bg-${status.color}-50 text-${status.color}-700`
+                                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                                             }`}
                                     >
                                         {getStatusIcon(status.value)}
@@ -454,33 +540,41 @@ function ReservationEditContent() {
                         </h3>
 
                         <div className="space-y-4">
-                            {/* 공통 필드들 */}
-                            {Object.entries(formData.serviceDetails).map(([key, value]) => {
-                                if (key === 'reservation_id' || key === 'id') return null;
-
-                                return (
-                                    <div key={key}>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                        </label>
-                                        {key.includes('note') || key.includes('memo') || key.includes('comment') ? (
-                                            <textarea
-                                                value={value || ''}
-                                                onChange={(e) => handleServiceDetailChange(key, e.target.value)}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                rows={2}
-                                            />
-                                        ) : (
-                                            <input
-                                                type={key.includes('date') || key.includes('time') ? 'datetime-local' : 'text'}
-                                                value={value || ''}
-                                                onChange={(e) => handleServiceDetailChange(key, e.target.value)}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                            />
-                                        )}
-                                    </div>
-                                );
-                            })}
+                            {/* 공통 필드들 - 한글 라벨 및 숨김 키 필터 */}
+                            {Object.entries(formData.serviceDetails)
+                                .filter(([key]) => {
+                                    if (key === 'id' || key === 'reservation_id') return false;
+                                    if (key.endsWith('_id') || key.endsWith('_price_code')) return false;
+                                    if (key === 'created_at' || key === 'updated_at') return false;
+                                    return true;
+                                })
+                                .map(([key, value]) => {
+                                    const label = serviceLabelMap[reservation.re_type]?.[key] || key;
+                                    const isTextArea = key.includes('note') || key.includes('memo') || key.includes('comment') || key.includes('request');
+                                    const isDateTime = key.includes('date') || key.includes('time') || key.includes('datetime');
+                                    return (
+                                        <div key={key}>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                {label}
+                                            </label>
+                                            {isTextArea ? (
+                                                <textarea
+                                                    value={value || ''}
+                                                    onChange={(e) => handleServiceDetailChange(key, e.target.value)}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    rows={3}
+                                                />
+                                            ) : (
+                                                <input
+                                                    type={isDateTime ? 'datetime-local' : 'text'}
+                                                    value={value || ''}
+                                                    onChange={(e) => handleServiceDetailChange(key, e.target.value)}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                />
+                                            )}
+                                        </div>
+                                    );
+                                })}
 
                             {Object.keys(formData.serviceDetails).length === 0 && (
                                 <div className="text-center py-6 text-gray-500">
@@ -502,8 +596,8 @@ function ReservationEditContent() {
                         <div>
                             <span className="text-gray-600">현재 상태:</span>
                             <span className={`ml-2 px-2 py-1 rounded text-xs ${reservation.re_status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                                    reservation.re_status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                        'bg-yellow-100 text-yellow-800'
+                                reservation.re_status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                    'bg-yellow-100 text-yellow-800'
                                 }`}>
                                 {getStatusText(reservation.re_status)}
                             </span>
@@ -511,8 +605,8 @@ function ReservationEditContent() {
                         <div>
                             <span className="text-gray-600">변경 후:</span>
                             <span className={`ml-2 px-2 py-1 rounded text-xs ${formData.re_status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                                    formData.re_status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                        'bg-yellow-100 text-yellow-800'
+                                formData.re_status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                    'bg-yellow-100 text-yellow-800'
                                 }`}>
                                 {getStatusText(formData.re_status)}
                             </span>
