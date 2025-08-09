@@ -129,38 +129,54 @@ export default function ManagerReservationsPage() {
 
       console.log('✅ 예약 기본 정보 조회 성공:', baseReservations?.length || 0, '건');
 
-      // 사용자 정보와 견적 정보를 별도로 조회
-      const enrichedReservations = [];
+      // 사용자/견적 ID 수집 후 배치 조회
+      const userIds = Array.from(new Set((baseReservations || []).map(r => r.re_user_id).filter(Boolean)));
+      const quoteIds = Array.from(new Set((baseReservations || []).map(r => r.re_quote_id).filter(Boolean)));
+
+      const [usersRes, quotesRes] = await Promise.all([
+        userIds.length
+          ? supabase.from('users').select('id, name, email, phone').in('id', userIds)
+          : Promise.resolve({ data: [], error: null } as any),
+        quoteIds.length
+          ? supabase.from('quote').select('id, title, status').in('id', quoteIds)
+          : Promise.resolve({ data: [], error: null } as any)
+      ]);
+
+      if (usersRes.error) console.warn('⚠️ 사용자 배치 조회 일부 실패:', usersRes.error);
+      if (quotesRes.error) console.warn('⚠️ 견적 배치 조회 일부 실패:', quotesRes.error);
+
+      const userMap = new Map<string, { id: string; name: string; email: string; phone: string }>();
+      (usersRes.data || []).forEach((u: any) => userMap.set(u.id, u));
+
+      const quoteMap = new Map<string, { id: string; title: string; status: string }>();
+      (quotesRes.data || []).forEach((q: any) => quoteMap.set(q.id, q));
+
+      // 사용자 정보와 견적 정보를 매핑하여 확장
+      const enrichedReservations: ReservationData[] = [];
 
       for (const reservation of baseReservations || []) {
         try {
-          // 사용자 정보 조회
-          const { data: userInfo } = await supabase
-            .from('users')
-            .select('id, name, email, phone')
-            .eq('id', reservation.re_user_id)
-            .single();
+          const userInfo = userMap.get(reservation.re_user_id) || {
+            id: reservation.re_user_id,
+            name: '미등록 사용자',
+            email: '',
+            phone: ''
+          };
 
-          // 견적 정보 조회 (옵션)
-          const { data: quoteInfo } = await supabase
-            .from('quote')
-            .select('title, status, departure_date, return_date, total_price')
-            .eq('id', reservation.re_quote_id)
-            .single();
+          const qInfo = reservation.re_quote_id ? quoteMap.get(reservation.re_quote_id) : null;
 
           // 서비스별 상세 정보 조회
-          let serviceDetails = null;
-          let serviceDetailsExtra = null;
+          let serviceDetails = null as any;
+          let serviceDetailsExtra = null as any;
           try {
             switch (reservation.re_type) {
-              case 'cruise':
+              case 'cruise': {
                 const { data: cruiseDetails } = await supabase
                   .from('reservation_cruise')
                   .select('*')
                   .eq('reservation_id', reservation.re_id)
                   .single();
                 serviceDetails = cruiseDetails;
-                // 부가: cruise 에 연결된 차량 정보도 조회
                 try {
                   const { data: cruiseCars } = await supabase
                     .from('reservation_cruise_car')
@@ -171,8 +187,8 @@ export default function ManagerReservationsPage() {
                   serviceDetailsExtra = Array.isArray(cruiseCars) ? cruiseCars[0] : null;
                 } catch (_) { /* noop */ }
                 break;
-
-              case 'airport':
+              }
+              case 'airport': {
                 const { data: airportDetails } = await supabase
                   .from('reservation_airport')
                   .select('*')
@@ -180,8 +196,8 @@ export default function ManagerReservationsPage() {
                   .single();
                 serviceDetails = airportDetails;
                 break;
-
-              case 'hotel':
+              }
+              case 'hotel': {
                 const { data: hotelDetails } = await supabase
                   .from('reservation_hotel')
                   .select('*')
@@ -189,8 +205,8 @@ export default function ManagerReservationsPage() {
                   .single();
                 serviceDetails = hotelDetails;
                 break;
-
-              case 'rentcar':
+              }
+              case 'rentcar': {
                 const { data: rentcarDetails } = await supabase
                   .from('reservation_rentcar')
                   .select('*')
@@ -198,8 +214,8 @@ export default function ManagerReservationsPage() {
                   .single();
                 serviceDetails = rentcarDetails;
                 break;
-
-              case 'tour':
+              }
+              case 'tour': {
                 const { data: tourDetails } = await supabase
                   .from('reservation_tour')
                   .select('*')
@@ -207,6 +223,7 @@ export default function ManagerReservationsPage() {
                   .single();
                 serviceDetails = tourDetails;
                 break;
+              }
             }
           } catch (serviceError) {
             console.warn('⚠️ 서비스 상세 정보 조회 실패:', reservation.re_type, serviceError);
@@ -214,34 +231,24 @@ export default function ManagerReservationsPage() {
 
           enrichedReservations.push({
             ...reservation,
-            users: userInfo || {
-              id: reservation.re_user_id,
-              name: '알 수 없는 사용자',
-              email: 'unknown@example.com',
-              phone: '000-0000-0000'
-            },
-            quote: quoteInfo || {
-              title: '알 수 없는 견적',
-              status: 'unknown'
-            },
-            serviceDetails: serviceDetails,
+            users: userInfo,
+            quote: qInfo
+              ? { title: qInfo.title ?? '제목 없음', status: qInfo.status ?? 'unknown' }
+              : { title: '연결된 견적 없음', status: 'unknown' },
+            serviceDetails,
             serviceDetailsExtra
           });
         } catch (enrichError) {
-          console.warn('⚠️ 예약 상세 정보 조회 실패:', reservation.re_id, enrichError);
-          // 기본값으로 추가
+          console.warn('⚠️ 예약 상세 정보 구성 실패:', reservation.re_id, enrichError);
           enrichedReservations.push({
             ...reservation,
             users: {
               id: reservation.re_user_id,
-              name: '정보 없음',
-              email: 'no-data@example.com',
-              phone: '000-0000-0000'
+              name: '미등록 사용자',
+              email: '',
+              phone: ''
             },
-            quote: {
-              title: '정보 없음',
-              status: 'unknown'
-            },
+            quote: { title: reservation.re_quote_id ? '제목 없음' : '연결된 견적 없음', status: 'unknown' },
             serviceDetails: null
           });
         }
@@ -842,82 +849,144 @@ export default function ManagerReservationsPage() {
                             </div>
                           );
                         })()}
-                        {filteredReservations.map((reservation) => (
-                          <div
-                            key={reservation.re_id}
-                            className="bg-white rounded-lg border border-gray-200 shadow-sm"
-                          >
-                            {/* 예약 기본 정보 헤더 */}
-                            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 rounded-t-lg">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  {getTypeIcon(reservation.re_type)}
-                                  <div>
-                                    <h3 className="text-lg font-semibold text-gray-900">
-                                      {getTypeName(reservation.re_type)} 예약
-                                    </h3>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(reservation.re_status)}`}>
-                                        {getStatusText(reservation.re_status)}
-                                      </span>
-                                      <span className="text-sm text-gray-500">
-                                        예약 ID: {reservation.re_id.slice(0, 8)}...
-                                      </span>
+                        {(() => {
+                          // 견적 ID별로 그룹화하여 타이틀과 함께 표시
+                          const groupedByQuote = filteredReservations.reduce((acc, r) => {
+                            const qid = r.re_quote_id || 'no-quote';
+                            (acc[qid] ||= []).push(r);
+                            return acc;
+                          }, {} as Record<string, ReservationData[]>);
+
+                          // 정렬: 견적 그룹은 첫 예약 최신순
+                          const quoteEntries = Object.entries(groupedByQuote).sort(([, a], [, b]) => {
+                            const ta = Math.max(...a.map(x => new Date(x.re_created_at).getTime()));
+                            const tb = Math.max(...b.map(x => new Date(x.re_created_at).getTime()));
+                            return tb - ta;
+                          });
+
+                          return quoteEntries.map(([qid, list]) => {
+                            // 그룹 헤더 정보
+                            const title = list[0]?.quote?.title || (qid === 'no-quote' ? '연결된 견적 없음' : '제목 없음');
+                            const shortId = qid !== 'no-quote' ? `${qid.slice(0, 8)}...` : '';
+
+                            // 각 그룹 내 예약은 타입 순서 + 최신순
+                            const typeOrder = ['cruise', 'airport', 'hotel', 'tour', 'rentcar'];
+                            const sortedList = list.slice().sort((a, b) => {
+                              const ta = typeOrder.indexOf(a.re_type);
+                              const tb = typeOrder.indexOf(b.re_type);
+                              if (ta !== tb) return ta - tb;
+                              return new Date(b.re_created_at).getTime() - new Date(a.re_created_at).getTime();
+                            });
+
+                            return (
+                              <div key={qid} className="bg-white rounded-lg border border-blue-200 overflow-hidden">
+                                <div className="px-6 py-3 bg-blue-50 flex items-center justify-between border-b border-blue-200">
+                                  <div className="flex items-center gap-3">
+                                    <Calendar className="w-4 h-4 text-blue-600" />
+                                    <span className="font-medium text-blue-800">견적: {title}</span>
+                                    {shortId && <span className="text-xs text-blue-600">({shortId})</span>}
+                                    {/* 타입별 개수 칩 */}
+                                    <div className="flex items-center gap-1 ml-2">
+                                      {['cruise', 'airport', 'hotel', 'tour', 'rentcar'].map(t => {
+                                        const cnt = list.filter(x => x.re_type === t).length;
+                                        if (!cnt) return null;
+                                        const color = t === 'cruise' ? 'bg-blue-100 text-blue-700' :
+                                          t === 'airport' ? 'bg-green-100 text-green-700' :
+                                            t === 'hotel' ? 'bg-purple-100 text-purple-700' :
+                                              t === 'tour' ? 'bg-orange-100 text-orange-700' :
+                                                'bg-red-100 text-red-700';
+                                        return (
+                                          <span key={t} className={`px-2 py-0.5 rounded-full text-xs ${color}`}>{getTypeName(t)} {cnt}</span>
+                                        );
+                                      })}
                                     </div>
                                   </div>
+                                  {qid !== 'no-quote' && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); router.push(`/manager/quotes/${qid}/view`); }}
+                                      className="text-xs px-3 py-1 rounded border border-blue-300 text-blue-700 hover:bg-blue-100"
+                                    >
+                                      견적 보기
+                                    </button>
+                                  )}
                                 </div>
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      router.push(`/manager/reservations/${reservation.re_id}/view`);
-                                    }}
-                                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2"
-                                    title="상세보기"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                    상세보기
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      router.push(`/manager/reservations/${reservation.re_id}/edit`);
-                                    }}
-                                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
-                                    title="수정"
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                    수정
-                                  </button>
+
+                                <div className="p-4 space-y-3">
+                                  {sortedList.map((reservation) => {
+                                    // 하이라이트 정보 추출 (간단 표기)
+                                    const sd: any = reservation.serviceDetails || {};
+                                    let dateStr = '';
+                                    let timeStr = '';
+                                    let locStr = '';
+                                    if (reservation.re_type === 'cruise') {
+                                      if (sd.checkin) { dateStr = new Date(sd.checkin).toLocaleDateString('ko-KR'); }
+                                      locStr = '하롱베이';
+                                    } else if (reservation.re_type === 'airport') {
+                                      if (sd.ra_datetime) {
+                                        const d = new Date(sd.ra_datetime);
+                                        dateStr = d.toLocaleDateString('ko-KR');
+                                        timeStr = d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+                                      }
+                                      locStr = sd.ra_airport_location || '';
+                                    } else if (reservation.re_type === 'hotel') {
+                                      if (sd.checkin_date) { dateStr = new Date(sd.checkin_date).toLocaleDateString('ko-KR'); }
+                                      locStr = sd.hotel_category || '';
+                                    } else if (reservation.re_type === 'rentcar') {
+                                      if (sd.pickup_datetime) {
+                                        const d = new Date(sd.pickup_datetime);
+                                        dateStr = d.toLocaleDateString('ko-KR');
+                                        timeStr = d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+                                      }
+                                      if (sd.pickup_location && sd.destination) {
+                                        locStr = `${sd.pickup_location} → ${sd.destination}`;
+                                      } else {
+                                        locStr = sd.pickup_location || sd.destination || '';
+                                      }
+                                    } else if (reservation.re_type === 'tour') {
+                                      if (sd.tour_date) { dateStr = new Date(sd.tour_date).toLocaleDateString('ko-KR'); }
+                                      locStr = sd.pickup_location || sd.dropoff_location || '';
+                                    }
+
+                                    return (
+                                      <div key={reservation.re_id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                                        <div className="flex items-center gap-3">
+                                          {getTypeIcon(reservation.re_type)}
+                                          <div>
+                                            <div className="flex items-center gap-2">
+                                              <span className="font-medium text-gray-900">{getTypeName(reservation.re_type)}</span>
+                                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(reservation.re_status)}`}>
+                                                {getStatusText(reservation.re_status)}
+                                              </span>
+                                            </div>
+                                            <div className="text-xs text-gray-600 flex gap-3 mt-0.5">
+                                              {dateStr && <span>{dateStr}{timeStr ? ` ${timeStr}` : ''}</span>}
+                                              {locStr && <span>위치: {locStr}</span>}
+                                              <span className="text-gray-400">ID: {reservation.re_id.slice(0, 8)}...</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); router.push(`/manager/reservations/${reservation.re_id}/view`); }}
+                                            className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 flex items-center gap-1"
+                                          >
+                                            <Eye className="w-3 h-3" /> 상세
+                                          </button>
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); router.push(`/manager/reservations/${reservation.re_id}/edit`); }}
+                                            className="px-3 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
+                                          >
+                                            수정
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
-                            </div>
-
-                            {/* 예약 상세 정보 */}
-                            <div className="p-6">
-                              {/* 예약 기본 정보는 고객 그룹 상단에서 1회 표시하므로 카드 내에서는 생략 */}
-
-                              {/* 서비스별 상세 정보 - 모든 컬럼 표시 */}
-                              {reservation.serviceDetails && (
-                                <div className="mt-6 pt-6 border-t border-gray-200">
-                                  <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                                    {getTypeIcon(reservation.re_type)}
-                                    서비스 상세 정보 (전체 컬럼)
-                                  </h4>
-                                  {renderDetailTable(reservation.serviceDetails, reservation.re_type)}
-                                </div>
-                              )}
-
-                              {/* 크루즈 추가 차량 정보 (있을 때) */}
-                              {reservation.re_type === 'cruise' && reservation.serviceDetailsExtra && (
-                                <div className="mt-4">
-                                  <h5 className="font-medium text-gray-900 mb-2">연결 차량 정보</h5>
-                                  {renderDetailTable(reservation.serviceDetailsExtra, 'cruise_car')}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                            );
+                          });
+                        })()}
                       </div>
                     )}
                   </div>
