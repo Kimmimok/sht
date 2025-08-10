@@ -412,6 +412,39 @@ app/
 8. **사용자 플로우**: 견적자 → 예약시 자동 회원 등록 → 역할별 대시보드 이동
 9. **🎯 예약 저장 (필수)**: 크루즈 패턴 - 카테고리별 서비스 선택 → 단일 행 저장 → 추가 서비스는 request_note
 
+## 표준 명령어 및 네이밍 (2025.08.10 추가)
+### ✅ “행복여행 이름 가져오기” 표준 정의
+- 의미: 견적(quote)의 title 값을 조회하여 모든 흐름에서 표시할 “행복여행 이름”을 일관되게 반환
+- 소스: quote.title (단일 진실의 근원)
+- 식별자 연결 규칙:
+  - 우선 순위 1: quote_id (안정적 공개 식별자)
+  - 우선 순위 2: id (DB 내부 기본키)
+  - 예약에서 참조: reservation.re_quote_id → quote.quote_id
+
+### 사용 지침
+- 공용 헬퍼를 통해 안전하게 타이틀 확보: `lib/getQuoteTitle.ts`
+  - `resolveLocalQuoteTitle(q)`: 전달 객체 내에서 즉시 추출 (title/quote.title/quote_info.title)
+  - `fetchQuoteTitle({ quote_id?, id? })`: Supabase에서 조회, quote_id 우선, 캐시 활용
+  - `ensureQuoteTitle(input)`: 로컬 → 원격 순서로 타이틀 확보 (권장)
+
+### 간단 계약
+- 입력: { quote_id?: string; id?: string } 또는 타이틀/참조를 가진 객체
+- 출력: Promise<string | undefined> (타이틀)
+- 실패: 식별자 불충분 또는 접근 오류 시 undefined
+
+### 예시 (React 컴포넌트 내부)
+```ts
+import { ensureQuoteTitle } from '@/lib/getQuoteTitle';
+
+// q: { title?, quote_id?, id?, reservation? } 형태
+const title = await ensureQuoteTitle({ quote_id: q.quote_id, id: q.id });
+console.log('행복여행 이름:', title);
+```
+
+### UI 표준 표기
+- 라벨: `행복여행 이름: {title}`
+- 폴백 금지: title은 반드시 존재한다는 전제. 부득이할 경우 헬퍼로 보정 후 표시.
+
 ## 🚫 절대 금지 사항
 ### 폴더 구조 변경 절대 금지
 - **기존 폴더 구조를 임의로 변경하거나 새로운 폴더를 생성하지 말 것**

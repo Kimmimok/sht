@@ -40,6 +40,8 @@ export default function MyReservationsListPage() {
   const [tourPricesByCode, setTourPricesByCode] = useState<Record<string, any[]>>({});
   // 견적 타이틀 맵
   const [quotesById, setQuotesById] = useState<Record<string, { title: string; status?: string }>>({});
+  // 결제 상태 매핑
+  const [paymentStatusByReservation, setPaymentStatusByReservation] = useState<Record<string, { hasCompleted: boolean; payments: any[] }>>({});
 
   // payment modal state
   const [showPay, setShowPay] = useState(false);
@@ -97,6 +99,26 @@ export default function MyReservationsListPage() {
 
       const rows = (reservationsData as Reservation[]) || [];
       setReservations(rows);
+
+      // 결제 상태 조회
+      const allReservationIds = rows.map(r => r.re_id);
+      if (allReservationIds.length) {
+        const { data: paymentData } = await supabase
+          .from('reservation_payment')
+          .select('reservation_id, payment_status, amount, payment_method, created_at')
+          .in('reservation_id', allReservationIds);
+
+        // 예약별 결제 정보 매핑
+        const paymentMap: Record<string, { hasCompleted: boolean; payments: any[] }> = {};
+        for (const rid of allReservationIds) {
+          const payments = (paymentData || []).filter(p => p.reservation_id === rid);
+          const hasCompleted = payments.some(p => p.payment_status === 'completed');
+          paymentMap[rid] = { hasCompleted, payments };
+        }
+        setPaymentStatusByReservation(paymentMap);
+      } else {
+        setPaymentStatusByReservation({});
+      }
 
       // 견적 타이틀 배치 조회
       const quoteIds = Array.from(new Set(rows.map(r => r.re_quote_id).filter(Boolean))) as string[];
@@ -433,6 +455,8 @@ export default function MyReservationsListPage() {
       if (error) throw error;
       setShowPay(false);
       alert('결제 요청이 생성되었습니다.');
+      // 결제 상태 다시 로드
+      await fetchReservations();
     } catch (e) {
       console.error('결제 생성 실패', e);
       alert('결제 생성에 실패했습니다.');
@@ -461,14 +485,19 @@ export default function MyReservationsListPage() {
           <div className="mb-4 flex justify-between items-center">
             <p className="text-gray-600">총 {reservations.length}건의 예약이 있습니다.</p>
             <div className="space-x-2">
-              {reservations.some(r => r.re_status === 'confirmed' && (amountsByReservation[r.re_id] || 0) > 0) && (
-                <button
-                  onClick={() => setShowBulkPay(true)}
-                  className="bg-orange-300 text-gray-700 px-2 py-1 rounded hover:bg-orange-400 text-base"
-                >
-                  결제 신청
-                </button>
-              )}
+              {reservations.some(r => {
+                const paymentInfo = paymentStatusByReservation[r.re_id];
+                return r.re_status === 'confirmed' &&
+                  (amountsByReservation[r.re_id] || 0) > 0 &&
+                  !paymentInfo?.hasCompleted;
+              }) && (
+                  <button
+                    onClick={() => setShowBulkPay(true)}
+                    className="bg-orange-300 text-gray-700 px-2 py-1 rounded hover:bg-orange-400 text-base"
+                  >
+                    결제 신청
+                  </button>
+                )}
             </div>
           </div>
 
@@ -486,9 +515,16 @@ export default function MyReservationsListPage() {
                     <div className="text-sm text-gray-500">예약 건수</div>
                     <div className="text-lg font-semibold">{reservations.length}건</div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm text-gray-500">확정 + 금액 보유</div>
-                    <div className="text-lg font-semibold">{reservations.filter(r => r.re_status === 'confirmed' && (amountsByReservation[r.re_id] || 0) > 0).length}건</div>
+                  <div>
+                    <div className="text-sm text-gray-500">확정 + 미결제</div>
+                    <div className="text-lg font-semibold">
+                      {reservations.filter(r => {
+                        const paymentInfo = paymentStatusByReservation[r.re_id];
+                        return r.re_status === 'confirmed' &&
+                          (amountsByReservation[r.re_id] || 0) > 0 &&
+                          !paymentInfo?.hasCompleted;
+                      }).length}건
+                    </div>
                   </div>
                 </div>
               </div>
@@ -538,21 +574,39 @@ export default function MyReservationsListPage() {
                           const meta = r.re_type === 'cruise' ? cruiseMeta[r.re_id] : undefined;
                           const dateMain = meta?.checkin ? new Date(meta.checkin).toLocaleDateString('ko-KR') : new Date(r.re_created_at).toLocaleDateString('ko-KR');
                           const amount = Number(amountsByReservation[r.re_id] || 0);
+                          const paymentInfo = paymentStatusByReservation[r.re_id];
+                          const hasCompletedPayment = paymentInfo?.hasCompleted || false;
                           return (
                             <div key={r.re_id} className="flex items-center justify-between p-3 border rounded">
                               <div>
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium text-gray-900">{getTypeName(r.re_type)}</span>
                                   <span className={`px-2 py-0.5 rounded text-xs ${getStatusColor(r.re_status)}`}>{getStatusText(r.re_status)}</span>
+                                  {hasCompletedPayment && (
+                                    <span className="px-2 py-0.5 rounded text-xs bg-green-100 text-green-700">결제완료</span>
+                                  )}
                                 </div>
                                 <div className="text-xs text-gray-600 mt-0.5 flex gap-3">
                                   <span>{dateMain}</span>
                                   <span className="text-gray-400">ID: {r.re_id.slice(0, 8)}...</span>
+                                  {hasCompletedPayment && paymentInfo.payments.length > 0 && (
+                                    <span className="text-green-600">
+                                      결제: {paymentInfo.payments.filter(p => p.payment_status === 'completed').length}건
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
                                 {amount > 0 && <span className="text-sm font-semibold text-orange-600">{amount.toLocaleString()}동</span>}
                                 <button onClick={() => router.push(`/mypage/reservations/${r.re_id}/view`)} className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600">상세</button>
+                                {hasCompletedPayment && (
+                                  <button
+                                    onClick={() => router.push(`/customer/confirmation?quote_id=${r.re_quote_id}&token=customer`)}
+                                    className="px-3 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
+                                  >
+                                    예약확인서
+                                  </button>
+                                )}
                               </div>
                             </div>
                           );
@@ -582,7 +636,12 @@ export default function MyReservationsListPage() {
                   </thead>
                   <tbody>
                     {reservations
-                      .filter(r => r.re_status === 'confirmed' && (amountsByReservation[r.re_id] || 0) > 0)
+                      .filter(r => {
+                        const paymentInfo = paymentStatusByReservation[r.re_id];
+                        return r.re_status === 'confirmed' &&
+                          (amountsByReservation[r.re_id] || 0) > 0 &&
+                          !paymentInfo?.hasCompleted;
+                      })
                       .map(r => (
                         <tr key={r.re_id} className="border-t">
                           <td className="px-3 py-2">
@@ -634,7 +693,10 @@ export default function MyReservationsListPage() {
                     try {
                       const { data: { user } } = await supabase.auth.getUser();
                       if (!user) { alert('로그인이 필요합니다.'); return; }
-                      const targets = reservations.filter(r => bulkSelections[r.re_id]);
+                      const targets = reservations.filter(r => {
+                        const paymentInfo = paymentStatusByReservation[r.re_id];
+                        return bulkSelections[r.re_id] && !paymentInfo?.hasCompleted;
+                      });
                       if (!targets.length) { setSavingBulk(false); return; }
                       const payload = targets.map(r => ({
                         reservation_id: r.re_id,
@@ -647,6 +709,8 @@ export default function MyReservationsListPage() {
                       if (error) throw error;
                       setShowBulkPay(false);
                       alert('결제 신청이 생성되었습니다.');
+                      // 결제 상태 다시 로드
+                      await fetchReservations();
                     } catch (e) {
                       console.error('일괄 결제 생성 실패', e);
                       alert('일괄 결제 생성에 실패했습니다.');

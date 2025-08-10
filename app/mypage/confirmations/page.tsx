@@ -41,6 +41,14 @@ export default function MyConfirmationsPage() {
         fetchData();
     }, [router]);
 
+    // 필터 변경 시 자동 재조회
+    useEffect(() => {
+        if (user?.id) {
+            loadQuotes(user.id);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filter]);
+
     const loadQuotes = async (userId: string) => {
         try {
             setIsLoading(true);
@@ -54,7 +62,8 @@ export default function MyConfirmationsPage() {
             if (filter === 'paid') {
                 query = query.eq('payment_status', 'paid');
             } else if (filter === 'pending') {
-                query = query.neq('payment_status', 'paid');
+                // 결제 대기: 결제 미완료(null 포함) + 결제 대상 금액 존재
+                query = query.or('payment_status.is.null,payment_status.neq.paid').gt('total_price', 0);
             }
 
             const { data: quotesData, error: quotesError } = await query
@@ -160,8 +169,8 @@ export default function MyConfirmationsPage() {
                         <button
                             onClick={() => setFilter('all')}
                             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${filter === 'all'
-                                    ? 'bg-white text-blue-600 shadow-sm'
-                                    : 'text-gray-600 hover:text-gray-900'
+                                ? 'bg-white text-blue-600 shadow-sm'
+                                : 'text-gray-600 hover:text-gray-900'
                                 }`}
                         >
                             📊 전체 ({quotes.length})
@@ -169,8 +178,8 @@ export default function MyConfirmationsPage() {
                         <button
                             onClick={() => setFilter('paid')}
                             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${filter === 'paid'
-                                    ? 'bg-white text-blue-600 shadow-sm'
-                                    : 'text-gray-600 hover:text-gray-900'
+                                ? 'bg-white text-blue-600 shadow-sm'
+                                : 'text-gray-600 hover:text-gray-900'
                                 }`}
                         >
                             ✅ 예약완료 ({paidQuotes.length})
@@ -178,8 +187,8 @@ export default function MyConfirmationsPage() {
                         <button
                             onClick={() => setFilter('pending')}
                             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${filter === 'pending'
-                                    ? 'bg-white text-blue-600 shadow-sm'
-                                    : 'text-gray-600 hover:text-gray-900'
+                                ? 'bg-white text-blue-600 shadow-sm'
+                                : 'text-gray-600 hover:text-gray-900'
                                 }`}
                         >
                             📋 견적단계 ({pendingQuotes.length})

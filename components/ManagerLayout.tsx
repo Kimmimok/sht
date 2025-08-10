@@ -48,6 +48,16 @@ export default function ManagerLayout({ children, title, activeTab }: ManagerLay
     checkManager();
   }, [router]);
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.warn('로그아웃 처리 중 경고:', e);
+    } finally {
+      router.push('/login');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -93,6 +103,13 @@ export default function ManagerLayout({ children, title, activeTab }: ManagerLay
               >
                 🏠 메인으로
               </Link>
+              <button
+                onClick={handleLogout}
+                className="px-3 py-2 rounded-md text-sm bg-blue-700 hover:bg-blue-800 transition-colors"
+                title="로그아웃"
+              >
+                🔒 로그아웃
+              </button>
             </div>
           </div>
         </div>
@@ -101,17 +118,17 @@ export default function ManagerLayout({ children, title, activeTab }: ManagerLay
       {/* Manager Navigation */}
       <nav className="bg-white shadow border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8 overflow-x-auto">
+          <div className="flex space-x-2 overflow-x-auto">
             {managerTabs.map((tab) => (
               <Link
                 key={tab.id}
                 href={tab.path}
-                className={`flex items-center space-x-2 px-4 py-4 text-sm font-medium whitespace-nowrap border-b-2 ${activeTab === tab.id
+                className={`flex items-center space-x-1 px-2 py-2 text-xs font-medium whitespace-nowrap border-b-2 ${activeTab === tab.id
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
               >
-                <span className="text-lg">{tab.icon}</span>
+                <span className="text-sm">{tab.icon}</span>
                 <span>{tab.label}</span>
               </Link>
             ))}

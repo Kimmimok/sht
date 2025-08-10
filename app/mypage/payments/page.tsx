@@ -407,6 +407,14 @@ export default function MyPaymentsPage() {
                                             {group.items.some(i => i.payment_status === 'pending') && (
                                                 <button onClick={() => payAllForQuote(group.quote_id)} className="px-4 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium">한번에 결제</button>
                                             )}
+                                            {group.items.every(i => i.payment_status === 'completed') && (
+                                                <button
+                                                    onClick={() => router.push(`/customer/confirmation?quote_id=${group.quote_id}&token=customer`)}
+                                                    className="px-4 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
+                                                >
+                                                    예약확인서
+                                                </button>
+                                            )}
                                             {group.quote_id && group.quote_id !== '미지정' && (
                                                 <Link href={`/mypage/quotes/${group.quote_id}/view`} className="px-3 py-1 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm">견적 보기</Link>
                                             )}

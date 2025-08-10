@@ -46,91 +46,125 @@ function CustomerConfirmationClient() {
         try {
             setLoading(true);
 
-            // 견적 기본 정보 조회
-            const { data: quote, error: quoteError } = await supabase
-                .from('quote')
-                .select('*, users!quote_user_id_fkey(name, email, phone)')
-                .eq('id', quoteId)
-                .single();
+            // 1. 기본 정보들을 병렬로 조회 (최적화됨)
+            const [quoteResult, reservationsResult] = await Promise.all([
+                // 견적 정보 조회 (id 필드로 조회)
+                supabase
+                    .from('quote')
+                    .select('*')
+                    .eq('id', quoteId)
+                    .single(),
 
-            if (quoteError) {
-                console.error('견적 조회 실패:', quoteError);
-                setError('예약 정보를 찾을 수 없습니다.');
-                return;
-            }
-
-            const user = quote.users;
-
-            // 예약 목록 조회
-            const { data: resList, error: resError } = await supabase
-                .from('reservation')
-                .select('*')
-                .eq('re_quote_id', quoteId);
-
-            if (resError) {
-                console.error('예약 조회 실패:', resError);
-                setError('예약 상세 정보를 불러올 수 없습니다.');
-                return;
-            }
-
-            // 서비스별 상세 정보 조회
-            const cruisePromise = supabase.from('reservation_cruise').select('*');
-            const airportPromise = supabase.from('reservation_airport').select('*');
-            const hotelPromise = supabase.from('reservation_hotel').select('*');
-            const rentcarPromise = supabase.from('reservation_rentcar').select('*');
-            const tourPromise = supabase.from('reservation_tour').select('*');
-            const carPromise = supabase.from('reservation_car_sht').select('*');
-
-            const [cruiseRes, airportRes, hotelRes, rentcarRes, tourRes, carRes] = await Promise.all([
-                cruisePromise, airportPromise, hotelPromise, rentcarPromise, tourPromise, carPromise
+                // 예약 목록 조회
+                supabase
+                    .from('reservation')
+                    .select('*')
+                    .eq('re_quote_id', quoteId)
             ]);
 
-            // Map 생성
-            const cruiseMap = new Map(cruiseRes.data?.map(item => [item.reservation_id, item]) || []);
-            const airportMap = new Map(airportRes.data?.map(item => [item.reservation_id, item]) || []);
-            const hotelMap = new Map(hotelRes.data?.map(item => [item.reservation_id, item]) || []);
-            const rentcarMap = new Map(rentcarRes.data?.map(item => [item.reservation_id, item]) || []);
-            const tourMap = new Map(tourRes.data?.map(item => [item.reservation_id, item]) || []);
-            const carMap = new Map(carRes.data?.map(item => [item.reservation_id, item]) || []);
+            if (quoteResult.error || !quoteResult.data) {
+                console.error('견적 조회 실패:', quoteResult.error);
+                setError('예약 정보를 찾을 수 없습니다. 견적 번호를 확인해 주세요.');
+                return;
+            }
 
-            // 금액 추출 함수
+            const quote = quoteResult.data;
+            const reservations = reservationsResult.data || [];
+
+            // 2. 사용자 정보와 서비스 상세 정보를 병렬로 조회 (최적화됨)
+            const reservationIds = reservations.map(r => r.re_id);
+
+            const [
+                userResult,
+                cruiseResult,
+                airportResult,
+                hotelResult,
+                rentcarResult,
+                tourResult,
+                carResult
+            ] = await Promise.all([
+                // 사용자 정보
+                supabase
+                    .from('users')
+                    .select('name, email, phone')
+                    .eq('id', quote.user_id)
+                    .single(),
+
+                // 서비스별 상세 정보 (예약 ID가 있는 경우만 조회)
+                reservationIds.length > 0 ?
+                    supabase.from('reservation_cruise').select('*').in('reservation_id', reservationIds) :
+                    Promise.resolve({ data: [] }),
+
+                reservationIds.length > 0 ?
+                    supabase.from('reservation_airport').select('*').in('reservation_id', reservationIds) :
+                    Promise.resolve({ data: [] }),
+
+                reservationIds.length > 0 ?
+                    supabase.from('reservation_hotel').select('*').in('reservation_id', reservationIds) :
+                    Promise.resolve({ data: [] }),
+
+                reservationIds.length > 0 ?
+                    supabase.from('reservation_rentcar').select('*').in('reservation_id', reservationIds) :
+                    Promise.resolve({ data: [] }),
+
+                reservationIds.length > 0 ?
+                    supabase.from('reservation_tour').select('*').in('reservation_id', reservationIds) :
+                    Promise.resolve({ data: [] }),
+
+                reservationIds.length > 0 ?
+                    supabase.from('reservation_car_sht').select('*').in('reservation_id', reservationIds) :
+                    Promise.resolve({ data: [] })
+            ]);
+
+            // 3. 데이터 매핑 및 최종 구성
+            const user = userResult.data;
+
+            // 서비스 상세 정보 맵 생성
+            const serviceMap = new Map();
+            cruiseResult.data?.forEach(item => serviceMap.set(item.reservation_id, item));
+            airportResult.data?.forEach(item => serviceMap.set(item.reservation_id, item));
+            hotelResult.data?.forEach(item => serviceMap.set(item.reservation_id, item));
+            rentcarResult.data?.forEach(item => serviceMap.set(item.reservation_id, item));
+            tourResult.data?.forEach(item => serviceMap.set(item.reservation_id, item));
+            carResult.data?.forEach(item => serviceMap.set(item.reservation_id, item));
+
+            // 금액 추출 함수 (실제 데이터 구조에 맞게 수정)
             const pickAmount = (type: string, detail: any): number => {
                 if (!detail) return 0;
-                const tryFields = {
-                    cruise: ['room_total_price', 'total_price', 'price', 'amount'],
-                    airport: ['airport_total_price', 'total_price', 'price', 'amount'],
-                    hotel: ['hotel_total_price', 'total_price', 'price', 'amount'],
-                    rentcar: ['rentcar_total_price', 'total_price', 'price', 'amount'],
-                    tour: ['tour_total_price', 'total_price', 'price', 'amount'],
-                    car: ['vehicle_total_price', 'total_price', 'price', 'amount']
-                } as Record<string, string[]>;
-                for (const f of (tryFields[type] || [])) {
-                    const v = detail[f];
-                    if (typeof v === 'number' && !isNaN(v)) return v;
+
+                // 실제 데이터 구조에 맞는 필드명 사용
+                const amountFields = [
+                    'room_total_price',    // 크루즈
+                    'total_price',         // 공항 등
+                    'unit_price',          // 단가
+                    'price',
+                    'amount'
+                ];
+
+                for (const field of amountFields) {
+                    const value = detail[field];
+                    if (typeof value === 'number' && !isNaN(value) && value > 0) {
+                        return value;
+                    }
                 }
                 return 0;
             };
 
-            const processedReservations: ReservationDetail[] = resList.map((res: any) => {
-                let detail: any = null;
-                if (res.re_type === 'cruise') detail = cruiseMap.get(res.re_id);
-                else if (res.re_type === 'airport') detail = airportMap.get(res.re_id);
-                else if (res.re_type === 'hotel') detail = hotelMap.get(res.re_id);
-                else if (res.re_type === 'rentcar') detail = rentcarMap.get(res.re_id);
-                else if (res.re_type === 'tour') detail = tourMap.get(res.re_id);
-                else if (res.re_type === 'car') detail = carMap.get(res.re_id);
-
+            // 예약 상세 정보 구성
+            const processedReservations: ReservationDetail[] = reservations.map(res => {
+                const serviceDetail = serviceMap.get(res.re_id);
                 return {
                     reservation_id: res.re_id,
                     service_type: res.re_type,
-                    service_details: detail || {},
-                    amount: pickAmount(res.re_type, detail),
-                    status: res.re_status
+                    service_details: serviceDetail || {},
+                    amount: pickAmount(res.re_type, serviceDetail),
+                    status: res.re_status || 'pending'
                 };
             });
 
+            // 최종 데이터 설정
             setQuoteData({
-                quote_id: quote.quote_id || quote.id,
+                quote_id: quote.id, // 실제 데이터베이스 구조에 맞게 수정
                 title: quote.title || '제목 없음',
                 user_name: user?.name || '알 수 없음',
                 user_email: user?.email || '',
