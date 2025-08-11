@@ -7,6 +7,9 @@ function CruiseQuoteNewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
+  const itemId = searchParams.get('itemId');
+  const serviceRefId = searchParams.get('serviceRefId');
+  const mode = searchParams.get('mode');
 
   // 폼 상태
   const [form, setForm] = useState({
@@ -541,11 +544,11 @@ function CruiseQuoteNewContent() {
 
               {/* 객실 선택 영역 */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-800">🛏 객실 선택</h3>
+                <h3 className="text-lg font-semibold text-gray-800"></h3>
                 {form.rooms.map((room, roomIdx) => (
                   <div key={roomIdx} className="border border-blue-200 rounded-lg p-4 bg-blue-50">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-gray-900">객실 그룹 {roomIdx + 1}</h4>
+                      <h4 className="font-medium text-gray-900"></h4>
                       {form.rooms.length > 1 && (
                         <button
                           type="button"
@@ -564,7 +567,7 @@ function CruiseQuoteNewContent() {
 
                     {/* 객실 타입 선택 */}
                     <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">🛏 객실 타입</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">🛏 객실명</label>
                       <select
                         value={room.room_type}
                         onChange={e => {
@@ -601,7 +604,7 @@ function CruiseQuoteNewContent() {
                       return (
                         <div key={catIdx} className="border border-gray-200 rounded-lg p-3 mb-3 bg-white">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-gray-700">카테고리 {catIdx + 1}</span>
+
                             {room.categories.length > 1 && (
                               <button
                                 type="button"
@@ -615,7 +618,7 @@ function CruiseQuoteNewContent() {
 
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className="block text-xs font-medium text-gray-600 mb-1">객실 카테고리</label>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">구분</label>
                               <select
                                 value={category.room_category}
                                 onChange={async (e) => {
@@ -628,7 +631,7 @@ function CruiseQuoteNewContent() {
                                 }}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white text-sm"
                               >
-                                <option value="">카테고리 선택</option>
+                                <option value="">성인 아동 선택</option>
                                 {availableCategories.map(cat => (
                                   <option key={cat} value={cat}>{cat}</option>
                                 ))}
@@ -636,7 +639,7 @@ function CruiseQuoteNewContent() {
                             </div>
 
                             <div>
-                              <label className="block text-xs font-medium text-gray-600 mb-1">성인수</label>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">인원수</label>
                               <input
                                 type="number"
                                 min="0"
@@ -677,7 +680,6 @@ function CruiseQuoteNewContent() {
                 <h3 className="text-lg font-semibold text-gray-800">🚗 차량 선택</h3>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">차량구분</label>
                   <div className="flex gap-2">
                     {carCategoryOptions.map(category => (
                       <button
@@ -698,7 +700,7 @@ function CruiseQuoteNewContent() {
                 {vehicleForm.map((vehicle, vehicleIndex) => (
                   <div key={vehicleIndex} className="border border-green-200 rounded-lg p-4 bg-green-50">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-gray-900">차량 {vehicleIndex + 1}</h4>
+
                       {vehicleForm.length > 1 && (
                         <button
                           type="button"
@@ -711,19 +713,10 @@ function CruiseQuoteNewContent() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">차량구분</label>
-                        <input
-                          type="text"
-                          value={selectedCarCategory}
-                          readOnly
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700"
-                          placeholder="위에서 차량구분을 선택하세요"
-                        />
-                      </div>
+
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">차량타입</label>
+
                         <select
                           value={vehicle.car_type}
                           onChange={async (e) => {
@@ -735,7 +728,7 @@ function CruiseQuoteNewContent() {
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 bg-white"
                         >
-                          <option value="">차량타입 선택</option>
+                          <option value="">차량 선택</option>
                           {carTypeOptions.map(carType => (
                             <option key={carType} value={carType}>{carType}</option>
                           ))}

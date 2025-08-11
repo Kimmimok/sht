@@ -10,6 +10,8 @@ function AirportReservationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
+  const reservationId = searchParams.get('reservationId');
+  const mode = searchParams.get('mode');
 
   // 폼 상태 - 크루즈 패턴 적용 (서비스 정보 입력)
   const [form, setForm] = useState({
@@ -45,8 +47,14 @@ function AirportReservationContent() {
     }
     loadQuote();
     loadAvailableAirportServices();
-    checkExistingReservation();
-  }, [quoteId, router]);
+
+    // 수정 모드인 경우 특정 예약 데이터 로드
+    if (mode === 'edit' && reservationId) {
+      loadExistingReservation(reservationId);
+    } else {
+      checkExistingReservation();
+    }
+  }, [quoteId, router, mode, reservationId]);
 
   // 견적 정보 로드
   const loadQuote = async () => {
@@ -67,6 +75,57 @@ function AirportReservationContent() {
     } catch (error) {
       console.error('견적 로드 오류:', error);
       alert('견적 정보를 불러오는 중 오류가 발생했습니다.');
+    }
+  };
+
+  // 특정 예약 ID로 데이터 로드 (수정 모드용)
+  const loadExistingReservation = async (reservationId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: existingRes } = await supabase
+        .from('reservation')
+        .select(`
+          *,
+          reservation_airport (*)
+        `)
+        .eq('re_id', reservationId)
+        .eq('re_user_id', user.id)
+        .single();
+
+      if (existingRes) {
+        setExistingReservation(existingRes);
+        setIsEditMode(true);
+
+        // 기존 데이터로 폼 초기화
+        if (existingRes.reservation_airport && existingRes.reservation_airport.length > 0) {
+          const airportData = existingRes.reservation_airport[0];
+          setForm(prev => ({
+            ...prev,
+            serviceData: {
+              pickup_location: airportData.ra_airport_location || '',
+              pickup_datetime: airportData.ra_datetime ? new Date(airportData.ra_datetime).toISOString().slice(0, 16) : '',
+              pickup_flight_number: airportData.ra_flight_number || '',
+              sending_location: airportData.ra_airport_location || '',
+              sending_datetime: airportData.ra_datetime ? new Date(airportData.ra_datetime).toISOString().slice(0, 16) : '',
+              sending_flight_number: airportData.ra_flight_number || '',
+              passenger_count: airportData.ra_passenger_count || 1,
+              luggage_count: airportData.ra_luggage_count || 0,
+              stopover_location: airportData.ra_stopover_location || '',
+              stopover_wait_minutes: airportData.ra_stopover_wait_minutes || 0,
+              car_count: airportData.ra_car_count || 1,
+            },
+            request_note: airportData.request_note || ''
+          }));
+        }
+      } else {
+        alert('해당 예약을 찾을 수 없습니다.');
+        router.push('/mypage/reservations');
+      }
+    } catch (error) {
+      console.error('예약 데이터 로드 오류:', error);
+      alert('예약 데이터를 불러오는 중 오류가 발생했습니다.');
     }
   };
 

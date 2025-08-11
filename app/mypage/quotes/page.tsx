@@ -11,6 +11,10 @@ export default function QuotesPage() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [user, setUser] = useState<any>(null);
 
+  const handleGoHome = () => {
+    router.push('/mypage');
+  };
+
   useEffect(() => {
     loadUserAndQuotes();
   }, []);
@@ -47,15 +51,6 @@ export default function QuotesPage() {
       console.error('견적 목록 로드 오류:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      router.push('/login');
-    } catch (error) {
-      console.error('로그아웃 오류:', error);
     }
   };
 
@@ -106,17 +101,10 @@ export default function QuotesPage() {
                 </p>
               </div>
               <button
-                onClick={async () => {
-                  try {
-                    await supabase.auth.signOut();
-                    router.push('/login');
-                  } catch (error) {
-                    console.error('로그아웃 오류:', error);
-                  }
-                }}
-                className="ml-4 bg-yellow-50 text-yellow-700 px-2 py-1 rounded text-xs font-medium border border-yellow-400 hover:bg-yellow-100 transition-all"
+                onClick={handleGoHome}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
               >
-                로그아웃
+                🏠 홈
               </button>
             </div>
             {/* 새 견적 버튼 오른쪽, 필터 버튼 왼쪽 정렬 */}

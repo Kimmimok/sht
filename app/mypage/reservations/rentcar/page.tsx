@@ -10,8 +10,8 @@ function RentcarReservationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
-
-  // 폼 상태 - 크루즈 패턴 적용 (서비스 정보 입력)
+  const reservationId = searchParams.get('reservationId');
+  const mode = searchParams.get('mode');  // 폼 상태 - 크루즈 패턴 적용 (서비스 정보 입력)
   const [form, setForm] = useState({
     // 서비스 타입별 폼 데이터
     serviceData: {

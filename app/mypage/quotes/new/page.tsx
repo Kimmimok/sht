@@ -38,6 +38,39 @@ function QuoteManagementContent() {
   const [initialized, setInitialized] = useState(false);
   const [quoteTitle, setQuoteTitle] = useState('');
   const [showTitleInput, setShowTitleInput] = useState(false);
+  const [serviceStatus, setServiceStatus] = useState<{ [key: string]: boolean }>({});
+
+  // 서비스 추가 상태 확인 함수
+  const checkServiceStatus = async (quoteId: string) => {
+    try {
+      const { data: quoteItems } = await supabase
+        .from('quote_item')
+        .select('service_type')
+        .eq('quote_id', quoteId);
+
+      const statusMap: { [key: string]: boolean } = {};
+      if (quoteItems) {
+        quoteItems.forEach((item: any) => {
+          // service_type에 따라 메뉴 key로 매핑
+          let menuKey = '';
+          switch (item.service_type) {
+            case 'room':
+              menuKey = 'cruise'; // 크루즈 객실
+              break;
+            case 'car':
+              menuKey = 'cruise'; // 크루즈 차량도 크루즈로 분류
+              break;
+            default:
+              menuKey = item.service_type;
+          }
+          statusMap[menuKey] = true;
+        });
+      }
+      setServiceStatus(statusMap);
+    } catch (error) {
+      console.error('서비스 상태 확인 오류:', error);
+    }
+  };
 
   // 기존 견적 로드 함수
   const loadExistingQuote = async (quoteId: string) => {
@@ -46,6 +79,8 @@ function QuoteManagementContent() {
       if (quoteData) {
         setQuote(quoteData);
         setQuoteId(quoteId);
+        // 서비스 상태도 함께 확인
+        await checkServiceStatus(quoteId);
       }
     } catch (error) {
       console.error('견적 로드 오류:', error);
@@ -63,6 +98,18 @@ function QuoteManagementContent() {
       // 자동 견적 생성 제거
     }
   }, [existingQuoteId, initialized]);
+
+  // 페이지 포커스 시 서비스 상태 새로고침
+  useEffect(() => {
+    const handleFocus = () => {
+      if (quoteId) {
+        checkServiceStatus(quoteId);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [quoteId]);
 
   // 견적 제목 입력 시작
   const handleStartQuoteCreation = () => {
@@ -109,8 +156,63 @@ function QuoteManagementContent() {
     }
   };
 
+  // 기존 견적 항목 수정 모드로 이동
+  const handleEditQuoteItem = async (service: typeof menuList[0]) => {
+    try {
+      const currentQuoteId = quoteId || existingQuoteId;
+      if (!currentQuoteId) {
+        alert('견적 ID를 찾을 수 없습니다.');
+        return;
+      }
+
+      // 기존 견적 항목 데이터 조회
+      const { data: quoteItems, error } = await supabase
+        .from('quote_item')
+        .select('id, service_type, service_ref_id')
+        .eq('quote_id', currentQuoteId);
+
+      if (error) {
+        console.error('견적 항목 조회 오류:', error);
+        alert('기존 견적 항목을 찾을 수 없습니다.');
+        return;
+      }
+
+      // 해당 서비스의 견적 항목 찾기
+      let targetServiceType = service.key;
+      if (service.key === 'cruise') {
+        // 크루즈는 room 또는 car 타입을 찾음
+        const cruiseItem = quoteItems?.find(item =>
+          item.service_type === 'room' || item.service_type === 'car'
+        );
+        if (cruiseItem) {
+          targetServiceType = cruiseItem.service_type;
+        }
+      }
+
+      const quoteItem = quoteItems?.find(item => item.service_type === targetServiceType);
+
+      if (!quoteItem) {
+        alert('해당 서비스의 기존 견적 항목을 찾을 수 없습니다.');
+        return;
+      }
+
+      // 수정 모드로 서비스 폼 페이지 이동 (itemId 파라미터 추가)
+      const editUrl = `${service.pathTemplate}?quoteId=${currentQuoteId}&itemId=${quoteItem.id}&serviceRefId=${quoteItem.service_ref_id}&mode=edit`;
+      router.push(editUrl);
+    } catch (error) {
+      console.error('견적 항목 수정 처리 오류:', error);
+      alert('견적 항목 수정 처리 중 오류가 발생했습니다.');
+    }
+  };
+
   // 서비스 선택 시 quoteId를 URL 파라미터로 포함하여 이동
   const handleServiceSelect = (service: typeof menuList[0]) => {
+    // 완료된 서비스인 경우 수정 모드로 이동
+    if (serviceStatus[service.key]) {
+      handleEditQuoteItem(service);
+      return;
+    }
+
     if (!quoteId) {
       alert('먼저 견적 제목을 입력하고 견적을 생성해주세요!');
       setShowTitleInput(true);
@@ -238,35 +340,48 @@ function QuoteManagementContent() {
       {/* 서비스 메뉴 그리드 및 하단 안내, 기존 견적 확인 버튼 등 기존 코드 */}
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {menuList.map((menu, index) => (
-            <div
-              key={menu.key}
-              className="group bg-white/80 rounded-xl shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer border border-gray-200"
-              onClick={() => handleServiceSelect(menu)}
-              style={{
-                animationDelay: `${index * 100}ms`,
-                animation: 'fadeInUp 0.6s ease-out forwards'
-              }}
-            >
-              <div className={`h-20 bg-gradient-to-br ${getGradientClass(menu.key, true)} flex items-center justify-center`}>
-                <span className="text-4xl">{menu.label.split(' ')[0]}</span>
-              </div>
-              <div className="p-2">
-                <h3 className="text-lg font-bold text-gray-800 mb-2 group-hover:text-blue-500 transition-colors">
-                  {menu.label}
-                </h3>
-                <p className="text-gray-700 text-sm mb-3 leading-relaxed">
-                  {menu.description}
-                </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-blue-400 font-semibold text-xs">견적 신청하기</span>
-                  <span className="text-blue-400 group-hover:transform group-hover:translate-x-1 transition-transform text-base">
-                    →
-                  </span>
+          {menuList.map((menu, index) => {
+            const isServiceComplete = serviceStatus[menu.key] || false;
+
+            return (
+              <div
+                key={menu.key}
+                className="group relative rounded-xl shadow-lg transform transition-all duration-300 overflow-hidden border-2 cursor-pointer border-gray-200 bg-white/80 hover:shadow-2xl hover:scale-105"
+                onClick={() => handleServiceSelect(menu)}
+                style={{
+                  animationDelay: `${index * 100}ms`,
+                  animation: 'fadeInUp 0.6s ease-out forwards'
+                }}
+              >
+                {/* 완료 배지 */}
+                {isServiceComplete && (
+                  <div className="absolute top-3 right-3 bg-blue-500 text-white text-sm px-3 py-2 rounded-full font-bold shadow-lg z-10 flex items-center gap-1">
+                    ✅ 완료
+                  </div>
+                )}
+
+                <div className={`h-20 bg-gradient-to-br ${getGradientClass(menu.key, true)} flex items-center justify-center relative`}>
+                  <span className="text-4xl relative z-10">{menu.label.split(' ')[0]}</span>
+                </div>
+                <div className="p-2 relative z-10">
+                  <h3 className="text-lg font-bold mb-2 transition-colors text-gray-800 group-hover:text-blue-500">
+                    {menu.label}
+                  </h3>
+                  <p className="text-gray-700 text-sm mb-3 leading-relaxed">
+                    {menu.description}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-xs text-blue-400">
+                      {isServiceComplete ? '견적 완료 - 수정하기' : '견적 신청하기'}
+                    </span>
+                    <span className="transition-transform text-base text-blue-400 group-hover:transform group-hover:translate-x-1">
+                      {isServiceComplete ? '✏️' : '→'}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         {/* 하단 추가 정보 */}
         <div className="mt-16 text-center">

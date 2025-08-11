@@ -38,7 +38,14 @@ if (userRole === 'admin') {
 #### **핵심 테이블 구조**
 - **중앙 집중식 견적 모델**: `quote` → `quote_item` → 서비스 테이블들
 - **quote_item 구조**: 모든 서비스(객실, 차량, 공항, 호텔 등)는 quote_item을 통해 관리
-- **서비스 관계**: `quote_item(service_type, service_ref_id)` → `airport`, `hotel`, `rentcar`, `room`, `car`
+- **서비스 관계**: `quote_item(service_type, service_ref_id)` → `airport`, `hotel`, `rentcar`, `room`, `car`, `tour`
+- **서비스 타입 매핑**: 
+  - `room` → 크루즈 객실 (기존 quote_room에서 변경)
+  - `car` → 크루즈 차량 (기존 quote_car에서 변경)
+  - `airport` → 공항 서비스
+  - `hotel` → 호텔 서비스
+  - `tour` → 투어 서비스
+  - `rentcar` → 렌터카 서비스
 - **가격 코드 시스템**: `*_price` 테이블들이 동적 가격 계산의 핵심
 - **관계**: `room_price(room_code)`, `car_price(car_code)` 등 중첩 조인 활용
 - **역할 기반 권한**: `users.role` → 'guest', 'member'(customer), 'manager', 'admin' 4단계
@@ -130,8 +137,8 @@ airport_price_code, ra_airport_location, ra_datetime + request_note(샌딩/픽�
 hotel_price_code, checkin_date, nights, guest_count + request_note(추가 옵션)
 
 // ✅ 렌터카 서비스 (크루즈 패턴 적용)
-// car_price: 차량타입별 여러 행 → reservation_rentcar: 단일 행 저장
-car_price_code, pickup_date, rental_days, driver_count + request_note(추가 차량)
+// rentcar_price: 차량타입별 여러 행 → reservation_rentcar: 단일 행 저장
+rentcar_price_code, pickup_date, rental_days, driver_count + request_note(추가 차량)
 
 // ✅ 투어 서비스 (크루즈 패턴 적용)  
 // tour_price: 투어별/옵션별 여러 행 → reservation_tour: 단일 행 저장
@@ -185,7 +192,7 @@ tour_price_code, tour_date, participant_count + request_note(추가 옵션)
 // ✅ 표준 서비스 생성 패턴
 // 1. 서비스 테이블에 데이터 삽입
 const { data: serviceData, error: serviceError } = await supabase
-  .from('airport') // 또는 hotel, rentcar 등
+  .from('airport') // 또는 hotel, rentcar, room, car 등
   .insert(serviceFormData)
   .select()
   .single();
@@ -195,7 +202,7 @@ const { data: itemData, error: itemError } = await supabase
   .from('quote_item')
   .insert({
     quote_id: quoteId,
-    service_type: 'airport', // 'hotel', 'rentcar', 'quote_room', 'quote_car'
+    service_type: 'airport', // 'hotel', 'rentcar', 'room', 'car', 'tour'
     service_ref_id: serviceData.id,
     quantity: 1,
     unit_price: 0,

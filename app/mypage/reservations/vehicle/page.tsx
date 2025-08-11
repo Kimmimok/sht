@@ -10,6 +10,8 @@ function VehicleReservationContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const quoteId = searchParams.get('quoteId');
+    const reservationId = searchParams.get('reservationId');
+    const mode = searchParams.get('mode');
 
     // 폼 상태 - reservation_vehicle_sht 테이블 컬럼 기반
     const [form, setForm] = useState({

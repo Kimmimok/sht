@@ -12,6 +12,8 @@ function TourReservationContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const quoteId = searchParams.get('quoteId');
+    const reservationId = searchParams.get('reservationId');
+    const mode = searchParams.get('mode');
 
     // 폼 상태 - 크루즈 패턴 적용 (서비스 정보 입력)
     const [form, setForm] = useState({

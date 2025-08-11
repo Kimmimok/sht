@@ -26,6 +26,10 @@ export default function MyPaymentsPage() {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('pending'); // pending, paid, all
 
+    const handleGoHome = () => {
+        router.push('/mypage');
+    };
+
     useEffect(() => {
         checkAuthAndLoadData();
     }, [filter]);
@@ -316,6 +320,16 @@ export default function MyPaymentsPage() {
     return (
         <PageWrapper title="결제 관리">
             <div className="space-y-6">
+                {/* 홈 버튼 */}
+                <div className="flex justify-end">
+                    <button
+                        onClick={handleGoHome}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+                    >
+                        🏠 홈
+                    </button>
+                </div>
+
                 {/* 헤더 및 필터 */}
                 <SectionBox title="💳 결제 관리">
                     <div className="space-y-4">

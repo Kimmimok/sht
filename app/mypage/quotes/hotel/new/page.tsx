@@ -6,8 +6,11 @@ import supabase from '@/lib/supabase'
 
 function NewHotelQuoteContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const quoteId = searchParams.get('quoteId')
+  const searchParams = useSearchParams();
+  const quoteId = searchParams.get('quoteId');
+  const itemId = searchParams.get('itemId');
+  const serviceRefId = searchParams.get('serviceRefId');
+  const mode = searchParams.get('mode');
 
   const [loading, setLoading] = useState(false)
   const [quote, setQuote] = useState<any>(null)

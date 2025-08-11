@@ -10,6 +10,8 @@ function CruiseReservationContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const quoteId = searchParams.get('quoteId');
+    const reservationId = searchParams.get('reservationId');
+    const mode = searchParams.get('mode');
 
     // 폼 상태 - reservation_cruise 테이블 컬럼 기반 (요청사항 분리)
     const [form, setForm] = useState({
@@ -48,7 +50,13 @@ function CruiseReservationContent() {
         }
         loadQuote();
         loadQuoteLinkedData();
-        checkExistingReservation();
+
+        // 수정 모드인 경우 특정 예약 데이터 로드
+        if (mode === 'edit' && reservationId) {
+            loadExistingReservation(reservationId);
+        } else {
+            checkExistingReservation();
+        }
     }, [quoteId, router]);
 
     // 견적 정보 로드
@@ -70,6 +78,76 @@ function CruiseReservationContent() {
         } catch (error) {
             console.error('견적 로드 오류:', error);
             alert('견적 정보를 불러오는 중 오류가 발생했습니다.');
+        }
+    };
+
+    // 특정 예약 ID로 데이터 로드 (수정 모드용)
+    const loadExistingReservation = async (reservationId: string) => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data: existingRes } = await supabase
+                .from('reservation')
+                .select(`
+                    *,
+                    reservation_cruise (*),
+                    reservation_cruise_car (*)
+                `)
+                .eq('re_id', reservationId)
+                .eq('re_user_id', user.id)
+                .single();
+
+            if (existingRes) {
+                setExistingReservation(existingRes);
+                setIsEditMode(true);
+
+                // 크루즈 객실 데이터로 폼 초기화
+                if (existingRes.reservation_cruise && existingRes.reservation_cruise.length > 0) {
+                    const cruiseRows = existingRes.reservation_cruise;
+
+                    // 객실 총 가격 계산 (모든 행의 room_total_price 합산)
+                    const totalRoomPrice = cruiseRows.reduce((sum: number, row: any) => sum + (row.room_total_price || 0), 0);
+
+                    // 총 투숙객 수 계산 (모든 행의 guest_count 합산)
+                    const totalGuestCount = cruiseRows
+                        .filter((row: any) => row.room_price_code)
+                        .reduce((sum: number, row: any) => sum + (row.guest_count || 0), 0);
+
+                    setForm(prev => ({
+                        ...prev,
+                        room_price_code: cruiseRows[0]?.room_price_code || '',
+                        checkin: cruiseRows[0]?.checkin || '',
+                        guest_count: totalGuestCount,
+                        unit_price: cruiseRows[0]?.unit_price || 0,
+                        room_total_price: totalRoomPrice,
+                        room_request_note: cruiseRows[0]?.request_note || ''
+                    }));
+                }
+
+                // 별도 차량 데이터로 폼 초기화
+                if (existingRes.reservation_cruise_car && existingRes.reservation_cruise_car.length > 0) {
+                    const carData = existingRes.reservation_cruise_car[0]; // 차량은 보통 단일 행
+
+                    setForm(prev => ({
+                        ...prev,
+                        car_price_code: carData.car_price_code || '',
+                        car_count: carData.car_count || 0,
+                        passenger_count: carData.passenger_count || 0,
+                        pickup_datetime: carData.pickup_datetime || '',
+                        pickup_location: carData.pickup_location || '',
+                        dropoff_location: carData.dropoff_location || '',
+                        car_total_price: carData.car_total_price || 0,
+                        car_request_note: carData.request_note || ''
+                    }));
+                }
+            } else {
+                alert('해당 예약을 찾을 수 없습니다.');
+                router.push('/mypage/reservations');
+            }
+        } catch (error) {
+            console.error('예약 데이터 로드 오류:', error);
+            alert('예약 데이터를 불러오는 중 오류가 발생했습니다.');
         }
     };
 

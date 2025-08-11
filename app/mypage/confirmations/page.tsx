@@ -25,6 +25,10 @@ export default function MyConfirmationsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'paid' | 'pending'>('all');
 
+    const handleGoHome = () => {
+        router.push('/mypage');
+    };
+
     useEffect(() => {
         const fetchData = async () => {
             const { data: userData } = await supabase.auth.getUser();
@@ -146,6 +150,16 @@ export default function MyConfirmationsPage() {
 
     return (
         <PageWrapper title="예약확인서">
+            {/* 홈 버튼 */}
+            <div className="flex justify-end mb-4">
+                <button
+                    onClick={handleGoHome}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+                >
+                    🏠 홈
+                </button>
+            </div>
+
             {/* 상단 안내 */}
             <SectionBox title="">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">

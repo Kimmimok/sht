@@ -56,6 +56,10 @@ export default function MyReservationsListPage() {
   const [savingBulk, setSavingBulk] = useState(false);
   const router = useRouter();
 
+  const handleGoHome = () => {
+    router.push('/mypage');
+  };
+
   useEffect(() => {
     fetchReservations();
   }, []);
@@ -478,6 +482,16 @@ export default function MyReservationsListPage() {
   return (
     <PageWrapper>
       <div className="max-w-4xl mx-auto space-y-6">
+        {/* 홈 버튼 */}
+        <div className="flex justify-end">
+          <button
+            onClick={handleGoHome}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+          >
+            🏠 홈
+          </button>
+        </div>
+
         <SectionBox>
           <div className="mb-6">
             <div className="text-xl font-bold text-gray-800">📂 내 예약 목록</div>
