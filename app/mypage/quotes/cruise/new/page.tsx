@@ -103,6 +103,15 @@ function CruiseQuoteNewContent() {
     }
   }, [form.schedule, form.checkin, form.cruise_code, form.payment_code]);
 
+  // 객실 타입이 이미 선택돼 있는 경우(수정 모드 역복원) 카테고리 옵션도 자동 로드
+  useEffect(() => {
+    const firstRoomType = form.rooms?.[0]?.room_type;
+    if (firstRoomType && form.schedule && form.checkin && form.cruise_code && form.payment_code) {
+      loadRoomCategoryOptions(firstRoomType);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.rooms?.[0]?.room_type, form.schedule, form.checkin, form.cruise_code, form.payment_code]);
+
   // 차량 카테고리가 선택되면 차량타입 옵션 로드
   useEffect(() => {
     if (selectedCarCategory && form.schedule && form.cruise_code) {
@@ -133,87 +142,120 @@ function CruiseQuoteNewContent() {
     }
   };
 
-  // 기존 견적 데이터 로드 (수정 모드용)
+  // 기존 견적 데이터 로드 (수정 모드용) - 저장 방식 역방향 복원
   const loadExistingQuoteData = async () => {
     try {
       setLoading(true);
 
-      // 서비스 타입에 따라 다른 테이블에서 데이터 조회
-      const { data: quoteItem, error: itemError } = await supabase
+      // 1) quote_item에서 서비스 타입과 사용일자(usage_date) 확보
+      const { data: qi, error: qiErr } = await supabase
         .from('quote_item')
-        .select('service_type')
+        .select('service_type, usage_date')
         .eq('id', itemId)
         .single();
-
-      if (itemError || !quoteItem) {
-        console.error('견적 항목 조회 오류:', itemError);
+      if (qiErr || !qi) {
+        console.error('견적 항목 조회 오류:', qiErr);
         alert('견적 항목을 찾을 수 없습니다.');
         return;
       }
 
-      // service_type에 따라 적절한 테이블에서 데이터 조회
-      let tableName = '';
-      if (quoteItem.service_type === 'room') {
-        tableName = 'room';
-      } else if (quoteItem.service_type === 'car') {
-        tableName = 'car';
+      // 2) 서비스 테이블에서 코드/수량 조회 (room: room_code/adult_count, car: car_code/car_count)
+      if (qi.service_type === 'room') {
+        const { data: roomRow, error: roomErr } = await supabase
+          .from('room')
+          .select('room_code, adult_count')
+          .eq('id', serviceRefId)
+          .single();
+        if (roomErr || !roomRow) {
+          console.error('객실 데이터 조회 오류:', roomErr);
+          alert('객실 데이터를 찾을 수 없습니다.');
+          return;
+        }
+
+        // 3) room_price에서 room_code로 역방향 조회하여 세부 선택값 복원
+        const { data: rp, error: rpErr } = await supabase
+          .from('room_price')
+          .select('schedule, cruise, payment, room_type, room_category')
+          .eq('room_code', roomRow.room_code)
+          .limit(1)
+          .single();
+        if (rpErr || !rp) {
+          console.error('room_price 역조회 실패:', rpErr);
+          alert('객실 가격 정보를 찾을 수 없습니다.');
+          return;
+        }
+
+        // 폼 상태 설정 (rooms를 단일 선택으로 복원)
+        setForm(prev => ({
+          ...prev,
+          checkin: qi.usage_date || '',
+          schedule: rp.schedule || '',
+          cruise_code: rp.cruise || '',
+          payment_code: rp.payment || '',
+          rooms: [
+            {
+              room_type: rp.room_type || '',
+              categories: [
+                {
+                  room_category: rp.room_category || '',
+                  adult_count: roomRow.adult_count || 0,
+                  room_code: roomRow.room_code || ''
+                }
+              ]
+            }
+          ]
+        }));
+
+        // 옵션 로드를 위해 보조 상태도 트리거되도록 필수 필드가 채워졌으므로 useEffect들이 실행됨
+      } else if (qi.service_type === 'car') {
+        const { data: carRow, error: carErr } = await supabase
+          .from('car')
+          .select('car_code, car_count')
+          .eq('id', serviceRefId)
+          .single();
+        if (carErr || !carRow) {
+          console.error('차량 데이터 조회 오류:', carErr);
+          alert('차량 데이터를 찾을 수 없습니다.');
+          return;
+        }
+
+        // 3) car_price에서 car_code로 역방향 조회하여 세부 선택값 복원
+        const { data: cp, error: cpErr } = await supabase
+          .from('car_price')
+          .select('schedule, cruise, car_category, car_type')
+          .eq('car_code', carRow.car_code)
+          .limit(1)
+          .single();
+        if (cpErr || !cp) {
+          console.error('car_price 역조회 실패:', cpErr);
+          alert('차량 가격 정보를 찾을 수 없습니다.');
+          return;
+        }
+
+        // 폼 상태 설정 및 선택 카테고리 복원
+        setForm(prev => ({
+          ...prev,
+          checkin: qi.usage_date || '',
+          schedule: cp.schedule || '',
+          cruise_code: cp.cruise || ''
+          // payment_code는 차량에는 개념이 없으므로 설정하지 않음
+        }));
+
+        setSelectedCarCategory(cp.car_category || '');
+        setVehicleForm([
+          {
+            car_type: cp.car_type || '',
+            car_category: cp.car_category || '',
+            car_code: carRow.car_code || '',
+            count: carRow.car_count || 1
+          }
+        ]);
       } else {
         alert('지원하지 않는 서비스 타입입니다.');
         return;
       }
 
-      const { data: serviceData, error: serviceError } = await supabase
-        .from(tableName)
-        .select('*')
-        .eq('id', serviceRefId)
-        .single();
-
-      if (serviceError || !serviceData) {
-        console.error('서비스 데이터 조회 오류:', serviceError);
-        alert('서비스 데이터를 찾을 수 없습니다.');
-        return;
-      }
-
-      // 데이터 타입에 따라 폼에 로드
-      if (quoteItem.service_type === 'room') {
-        // 객실 데이터 로드
-        setForm(prev => ({
-          ...prev,
-          checkin: serviceData.checkin || '',
-          schedule: serviceData.schedule || '',
-          cruise_code: serviceData.cruise_code || '',
-          payment_code: serviceData.payment_code || '',
-          rooms: serviceData.room_categories ?
-            JSON.parse(serviceData.room_categories) :
-            [{ room_type: '', categories: [{ room_category: '', adult_count: 0, room_code: '' }] }]
-        }));
-
-        setFormData(prev => ({
-          ...prev,
-          special_requests: serviceData.special_requests || ''
-        }));
-      } else if (quoteItem.service_type === 'car') {
-        // 차량 데이터 로드
-        setForm(prev => ({
-          ...prev,
-          checkin: serviceData.usage_date || '',
-          schedule: serviceData.schedule || '',
-          cruise_code: serviceData.cruise_code || '',
-          payment_code: serviceData.payment_code || ''
-        }));
-
-        setVehicleForm(serviceData.car_categories ?
-          JSON.parse(serviceData.car_categories) :
-          [{ car_type: '', car_category: '', car_code: '', count: 1 }]
-        );
-
-        setFormData(prev => ({
-          ...prev,
-          special_requests: serviceData.special_requests || ''
-        }));
-      }
-
-      console.log('기존 견적 데이터 로드 완료:', serviceData);
+      console.log('기존 견적 데이터 역방향 복원 완료');
     } catch (error) {
       console.error('기존 견적 데이터 로드 오류:', error);
       alert('기존 견적 데이터를 불러오는 중 오류가 발생했습니다.');
@@ -474,50 +516,57 @@ function CruiseQuoteNewContent() {
     }
   };
 
-  // 기존 견적 데이터 업데이트
+  // 기존 견적 데이터 업데이트 - 실제 스키마에 맞게 갱신
   const updateExistingQuoteData = async () => {
-    // 서비스 타입에 따라 적절한 테이블 업데이트
-    const { data: quoteItem, error: itemError } = await supabase
+    // 1) 어떤 서비스인지 확인
+    const { data: qi, error: qiErr } = await supabase
       .from('quote_item')
       .select('service_type')
       .eq('id', itemId)
       .single();
-
-    if (itemError || !quoteItem) {
+    if (qiErr || !qi) {
       throw new Error('견적 항목을 찾을 수 없습니다.');
     }
 
-    if (quoteItem.service_type === 'room') {
-      // 객실 데이터 업데이트
-      const { error: updateError } = await supabase
+    if (qi.service_type === 'room') {
+      // rooms[0].categories[0] 기준으로 현재 아이템을 갱신
+      const firstRoom = form.rooms?.[0];
+      const firstCat = firstRoom?.categories?.[0];
+      if (!firstRoom || !firstCat || !firstCat.room_code) {
+        throw new Error('객실 정보가 부족합니다. 객실 타입/카테고리를 선택하세요.');
+      }
+
+      const { error: rErr } = await supabase
         .from('room')
         .update({
-          room_categories: JSON.stringify(form.rooms),
-          checkin: form.checkin,
-          schedule: form.schedule,
-          cruise_code: form.cruise_code,
-          payment_code: form.payment_code,
-          special_requests: formData.special_requests
+          room_code: firstCat.room_code,
+          adult_count: firstCat.adult_count ?? 0
         })
         .eq('id', serviceRefId);
-
-      if (updateError) throw updateError;
-    } else if (quoteItem.service_type === 'car') {
-      // 차량 데이터 업데이트
-      const { error: updateError } = await supabase
+      if (rErr) throw rErr;
+    } else if (qi.service_type === 'car') {
+      const v = vehicleForm?.[0];
+      if (!v || !v.car_code) {
+        throw new Error('차량 정보가 부족합니다. 차량 타입/카테고리를 선택하세요.');
+      }
+      const { error: cErr } = await supabase
         .from('car')
         .update({
-          car_categories: JSON.stringify(vehicleForm),
-          usage_date: form.checkin,
-          schedule: form.schedule,
-          cruise_code: form.cruise_code,
-          payment_code: form.payment_code,
-          special_requests: formData.special_requests
+          car_code: v.car_code,
+          car_count: v.count ?? 1
         })
         .eq('id', serviceRefId);
-
-      if (updateError) throw updateError;
+      if (cErr) throw cErr;
+    } else {
+      throw new Error('지원하지 않는 서비스 타입입니다.');
     }
+
+    // 2) 사용일자(usage_date)는 quote_item에 저장 → 갱신
+    const { error: qiUpdErr } = await supabase
+      .from('quote_item')
+      .update({ usage_date: form.checkin || null })
+      .eq('id', itemId);
+    if (qiUpdErr) throw qiUpdErr;
   };
 
   // 새 견적 데이터 생성
@@ -944,7 +993,7 @@ function CruiseQuoteNewContent() {
                 disabled={loading}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
-                {loading ? '저장 중...' : '견적 추가'}
+                {loading ? '저장 중...' : (isEditMode ? '수정 저장' : '견적 추가')}
               </button>
             </div>
           </form>

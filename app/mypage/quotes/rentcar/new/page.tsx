@@ -95,18 +95,27 @@ function RentcarQuoteContent() {
         return;
       }
 
-      // 렌터카 데이터로 폼 초기화
-      if (serviceData.rent_category) {
-        setSelectedCategory(serviceData.rent_category);
-        await loadRouteOptions(serviceData.rent_category);
+      // rentcar_code를 통해 rent_price에서 조건들을 역으로 찾기
+      if (serviceData.rentcar_code) {
+        const { data: priceData, error: priceError } = await supabase
+          .from('rent_price')
+          .select('*')
+          .eq('rent_code', serviceData.rentcar_code)
+          .single();
 
-        if (serviceData.rent_route) {
-          setSelectedRoute(serviceData.rent_route);
-          await loadCarTypeOptions(serviceData.rent_category, serviceData.rent_route);
+        if (priceError || !priceData) {
+          console.error('렌터카 가격 정보 조회 오류:', priceError);
+          alert('렌터카 가격 정보를 찾을 수 없습니다.');
+          return;
+        } else {
+          // 가격 정보에서 조건들을 복원
+          setSelectedCategory(priceData.rent_category);
+          await loadRouteOptions(priceData.rent_category);
 
-          if (serviceData.rent_car_type) {
-            setSelectedCarType(serviceData.rent_car_type);
-          }
+          setSelectedRoute(priceData.rent_route);
+          await loadCarTypeOptions(priceData.rent_category, priceData.rent_route);
+
+          setSelectedCarType(priceData.rent_car_type);
         }
       }
 

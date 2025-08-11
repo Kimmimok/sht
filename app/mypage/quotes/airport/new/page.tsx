@@ -19,15 +19,39 @@ function AirportQuoteContent() {
 
   // 단계별 옵션들 (airport_price 테이블 기준)
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
+  // A(첫 서비스), B(추가 서비스) 각각의 경로/차량타입 옵션
   const [routeOptions, setRouteOptions] = useState<string[]>([]);
   const [carTypeOptions, setCarTypeOptions] = useState<string[]>([]);
+  const [routeOptions2, setRouteOptions2] = useState<string[]>([]);
+  const [carTypeOptions2, setCarTypeOptions2] = useState<string[]>([]);
 
-  // 선택된 값들
+  // 서비스 종류: pickup, sending, both
+  const [applyType, setApplyType] = useState<'pickup' | 'sending' | 'both'>('pickup');
+
+  // 선택된 값들 - A(메인), B(추가)
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedRoute, setSelectedRoute] = useState('');
   const [selectedCarType, setSelectedCarType] = useState('');
+  const [selectedCategory2, setSelectedCategory2] = useState('');
+  const [selectedRoute2, setSelectedRoute2] = useState('');
+  const [selectedCarType2, setSelectedCarType2] = useState('');
 
-  const [selectedAirportCode, setSelectedAirportCode] = useState(''); // 검색된 공항 코드 표시용
+  // 신청 종류에 따른 자동 카테고리 매핑
+  const getCategoryFromApplyType = (type: 'pickup' | 'sending' | 'both') => {
+    switch (type) {
+      case 'pickup': return '픽업';
+      case 'sending': return '샌딩';
+      case 'both': return '픽업'; // both일 때는 첫 번째가 픽업
+      default: return '';
+    }
+  };
+
+  const getCategory2FromApplyType = (type: 'pickup' | 'sending' | 'both') => {
+    return type === 'both' ? '샌딩' : '';
+  };
+
+  const [selectedAirportCode, setSelectedAirportCode] = useState(''); // A 코드 표시용
+  const [selectedAirportCode2, setSelectedAirportCode2] = useState(''); // B 코드 표시용
 
   const [formData, setFormData] = useState({
     special_requests: ''
@@ -49,7 +73,7 @@ function AirportQuoteContent() {
     }
   }, [quoteId, router, mode, itemId, serviceRefId]);
 
-  // 카테고리 선택 시 경로 옵션 업데이트
+  // 카테고리 선택 시 경로 옵션 업데이트 (A)
   useEffect(() => {
     if (selectedCategory) {
       loadRouteOptions(selectedCategory);
@@ -59,7 +83,7 @@ function AirportQuoteContent() {
     }
   }, [selectedCategory]);
 
-  // 카테고리와 경로가 선택될 때 차량 타입 목록 업데이트
+  // 카테고리와 경로가 선택될 때 차량 타입 목록 업데이트 (A)
   useEffect(() => {
     if (selectedCategory && selectedRoute) {
       loadCarTypeOptions(selectedCategory, selectedRoute);
@@ -69,7 +93,7 @@ function AirportQuoteContent() {
     }
   }, [selectedCategory, selectedRoute]);
 
-  // 모든 조건이 선택되면 공항 코드 조회
+  // 모든 조건이 선택되면 공항 코드 조회 (A)
   useEffect(() => {
     if (selectedCategory && selectedRoute && selectedCarType) {
       getAirportCodeFromConditions(selectedCategory, selectedRoute, selectedCarType)
@@ -79,6 +103,88 @@ function AirportQuoteContent() {
       setSelectedAirportCode('');
     }
   }, [selectedCategory, selectedRoute, selectedCarType]);
+
+  // 카테고리 선택 시 경로 옵션 업데이트 (B)
+  useEffect(() => {
+    if (selectedCategory2) {
+      loadRouteOptions(selectedCategory2).then(() => {/* noop */ });
+      // 동일 쿼리를 사용하지만 결과는 별도 상태에 저장 필요 → 별도 래퍼 사용
+      (async () => {
+        try {
+          const { data, error } = await supabase
+            .from('airport_price')
+            .select('airport_route')
+            .eq('airport_category', selectedCategory2)
+            .order('airport_route');
+          if (error) throw error;
+          const uniqueRoutes = [...new Set((data || []).map((item: any) => item.airport_route).filter(Boolean))] as string[];
+          setRouteOptions2(uniqueRoutes);
+        } catch {
+          setRouteOptions2([]);
+        }
+      })();
+    } else {
+      setRouteOptions2([]);
+      setSelectedRoute2('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory2]);
+
+  // 카테고리와 경로가 선택될 때 차량 타입 목록 업데이트 (B)
+  useEffect(() => {
+    if (selectedCategory2 && selectedRoute2) {
+      (async () => {
+        try {
+          const { data, error } = await supabase
+            .from('airport_price')
+            .select('airport_car_type')
+            .eq('airport_category', selectedCategory2)
+            .eq('airport_route', selectedRoute2)
+            .order('airport_car_type');
+          if (error) throw error;
+          const uniqueCarTypes = [...new Set((data || []).map((item: any) => item.airport_car_type).filter(Boolean))] as string[];
+          setCarTypeOptions2(uniqueCarTypes);
+        } catch {
+          setCarTypeOptions2([]);
+        }
+      })();
+    } else {
+      setCarTypeOptions2([]);
+      setSelectedCarType2('');
+    }
+  }, [selectedCategory2, selectedRoute2]);
+
+  // 모든 조건이 선택되면 공항 코드 조회 (B)
+  useEffect(() => {
+    if (selectedCategory2 && selectedRoute2 && selectedCarType2) {
+      getAirportCodeFromConditions(selectedCategory2, selectedRoute2, selectedCarType2)
+        .then(code => setSelectedAirportCode2(code))
+        .catch(() => setSelectedAirportCode2(''));
+    } else {
+      setSelectedAirportCode2('');
+    }
+  }, [selectedCategory2, selectedRoute2, selectedCarType2]);
+
+  // 픽업+샌딩 모드에서 첫 서비스 카테고리가 변경되면 추가 서비스 카테고리도 동기화
+  useEffect(() => {
+    if (applyType === 'both' && selectedCategory) {
+      setSelectedCategory2(selectedCategory);
+    }
+  }, [applyType, selectedCategory]);
+
+  // 신청 종류 변경 시 카테고리 자동 설정
+  useEffect(() => {
+    const autoCategory = getCategoryFromApplyType(applyType);
+    const autoCategory2 = getCategory2FromApplyType(applyType);
+
+    setSelectedCategory(autoCategory);
+    setSelectedCategory2(autoCategory2);
+
+    // 카테고리가 자동 설정되면 경로 옵션을 로드
+    if (autoCategory) {
+      loadRouteOptions(autoCategory);
+    }
+  }, [applyType]);
 
   // 기존 견적 데이터 로드 (수정 모드용)
   const loadExistingQuoteData = async () => {
@@ -97,18 +203,28 @@ function AirportQuoteContent() {
         return;
       }
 
-      // 공항 데이터로 폼 초기화
-      if (serviceData.airport_category) {
-        setSelectedCategory(serviceData.airport_category);
-        await loadRouteOptions(serviceData.airport_category);
+      // airport_code를 통해 airport_price에서 조건들을 역으로 찾기
+      if (serviceData.airport_code) {
+        const { data: priceData, error: priceError } = await supabase
+          .from('airport_price')
+          .select('*')
+          .eq('airport_code', serviceData.airport_code)
+          .single();
 
-        if (serviceData.airport_route) {
-          setSelectedRoute(serviceData.airport_route);
-          await loadCarTypeOptions(serviceData.airport_category, serviceData.airport_route);
+        if (priceError || !priceData) {
+          console.error('가격 정보 조회 오류:', priceError);
+          // 가격 정보를 찾지 못하면 선택값 복원을 생략하고 코드만 표시
+          setSelectedAirportCode(serviceData.airport_code);
+        } else {
+          // 가격 정보에서 조건들을 복원
+          setSelectedCategory(priceData.airport_category);
+          await loadRouteOptions(priceData.airport_category);
 
-          if (serviceData.airport_car_type) {
-            setSelectedCarType(serviceData.airport_car_type);
-          }
+          setSelectedRoute(priceData.airport_route);
+          await loadCarTypeOptions(priceData.airport_category, priceData.airport_route);
+
+          setSelectedCarType(priceData.airport_car_type);
+          setSelectedAirportCode(priceData.airport_code);
         }
       }
 
@@ -221,8 +337,10 @@ function AirportQuoteContent() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!selectedCategory || !selectedRoute || !selectedCarType) {
-      alert('모든 필수 항목을 선택해주세요.');
+    const mainValid = !!(selectedCategory && selectedRoute && selectedCarType);
+    const extraValid = applyType === 'both' ? !!(selectedCategory2 && selectedRoute2 && selectedCarType2) : true;
+    if (!mainValid || !extraValid) {
+      alert('필수 항목을 모두 선택해주세요.');
       return;
     }
 
@@ -252,8 +370,47 @@ function AirportQuoteContent() {
     }
   };
 
-  // 기존 견적 데이터 업데이트
+  // 기존 견적 데이터 업데이트 (airport 테이블 존재 컬럼만 저장)
   const updateExistingQuoteData = async () => {
+    if (applyType === 'both') {
+      // 픽업+샌딩일 때는 수정 모드에서 새로 생성 (기존 데이터 삭제 후 2개 생성)
+      // 기존 데이터 삭제
+      await deleteExistingData();
+      // 새로 2개 생성
+      await createTwoAirportServices();
+    } else {
+      // 단일 서비스 수정
+      await updateSingleAirportService();
+    }
+  };
+
+  // 기존 데이터 삭제 (수정 모드에서 픽업+샌딩으로 변경 시)
+  const deleteExistingData = async () => {
+    // 견적 아이템 삭제
+    const { error: itemDeleteError } = await supabase
+      .from('quote_item')
+      .delete()
+      .eq('id', itemId);
+
+    if (itemDeleteError) {
+      throw new Error(`기존 견적 아이템 삭제 실패: ${itemDeleteError.message}`);
+    }
+
+    // 공항 서비스 삭제
+    const { error: serviceDeleteError } = await supabase
+      .from('airport')
+      .delete()
+      .eq('id', serviceRefId);
+
+    if (serviceDeleteError) {
+      throw new Error(`기존 공항 서비스 삭제 실패: ${serviceDeleteError.message}`);
+    }
+
+    console.log('✅ 기존 데이터 삭제 성공');
+  };
+
+  // 단일 공항 서비스 수정
+  const updateSingleAirportService = async () => {
     const airportCode = await getAirportCodeFromConditions(
       selectedCategory,
       selectedRoute,
@@ -262,11 +419,8 @@ function AirportQuoteContent() {
 
     const airportData = {
       airport_code: airportCode,
-      airport_category: selectedCategory,
-      airport_route: selectedRoute,
-      airport_car_type: selectedCarType,
-      special_requests: formData.special_requests || null
-    };
+      special_requests: formData.special_requests?.trim() || null
+    } as const;
 
     const { error: updateError } = await supabase
       .from('airport')
@@ -277,28 +431,34 @@ function AirportQuoteContent() {
       throw new Error(`공항 서비스 수정 실패: ${updateError.message}`);
     }
 
-    console.log('✅ 공항 서비스 수정 성공');
+    console.log('✅ 단일 공항 서비스 수정 성공');
   };
 
-  // 새 견적 데이터 생성
+  // 새 견적 데이터 생성 (airport 테이블 존재 컬럼만 저장)
   const createNewQuoteData = async () => {
-    // 3가지 조건으로 airport_code 조회
+    if (applyType === 'both') {
+      // 픽업+샌딩일 때 2개 행으로 분리 저장
+      await createTwoAirportServices();
+    } else {
+      // 단일 서비스 저장
+      await createSingleAirportService();
+    }
+  };
+
+  // 단일 공항 서비스 생성
+  const createSingleAirportService = async () => {
     const airportCode = await getAirportCodeFromConditions(
       selectedCategory,
       selectedRoute,
       selectedCarType
     );
 
-    // 공항 폼 데이터 구성 - 필수 필드만 포함
     const airportData = {
       airport_code: airportCode,
-      airport_category: selectedCategory,
-      airport_route: selectedRoute,
-      airport_car_type: selectedCarType,
-      special_requests: formData.special_requests || null
-    };
+      special_requests: formData.special_requests?.trim() || null
+    } as const;
 
-    console.log('✈️ 공항 데이터:', airportData);
+    console.log('✈️ 단일 공항 데이터:', airportData);
 
     // 1. 공항 서비스 생성
     const { data: airportServiceData, error: airportError } = await supabase
@@ -311,7 +471,7 @@ function AirportQuoteContent() {
       throw new Error(`공항 서비스 생성 실패: ${airportError.message}`);
     }
 
-    console.log('✅ 공항 서비스 생성 성공:', airportServiceData);
+    console.log('✅ 단일 공항 서비스 생성 성공:', airportServiceData);
 
     // 2. 견적 아이템 생성
     const { data: itemData, error: itemError } = await supabase
@@ -334,7 +494,106 @@ function AirportQuoteContent() {
     console.log('✅ 견적 아이템 생성 성공:', itemData);
   };
 
-  const isFormValid = selectedCategory && selectedRoute && selectedCarType;
+  // 픽업+샌딩 2개 공항 서비스 생성
+  const createTwoAirportServices = async () => {
+    // 첫 번째 서비스 (픽업)
+    const airportCode1 = await getAirportCodeFromConditions(
+      selectedCategory,
+      selectedRoute,
+      selectedCarType
+    );
+
+    const airportData1 = {
+      airport_code: airportCode1,
+      special_requests: formData.special_requests?.trim() || null
+    } as const;
+
+    console.log('✈️ 픽업 공항 데이터:', airportData1);
+
+    // 1-1. 첫 번째 공항 서비스 생성 (픽업)
+    const { data: airportServiceData1, error: airportError1 } = await supabase
+      .from('airport')
+      .insert(airportData1)
+      .select()
+      .single();
+
+    if (airportError1) {
+      throw new Error(`픽업 공항 서비스 생성 실패: ${airportError1.message}`);
+    }
+
+    console.log('✅ 픽업 공항 서비스 생성 성공:', airportServiceData1);
+
+    // 1-2. 첫 번째 견적 아이템 생성 (픽업)
+    const { data: itemData1, error: itemError1 } = await supabase
+      .from('quote_item')
+      .insert({
+        quote_id: quoteId,
+        service_type: 'airport',
+        service_ref_id: airportServiceData1.id,
+        quantity: 1,
+        unit_price: 0,
+        total_price: 0
+      })
+      .select()
+      .single();
+
+    if (itemError1) {
+      throw new Error(`픽업 견적 아이템 생성 실패: ${itemError1.message}`);
+    }
+
+    console.log('✅ 픽업 견적 아이템 생성 성공:', itemData1);
+
+    // 두 번째 서비스 (샌딩)
+    const airportCode2 = await getAirportCodeFromConditions(
+      selectedCategory2,
+      selectedRoute2,
+      selectedCarType2
+    );
+
+    const airportData2 = {
+      airport_code: airportCode2,
+      special_requests: null // 추가 요청사항은 첫 번째에만
+    } as const;
+
+    console.log('✈️ 샌딩 공항 데이터:', airportData2);
+
+    // 2-1. 두 번째 공항 서비스 생성 (샌딩)
+    const { data: airportServiceData2, error: airportError2 } = await supabase
+      .from('airport')
+      .insert(airportData2)
+      .select()
+      .single();
+
+    if (airportError2) {
+      throw new Error(`샌딩 공항 서비스 생성 실패: ${airportError2.message}`);
+    }
+
+    console.log('✅ 샌딩 공항 서비스 생성 성공:', airportServiceData2);
+
+    // 2-2. 두 번째 견적 아이템 생성 (샌딩)
+    const { data: itemData2, error: itemError2 } = await supabase
+      .from('quote_item')
+      .insert({
+        quote_id: quoteId,
+        service_type: 'airport',
+        service_ref_id: airportServiceData2.id,
+        quantity: 1,
+        unit_price: 0,
+        total_price: 0
+      })
+      .select()
+      .single();
+
+    if (itemError2) {
+      throw new Error(`샌딩 견적 아이템 생성 실패: ${itemError2.message}`);
+    }
+
+    console.log('✅ 샌딩 견적 아이템 생성 성공:', itemData2);
+  };
+
+  const isFormValid = (applyType === 'both')
+    ? (selectedCategory && selectedRoute && selectedCarType && selectedCategory2 && selectedRoute2 && selectedCarType2)
+    : (selectedCategory && selectedRoute && selectedCarType);
 
   if (!quote) {
     return (
@@ -354,7 +613,7 @@ function AirportQuoteContent() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold mb-2">✈️ 공항 견적</h1>
+              <h1 className="text-2xl font-bold mb-2">✈️ 공항 견적</h1>
               <p className="text-lg opacity-90">
                 공항 픽업, 드롭오프, 이동 서비스를 위한 견적을 작성해주세요.
               </p>
@@ -383,7 +642,7 @@ function AirportQuoteContent() {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">공항 서비스 정보 입력</h2>
+
 
             {/* 공항 안내 카드 */}
             <div className="bg-sky-600 rounded-lg p-6 mb-6 border border-sky-700">
@@ -393,29 +652,58 @@ function AirportQuoteContent() {
 
             {/* 공항 서비스 선택 폼 */}
             <div className="space-y-6">
-              {/* 1단계: 카테고리 선택 */}
+              {/* 1단계: 신청 종류 선택 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  📋 공항 카테고리 *
-                </label>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                >
-                  <option value="">카테고리를 선택하세요</option>
-                  {categoryOptions.map(category => (
-                    <option key={category} value={category}>{category}</option>
+                <label className="block text-sm font-medium text-gray-700 mb-2">📋 신청 종류</label>
+                <div className="flex gap-2 mb-4">
+                  {(['both', 'pickup', 'sending'] as const).map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => {
+                        setApplyType(t);
+                        // 추가 서비스 선택값 초기화 (카테고리는 자동 설정되므로 제외)
+                        if (t !== 'both') {
+                          setSelectedRoute2('');
+                          setSelectedCarType2('');
+                          setRouteOptions2([]);
+                          setCarTypeOptions2([]);
+                          setSelectedAirportCode2('');
+                        }
+                      }}
+                      className={`px-3 py-2 rounded border ${applyType === t ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'}`}
+                    >
+                      {t === 'pickup' ? '픽업만' : t === 'sending' ? '샌딩만' : '픽업+샌딩'}
+                    </button>
                   ))}
-                </select>
-              </div>
+                </div>
 
-              {/* 2단계: 경로 선택 */}
+                {/* 자동 설정된 카테고리 표시 */}
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                  <div className="text-sm font-medium text-blue-800 mb-1">
+                    선택된 서비스: {applyType === 'pickup' ? '픽업만' : applyType === 'sending' ? '샌딩만' : '픽업+샌딩'}
+                  </div>
+                  <div className="text-sm text-blue-700">
+                    {applyType === 'both' ? (
+                      <>
+                        첫 서비스: 픽업 카테고리 | 추가 서비스: 샌딩 카테고리
+                      </>
+                    ) : (
+                      <>
+                        카테고리: {getCategoryFromApplyType(applyType)}
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-500 mt-2">
+                  {applyType === 'both' ? '픽업+샌딩 선택 시 첫 서비스=픽업, 추가 서비스=샌딩으로 자동 지정됩니다.' : '카테고리가 자동으로 설정되었습니다.'}
+                </p>
+              </div>              {/* 2단계: 경로 선택 */}
               {selectedCategory && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    🛣️ 공항 경로 *
+                    {`🛣️ 공항 경로 * (${applyType === 'both' ? '픽업' : applyType === 'pickup' ? '픽업' : '샌딩'})`}
                   </label>
                   <select
                     value={selectedRoute}
@@ -435,7 +723,7 @@ function AirportQuoteContent() {
               {selectedCategory && selectedRoute && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    🚙 차량 타입 *
+                    {`🚙 차량 타입 * (${applyType === 'both' ? '픽업' : applyType === 'pickup' ? '픽업' : '샌딩'})`}
                   </label>
                   <select
                     value={selectedCarType}
@@ -448,6 +736,60 @@ function AirportQuoteContent() {
                       <option key={carType} value={carType}>{carType}</option>
                     ))}
                   </select>
+                </div>
+              )}
+
+              {/* 추가 서비스 블록 (둘 다 선택한 경우) */}
+              {applyType === 'both' && (
+                <div className="mt-6 border-t pt-6">
+                  <h4 className="font-semibold text-gray-800 mb-4">추가 서비스 (샌딩)</h4>
+                  <div className="space-y-6">
+                    {/* 자동 설정된 카테고리 표시 */}
+                    <div>
+                      <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                        <div className="text-sm font-medium text-green-800 mb-1">
+                          추가 서비스 카테고리
+                        </div>
+                        <div className="text-sm text-green-700">
+                          카테고리: 샌딩 (자동 설정됨)
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 경로2 */}
+                    {selectedCategory2 && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">🛣️ 공항 경로 (샌딩)</label>
+                        <select
+                          value={selectedRoute2}
+                          onChange={(e) => setSelectedRoute2(e.target.value)}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="">경로를 선택하세요</option>
+                          {routeOptions2.map(route => (
+                            <option key={route} value={route}>{route}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* 차량 타입2 */}
+                    {selectedCategory2 && selectedRoute2 && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">🚙 차량 타입 (샌딩)</label>
+                        <select
+                          value={selectedCarType2}
+                          onChange={(e) => setSelectedCarType2(e.target.value)}
+                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="">차량 타입을 선택하세요</option>
+                          {carTypeOptions2.map(carType => (
+                            <option key={carType} value={carType}>{carType}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -470,11 +812,23 @@ function AirportQuoteContent() {
                 <div className="bg-green-50 p-6 rounded-lg border border-green-200">
                   <h3 className="font-semibold text-green-800 mb-3">✅ 선택 요약</h3>
                   <div className="text-green-700 space-y-2">
+                    <div className="font-medium text-gray-800">{`첫 서비스 (${applyType === 'both' || applyType === 'pickup' ? '픽업' : '샌딩'})`}</div>
                     <div><strong>카테고리:</strong> {selectedCategory}</div>
                     <div><strong>경로:</strong> {selectedRoute}</div>
                     <div><strong>차량 타입:</strong> {selectedCarType}</div>
                     {selectedAirportCode && (
                       <div><strong>공항 코드:</strong> <span className="font-mono text-blue-600">{selectedAirportCode}</span></div>
+                    )}
+                    {applyType === 'both' && (
+                      <>
+                        <div className="mt-4 font-medium text-gray-800">추가 서비스 (샌딩)</div>
+                        <div><strong>카테고리:</strong> {selectedCategory2}</div>
+                        <div><strong>경로:</strong> {selectedRoute2}</div>
+                        <div><strong>차량 타입:</strong> {selectedCarType2}</div>
+                        {selectedAirportCode2 && (
+                          <div><strong>공항 코드:</strong> <span className="font-mono text-blue-600">{selectedAirportCode2}</span></div>
+                        )}
+                      </>
                     )}
                     {formData.special_requests && <div><strong>특별 요청:</strong> {formData.special_requests}</div>}
                   </div>
@@ -496,7 +850,7 @@ function AirportQuoteContent() {
                 disabled={!isFormValid || loading}
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? '처리 중...' : '견적에 추가'}
+                {loading ? '처리 중...' : (isEditMode ? '수정 저장' : '견적에 추가')}
               </button>
             </div>
           </form>

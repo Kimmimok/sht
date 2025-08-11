@@ -60,10 +60,23 @@ function NewHotelQuoteContent() {
         special_requests: serviceData.special_requests || ''
       }));
 
-      // 호텔 선택 정보 설정
+      // hotel_code를 통해 hotel_price에서 호텔 정보를 역으로 찾기
       if (serviceData.hotel_code) {
-        setSelectedHotelCode(serviceData.hotel_code);
-        // 호텔명 로드 후 자동 선택되도록 처리 필요
+        const { data: priceData, error: priceError } = await supabase
+          .from('hotel_price')
+          .select('*')
+          .eq('hotel_code', serviceData.hotel_code)
+          .single();
+
+        if (priceError || !priceData) {
+          console.error('호텔 가격 정보 조회 오류:', priceError);
+          // fallback: 저장된 코드만 설정
+          setSelectedHotelCode(serviceData.hotel_code);
+        } else {
+          // 가격 정보에서 호텔 정보를 복원
+          setSelectedHotelCode(priceData.hotel_code);
+          setSelectedHotel(priceData); // 전체 가격 정보를 selectedHotel로 설정
+        }
       }
 
       console.log('기존 호텔 견적 데이터 로드 완료:', serviceData);
