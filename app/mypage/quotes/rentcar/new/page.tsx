@@ -14,6 +14,7 @@ function RentcarQuoteContent() {
 
   const [loading, setLoading] = useState(false);
   const [quote, setQuote] = useState<any>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // 단계별 옵션들 (rent_price 테이블 기준)
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
@@ -37,9 +38,25 @@ function RentcarQuoteContent() {
       router.push('/mypage');
       return;
     }
-    loadCategoryOptions();
+    const initializeData = async () => {
+      if (isEditMode && itemId && serviceRefId) {
+        // 수정 모드: 기존 데이터 로드
+        await loadExistingQuoteData();
+      } else {
+        // 새 생성 모드: 카테고리 옵션 로드
+        await loadCategoryOptions();
+      }
+    };
+
+    initializeData();
     loadQuote();
-  }, [quoteId, router]);
+
+    // 수정 모드인 경우 기존 데이터 로드
+    if (mode === 'edit' && itemId && serviceRefId) {
+      setIsEditMode(true);
+      loadExistingQuoteData();
+    }
+  }, [quoteId, router, mode, itemId, serviceRefId]);
 
   // 카테고리 선택 시 경로 옵션 업데이트
   useEffect(() => {
@@ -60,6 +77,52 @@ function RentcarQuoteContent() {
       setSelectedCarType('');
     }
   }, [selectedCategory, selectedRoute]);
+
+  // 기존 견적 데이터 로드 (수정 모드용)
+  const loadExistingQuoteData = async () => {
+    try {
+      setLoading(true);
+
+      const { data: serviceData, error: serviceError } = await supabase
+        .from('rentcar')
+        .select('*')
+        .eq('id', serviceRefId)
+        .single();
+
+      if (serviceError || !serviceData) {
+        console.error('서비스 데이터 조회 오류:', serviceError);
+        alert('서비스 데이터를 찾을 수 없습니다.');
+        return;
+      }
+
+      // 렌터카 데이터로 폼 초기화
+      if (serviceData.rent_category) {
+        setSelectedCategory(serviceData.rent_category);
+        await loadRouteOptions(serviceData.rent_category);
+
+        if (serviceData.rent_route) {
+          setSelectedRoute(serviceData.rent_route);
+          await loadCarTypeOptions(serviceData.rent_category, serviceData.rent_route);
+
+          if (serviceData.rent_car_type) {
+            setSelectedCarType(serviceData.rent_car_type);
+          }
+        }
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        special_requests: serviceData.special_requests || ''
+      }));
+
+      console.log('기존 렌터카 견적 데이터 로드 완료:', serviceData);
+    } catch (error) {
+      console.error('기존 견적 데이터 로드 오류:', error);
+      alert('기존 견적 데이터를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 모든 조건이 선택되면 렌트 코드 조회
   useEffect(() => {
@@ -195,48 +258,66 @@ function RentcarQuoteContent() {
 
       console.log('🚗 렌트카 데이터:', rentcarData);
 
-      // 1. 렌트카 서비스 생성
-      const { data: rentcarServiceData, error: rentcarError } = await supabase
-        .from('rentcar')
-        .insert([rentcarData])
-        .select()
-        .single();
+      if (isEditMode && serviceRefId) {
+        // 수정 모드: 기존 렌트카 서비스 업데이트
+        const { error: updateError } = await supabase
+          .from('rentcar')
+          .update(rentcarData)
+          .eq('id', serviceRefId);
 
-      if (rentcarError) {
-        console.error('❌ 렌트카 서비스 생성 오류:', rentcarError);
-        alert(`렌트카 서비스 생성 실패: ${rentcarError.message}`);
-        return;
+        if (updateError) {
+          console.error('❌ 렌트카 서비스 수정 오류:', updateError);
+          alert(`렌트카 서비스 수정 실패: ${updateError.message}`);
+          return;
+        }
+
+        console.log('✅ 렌트카 서비스 수정 성공');
+        alert('렌트카 정보가 수정되었습니다!');
+      } else {
+        // 생성 모드: 새 렌트카 서비스 생성
+        const { data: rentcarServiceData, error: rentcarError } = await supabase
+          .from('rentcar')
+          .insert([rentcarData])
+          .select()
+          .single();
+
+        if (rentcarError) {
+          console.error('❌ 렌트카 서비스 생성 오류:', rentcarError);
+          alert(`렌트카 서비스 생성 실패: ${rentcarError.message}`);
+          return;
+        }
+
+        console.log('✅ 렌트카 서비스 생성 성공:', rentcarServiceData);
+
+        // 견적 아이템 생성
+        const { data: itemData, error: itemError } = await supabase
+          .from('quote_item')
+          .insert({
+            quote_id: quoteId,
+            service_type: 'rentcar',
+            service_ref_id: rentcarServiceData.id,
+            quantity: 1,
+            unit_price: 0,
+            total_price: 0
+          })
+          .select()
+          .single();
+
+        if (itemError) {
+          console.error('❌ 견적 아이템 생성 오류:', itemError);
+          alert(`견적 아이템 생성 실패: ${itemError.message}`);
+          return;
+        }
+
+        console.log('✅ 견적 아이템 생성 성공:', itemData);
+        alert('렌트카 서비스가 견적에 추가되었습니다!');
       }
 
-      console.log('✅ 렌트카 서비스 생성 성공:', rentcarServiceData);
-
-      // 2. 견적 아이템 생성
-      const { data: itemData, error: itemError } = await supabase
-        .from('quote_item')
-        .insert({
-          quote_id: quoteId,
-          service_type: 'rentcar',
-          service_ref_id: rentcarServiceData.id,
-          quantity: 1,
-          unit_price: 0,
-          total_price: 0
-        })
-        .select()
-        .single();
-
-      if (itemError) {
-        console.error('❌ 견적 아이템 생성 오류:', itemError);
-        alert(`견적 아이템 생성 실패: ${itemError.message}`);
-        return;
-      }
-
-      console.log('✅ 견적 아이템 생성 성공:', itemData);
-
-      alert('렌트카 서비스가 견적에 추가되었습니다!');
-      // 페이지 이동 없이 그대로 머무름
+      // 수정 완료 후 견적 목록으로 이동
+      router.push(`/mypage/quotes/new?quoteId=${quoteId}`);
 
     } catch (error) {
-      console.error('❌ 렌트카 견적 추가 중 오류:', error);
+      console.error('❌ 렌트카 견적 처리 중 오류:', error);
       alert('오류가 발생했습니다: ' + (error as Error).message);
     } finally {
       setLoading(false);

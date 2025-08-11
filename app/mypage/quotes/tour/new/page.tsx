@@ -14,6 +14,7 @@ function NewTourQuoteContent() {
 
   const [loading, setLoading] = useState(false);
   const [quote, setQuote] = useState<any>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [tourNameOptions, setTourNameOptions] = useState<string[]>([]);
   const [vehicleOptions, setVehicleOptions] = useState<string[]>([]);
   const [paymentOptions, setPaymentOptions] = useState<string[]>([]);
@@ -38,9 +39,24 @@ function NewTourQuoteContent() {
       router.push('/mypage');
       return;
     }
-    loadTourNameOptions();
-    loadQuote();
-  }, [quoteId, router]);
+
+    // URL 파라미터로 수정 모드 확인
+    const isEdit = mode === 'edit' && itemId && serviceRefId;
+    setIsEditMode(Boolean(isEdit));
+
+    const initializeData = async () => {
+      if (isEdit) {
+        // 수정 모드: 기존 데이터 로드
+        await loadExistingQuoteData();
+      } else {
+        // 새 생성 모드: 투어명 옵션 로드
+        await loadTourNameOptions();
+      }
+      await loadQuote();
+    };
+
+    initializeData();
+  }, [quoteId, router, mode, itemId, serviceRefId]);
 
   // 투어명 선택 시 차량 옵션 업데이트
   useEffect(() => {
@@ -82,6 +98,66 @@ function NewTourQuoteContent() {
       setSelectedTourCode('');
     }
   }, [selectedTourName, selectedVehicle, selectedPayment, selectedCategory]);
+
+  // 기존 견적 데이터 로드 (수정 모드용)
+  const loadExistingQuoteData = async () => {
+    try {
+      setLoading(true);
+
+      const { data: serviceData, error: serviceError } = await supabase
+        .from('tour')
+        .select('*')
+        .eq('id', serviceRefId)
+        .single();
+
+      if (serviceError || !serviceData) {
+        console.error('서비스 데이터 조회 오류:', serviceError);
+        alert('서비스 데이터를 찾을 수 없습니다.');
+        return;
+      }
+
+      // 먼저 모든 옵션 로드
+      await loadTourNameOptions();
+
+      // tour_code로 투어 가격 정보 조회하여 폼 데이터 복원
+      const { data: tourPriceData, error: priceError } = await supabase
+        .from('tour_price')
+        .select('*')
+        .eq('tour_code', serviceData.tour_code)
+        .single();
+
+      if (priceError || !tourPriceData) {
+        console.error('투어 가격 정보 조회 오류:', priceError);
+        alert('투어 가격 정보를 찾을 수 없습니다.');
+        return;
+      }
+
+      // 순차적으로 선택값들 설정
+      setSelectedTourName(tourPriceData.tour_name);
+      await loadVehicleOptions(tourPriceData.tour_name);
+
+      setSelectedVehicle(tourPriceData.tour_vehicle);
+      await loadPaymentOptions(tourPriceData.tour_name, tourPriceData.tour_vehicle);
+
+      setSelectedPayment(tourPriceData.tour_type);
+      await loadCategoryOptions(tourPriceData.tour_name, tourPriceData.tour_vehicle, tourPriceData.tour_type);
+
+      setSelectedCategory(tourPriceData.tour_capacity.toString());
+
+      // 폼 데이터 설정
+      setFormData({
+        tour_date: serviceData.tour_date || '',
+        special_requests: serviceData.special_requests || ''
+      });
+
+      console.log('기존 투어 견적 데이터 로드 완료:', serviceData);
+    } catch (error) {
+      console.error('기존 견적 데이터 로드 오류:', error);
+      alert('기존 견적 데이터를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadTourNameOptions = async () => {
     try {
@@ -229,48 +305,66 @@ function NewTourQuoteContent() {
 
       console.log('🎯 투어 데이터:', tourData);
 
-      // 1. 투어 서비스 생성
-      const { data: tourServiceData, error: tourError } = await supabase
-        .from('tour')
-        .insert([tourData])
-        .select()
-        .single();
+      if (isEditMode && serviceRefId) {
+        // 수정 모드: 기존 투어 서비스 업데이트
+        const { error: updateError } = await supabase
+          .from('tour')
+          .update(tourData)
+          .eq('id', serviceRefId);
 
-      if (tourError) {
-        console.error('❌ 투어 서비스 생성 오류:', tourError);
-        alert(`투어 서비스 생성 실패: ${tourError.message}`);
-        return;
+        if (updateError) {
+          console.error('❌ 투어 서비스 수정 오류:', updateError);
+          alert(`투어 서비스 수정 실패: ${updateError.message}`);
+          return;
+        }
+
+        console.log('✅ 투어 서비스 수정 성공');
+        alert('투어 정보가 수정되었습니다!');
+      } else {
+        // 생성 모드: 새 투어 서비스 생성
+        const { data: tourServiceData, error: tourError } = await supabase
+          .from('tour')
+          .insert([tourData])
+          .select()
+          .single();
+
+        if (tourError) {
+          console.error('❌ 투어 서비스 생성 오류:', tourError);
+          alert(`투어 서비스 생성 실패: ${tourError.message}`);
+          return;
+        }
+
+        console.log('✅ 투어 서비스 생성 성공:', tourServiceData);
+
+        // 견적 아이템 생성
+        const { data: itemData, error: itemError } = await supabase
+          .from('quote_item')
+          .insert({
+            quote_id: quoteId,
+            service_type: 'tour',
+            service_ref_id: tourServiceData.id,
+            quantity: 1,
+            unit_price: 0,
+            total_price: 0
+          })
+          .select()
+          .single();
+
+        if (itemError) {
+          console.error('❌ 견적 아이템 생성 오류:', itemError);
+          alert(`견적 아이템 생성 실패: ${itemError.message}`);
+          return;
+        }
+
+        console.log('✅ 견적 아이템 생성 성공:', itemData);
+        alert('투어가 견적에 추가되었습니다!');
       }
 
-      console.log('✅ 투어 서비스 생성 성공:', tourServiceData);
-
-      // 2. 견적 아이템 생성
-      const { data: itemData, error: itemError } = await supabase
-        .from('quote_item')
-        .insert({
-          quote_id: quoteId,
-          service_type: 'tour',
-          service_ref_id: tourServiceData.id,
-          quantity: 1,
-          unit_price: 0,
-          total_price: 0
-        })
-        .select()
-        .single();
-
-      if (itemError) {
-        console.error('❌ 견적 아이템 생성 오류:', itemError);
-        alert(`견적 아이템 생성 실패: ${itemError.message}`);
-        return;
-      }
-
-      console.log('✅ 견적 아이템 생성 성공:', itemData);
-
-      alert('투어가 견적에 추가되었습니다!');
-      // 페이지 이동 없이 그대로 머무름
+      // 수정 완료 후 견적 목록으로 이동
+      router.push(`/mypage/quotes/new?quoteId=${quoteId}`);
 
     } catch (error) {
-      console.error('❌ 투어 견적 추가 중 오류:', error);
+      console.error('❌ 투어 견적 처리 중 오류:', error);
       alert('오류가 발생했습니다: ' + (error as Error).message);
     } finally {
       setLoading(false);
@@ -297,9 +391,11 @@ function NewTourQuoteContent() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold mb-2">🎯 투어 견적 신청</h1>
+              <h1 className="text-3xl font-bold mb-2">
+                🎯 투어 견적 {isEditMode ? '수정' : '신청'}
+              </h1>
               <p className="text-lg opacity-90">
-                투어 여행을 위한 견적을 작성해주세요.
+                투어 여행을 위한 견적을 {isEditMode ? '수정' : '작성'}해주세요.
               </p>
             </div>
             <div className="flex gap-2">
@@ -328,7 +424,9 @@ function NewTourQuoteContent() {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">투어 정보 입력</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">
+              투어 정보 {isEditMode ? '수정' : '입력'}
+            </h2>
 
             {/* 투어 안내 카드 */}
             <div className="bg-blue-600 rounded-lg p-6 mb-6 border border-blue-700">
@@ -479,7 +577,7 @@ function NewTourQuoteContent() {
                 disabled={!isFormValid || loading}
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? '처리 중...' : '견적에 추가'}
+                {loading ? '처리 중...' : isEditMode ? '수정 완료' : '견적에 추가'}
               </button>
             </div>
           </form>

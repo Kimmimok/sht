@@ -55,6 +55,7 @@ function CruiseQuoteNewContent() {
 
   // 견적 정보 상태
   const [quote, setQuote] = useState<any>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     if (!quoteId) {
@@ -63,7 +64,13 @@ function CruiseQuoteNewContent() {
       return;
     }
     loadQuote();
-  }, [quoteId, router]);
+
+    // 수정 모드인 경우 기존 데이터 로드
+    if (mode === 'edit' && itemId && serviceRefId) {
+      setIsEditMode(true);
+      loadExistingQuoteData();
+    }
+  }, [quoteId, router, mode, itemId, serviceRefId]);
 
   // 일정이 선택되면 크루즈 옵션 로드
   useEffect(() => {
@@ -121,6 +128,95 @@ function CruiseQuoteNewContent() {
     } catch (error) {
       console.error('견적 조회 실패:', error);
       alert('견적을 조회할 수 없습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 기존 견적 데이터 로드 (수정 모드용)
+  const loadExistingQuoteData = async () => {
+    try {
+      setLoading(true);
+
+      // 서비스 타입에 따라 다른 테이블에서 데이터 조회
+      const { data: quoteItem, error: itemError } = await supabase
+        .from('quote_item')
+        .select('service_type')
+        .eq('id', itemId)
+        .single();
+
+      if (itemError || !quoteItem) {
+        console.error('견적 항목 조회 오류:', itemError);
+        alert('견적 항목을 찾을 수 없습니다.');
+        return;
+      }
+
+      // service_type에 따라 적절한 테이블에서 데이터 조회
+      let tableName = '';
+      if (quoteItem.service_type === 'room') {
+        tableName = 'room';
+      } else if (quoteItem.service_type === 'car') {
+        tableName = 'car';
+      } else {
+        alert('지원하지 않는 서비스 타입입니다.');
+        return;
+      }
+
+      const { data: serviceData, error: serviceError } = await supabase
+        .from(tableName)
+        .select('*')
+        .eq('id', serviceRefId)
+        .single();
+
+      if (serviceError || !serviceData) {
+        console.error('서비스 데이터 조회 오류:', serviceError);
+        alert('서비스 데이터를 찾을 수 없습니다.');
+        return;
+      }
+
+      // 데이터 타입에 따라 폼에 로드
+      if (quoteItem.service_type === 'room') {
+        // 객실 데이터 로드
+        setForm(prev => ({
+          ...prev,
+          checkin: serviceData.checkin || '',
+          schedule: serviceData.schedule || '',
+          cruise_code: serviceData.cruise_code || '',
+          payment_code: serviceData.payment_code || '',
+          rooms: serviceData.room_categories ?
+            JSON.parse(serviceData.room_categories) :
+            [{ room_type: '', categories: [{ room_category: '', adult_count: 0, room_code: '' }] }]
+        }));
+
+        setFormData(prev => ({
+          ...prev,
+          special_requests: serviceData.special_requests || ''
+        }));
+      } else if (quoteItem.service_type === 'car') {
+        // 차량 데이터 로드
+        setForm(prev => ({
+          ...prev,
+          checkin: serviceData.usage_date || '',
+          schedule: serviceData.schedule || '',
+          cruise_code: serviceData.cruise_code || '',
+          payment_code: serviceData.payment_code || ''
+        }));
+
+        setVehicleForm(serviceData.car_categories ?
+          JSON.parse(serviceData.car_categories) :
+          [{ car_type: '', car_category: '', car_code: '', count: 1 }]
+        );
+
+        setFormData(prev => ({
+          ...prev,
+          special_requests: serviceData.special_requests || ''
+        }));
+      }
+
+      console.log('기존 견적 데이터 로드 완료:', serviceData);
+    } catch (error) {
+      console.error('기존 견적 데이터 로드 오류:', error);
+      alert('기존 견적 데이터를 불러오는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -359,67 +455,126 @@ function CruiseQuoteNewContent() {
     e.preventDefault();
     try {
       setLoading(true);
-      // 1. 객실 데이터 저장 (DB 스키마에 맞는 컬럼만 저장)
-      for (const room of form.rooms) {
-        for (const category of room.categories) {
-          if (category.room_code && category.adult_count > 0) {
-            const { data: roomData, error: roomError } = await supabase
-              .from('room')
-              .insert({
-                room_code: category.room_code,
-                adult_count: category.adult_count
-              })
-              .select()
-              .single();
-            if (roomError) throw roomError;
-            // quote_item에 연결
-            const { error: itemError } = await supabase
-              .from('quote_item')
-              .insert({
-                quote_id: quoteId,
-                service_type: 'room',
-                service_ref_id: roomData.id,
-                quantity: 1,
-                unit_price: 0,
-                total_price: 0
-              });
-            if (itemError) throw itemError;
-          }
-        }
+
+      if (isEditMode && serviceRefId) {
+        // 수정 모드: 기존 데이터 업데이트
+        await updateExistingQuoteData();
+      } else {
+        // 신규 생성 모드: 새 데이터 생성
+        await createNewQuoteData();
       }
-      // 2. 차량 데이터 저장 (DB 스키마에 맞는 컬럼만 저장)
-      for (const vehicle of vehicleForm) {
-        if (vehicle.car_code && vehicle.count > 0) {
-          const { data: carData, error: carError } = await supabase
-            .from('car')
+
+      alert('크루즈 견적이 성공적으로 저장되었습니다!');
+      router.push(`/mypage/quotes/new?quoteId=${quoteId}`);
+    } catch (error) {
+      console.error('견적 저장 오류:', error);
+      alert('견적 저장 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 기존 견적 데이터 업데이트
+  const updateExistingQuoteData = async () => {
+    // 서비스 타입에 따라 적절한 테이블 업데이트
+    const { data: quoteItem, error: itemError } = await supabase
+      .from('quote_item')
+      .select('service_type')
+      .eq('id', itemId)
+      .single();
+
+    if (itemError || !quoteItem) {
+      throw new Error('견적 항목을 찾을 수 없습니다.');
+    }
+
+    if (quoteItem.service_type === 'room') {
+      // 객실 데이터 업데이트
+      const { error: updateError } = await supabase
+        .from('room')
+        .update({
+          room_categories: JSON.stringify(form.rooms),
+          checkin: form.checkin,
+          schedule: form.schedule,
+          cruise_code: form.cruise_code,
+          payment_code: form.payment_code,
+          special_requests: formData.special_requests
+        })
+        .eq('id', serviceRefId);
+
+      if (updateError) throw updateError;
+    } else if (quoteItem.service_type === 'car') {
+      // 차량 데이터 업데이트
+      const { error: updateError } = await supabase
+        .from('car')
+        .update({
+          car_categories: JSON.stringify(vehicleForm),
+          usage_date: form.checkin,
+          schedule: form.schedule,
+          cruise_code: form.cruise_code,
+          payment_code: form.payment_code,
+          special_requests: formData.special_requests
+        })
+        .eq('id', serviceRefId);
+
+      if (updateError) throw updateError;
+    }
+  };
+
+  // 새 견적 데이터 생성
+  const createNewQuoteData = async () => {
+    // 1. 객실 데이터 저장 (DB 스키마에 맞는 컬럼만 저장)
+    for (const room of form.rooms) {
+      for (const category of room.categories) {
+        if (category.room_code && category.adult_count > 0) {
+          const { data: roomData, error: roomError } = await supabase
+            .from('room')
             .insert({
-              car_code: vehicle.car_code,
-              car_count: vehicle.count
+              room_code: category.room_code,
+              adult_count: category.adult_count
             })
             .select()
             .single();
-          if (carError) throw carError;
+          if (roomError) throw roomError;
           // quote_item에 연결
           const { error: itemError } = await supabase
             .from('quote_item')
             .insert({
               quote_id: quoteId,
-              service_type: 'car',
-              service_ref_id: carData.id,
-              quantity: vehicle.count,
+              service_type: 'room',
+              service_ref_id: roomData.id,
+              quantity: 1,
               unit_price: 0,
               total_price: 0
             });
           if (itemError) throw itemError;
         }
       }
-      alert('크루즈 견적이 성공적으로 추가되었습니다.');
-      // 페이지 이동 없이 그대로 머무름
-    } catch (error) {
-      console.error('저장 실패:', error);
-      alert('저장 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
+    }
+    // 2. 차량 데이터 저장 (DB 스키마에 맞는 컬럼만 저장)
+    for (const vehicle of vehicleForm) {
+      if (vehicle.car_code && vehicle.count > 0) {
+        const { data: carData, error: carError } = await supabase
+          .from('car')
+          .insert({
+            car_code: vehicle.car_code,
+            car_count: vehicle.count
+          })
+          .select()
+          .single();
+        if (carError) throw carError;
+        // quote_item에 연결
+        const { error: itemError } = await supabase
+          .from('quote_item')
+          .insert({
+            quote_id: quoteId,
+            service_type: 'car',
+            service_ref_id: carData.id,
+            quantity: 1,
+            unit_price: 0,
+            total_price: 0
+          });
+        if (itemError) throw itemError;
+      }
     }
   };
 

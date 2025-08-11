@@ -15,6 +15,7 @@ function AirportQuoteContent() {
 
   const [loading, setLoading] = useState(false);
   const [quote, setQuote] = useState<any>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // 단계별 옵션들 (airport_price 테이블 기준)
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
@@ -40,7 +41,13 @@ function AirportQuoteContent() {
     }
     loadCategoryOptions();
     loadQuote();
-  }, [quoteId, router]);
+
+    // 수정 모드인 경우 기존 데이터 로드
+    if (mode === 'edit' && itemId && serviceRefId) {
+      setIsEditMode(true);
+      loadExistingQuoteData();
+    }
+  }, [quoteId, router, mode, itemId, serviceRefId]);
 
   // 카테고리 선택 시 경로 옵션 업데이트
   useEffect(() => {
@@ -72,6 +79,52 @@ function AirportQuoteContent() {
       setSelectedAirportCode('');
     }
   }, [selectedCategory, selectedRoute, selectedCarType]);
+
+  // 기존 견적 데이터 로드 (수정 모드용)
+  const loadExistingQuoteData = async () => {
+    try {
+      setLoading(true);
+
+      const { data: serviceData, error: serviceError } = await supabase
+        .from('airport')
+        .select('*')
+        .eq('id', serviceRefId)
+        .single();
+
+      if (serviceError || !serviceData) {
+        console.error('서비스 데이터 조회 오류:', serviceError);
+        alert('서비스 데이터를 찾을 수 없습니다.');
+        return;
+      }
+
+      // 공항 데이터로 폼 초기화
+      if (serviceData.airport_category) {
+        setSelectedCategory(serviceData.airport_category);
+        await loadRouteOptions(serviceData.airport_category);
+
+        if (serviceData.airport_route) {
+          setSelectedRoute(serviceData.airport_route);
+          await loadCarTypeOptions(serviceData.airport_category, serviceData.airport_route);
+
+          if (serviceData.airport_car_type) {
+            setSelectedCarType(serviceData.airport_car_type);
+          }
+        }
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        special_requests: serviceData.special_requests || ''
+      }));
+
+      console.log('기존 공항 견적 데이터 로드 완료:', serviceData);
+    } catch (error) {
+      console.error('기존 견적 데이터 로드 오류:', error);
+      alert('기존 견적 데이터를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadCategoryOptions = async () => {
     try {
@@ -181,71 +234,104 @@ function AirportQuoteContent() {
     setLoading(true);
 
     try {
-      // 3가지 조건으로 airport_code 조회
-      const airportCode = await getAirportCodeFromConditions(
-        selectedCategory,
-        selectedRoute,
-        selectedCarType
-      );
-
-      // 공항 폼 데이터 구성 - 필수 필드만 포함
-      const airportData = {
-        airport_code: airportCode,
-        ...(formData.special_requests && { special_requests: formData.special_requests })
-      };
-
-      console.log('✈️ 공항 데이터:', airportData);
-
-      // 1. 공항 서비스 생성
-      const { data: airportServiceData, error: airportError } = await supabase
-        .from('airport')
-        .insert(airportData)
-        .select()
-        .single();
-
-      if (airportError) {
-        console.error('❌ 공항 서비스 생성 오류:', airportError);
-        alert(`공항 서비스 생성 실패: ${airportError.message}`);
-        return;
+      if (isEditMode && serviceRefId) {
+        // 수정 모드: 기존 데이터 업데이트
+        await updateExistingQuoteData();
+      } else {
+        // 신규 생성 모드: 새 데이터 생성
+        await createNewQuoteData();
       }
 
-      console.log('✅ 공항 서비스 생성 성공:', airportServiceData);
-
-      // 올바른 수량 계산
-      const actualQuantity = calculateServiceQuantity('airport', airportServiceData);
-
-      // 2. 견적 아이템 생성
-      const { data: itemData, error: itemError } = await supabase
-        .from('quote_item')
-        .insert({
-          quote_id: quoteId,
-          service_type: 'airport',
-          service_ref_id: airportServiceData.id,
-          quantity: actualQuantity, // 승객 수
-          unit_price: parseInt(airportServiceData.price || '0'),
-          total_price: parseInt(airportServiceData.price || '0') * actualQuantity,
-          usage_date: formData.service_date
-        })
-        .select()
-        .single();
-
-      if (itemError) {
-        console.error('❌ 견적 아이템 생성 오류:', itemError);
-        alert(`견적 아이템 생성 실패: ${itemError.message}`);
-        return;
-      }
-
-      console.log('✅ 견적 아이템 생성 성공:', itemData);
-
-      alert('공항 서비스가 견적에 추가되었습니다!');
-      router.push(`/mypage/quotes/${quoteId}/view`);
-
+      alert(isEditMode ? '공항 서비스가 성공적으로 수정되었습니다!' : '공항 서비스가 견적에 추가되었습니다!');
+      router.push(`/mypage/quotes/new?quoteId=${quoteId}`);
     } catch (error) {
-      console.error('❌ 공항 견적 추가 중 오류:', error);
+      console.error('❌ 공항 견적 처리 중 오류:', error);
       alert('오류가 발생했습니다: ' + (error as Error).message);
     } finally {
       setLoading(false);
     }
+  };
+
+  // 기존 견적 데이터 업데이트
+  const updateExistingQuoteData = async () => {
+    const airportCode = await getAirportCodeFromConditions(
+      selectedCategory,
+      selectedRoute,
+      selectedCarType
+    );
+
+    const airportData = {
+      airport_code: airportCode,
+      airport_category: selectedCategory,
+      airport_route: selectedRoute,
+      airport_car_type: selectedCarType,
+      special_requests: formData.special_requests || null
+    };
+
+    const { error: updateError } = await supabase
+      .from('airport')
+      .update(airportData)
+      .eq('id', serviceRefId);
+
+    if (updateError) {
+      throw new Error(`공항 서비스 수정 실패: ${updateError.message}`);
+    }
+
+    console.log('✅ 공항 서비스 수정 성공');
+  };
+
+  // 새 견적 데이터 생성
+  const createNewQuoteData = async () => {
+    // 3가지 조건으로 airport_code 조회
+    const airportCode = await getAirportCodeFromConditions(
+      selectedCategory,
+      selectedRoute,
+      selectedCarType
+    );
+
+    // 공항 폼 데이터 구성 - 필수 필드만 포함
+    const airportData = {
+      airport_code: airportCode,
+      airport_category: selectedCategory,
+      airport_route: selectedRoute,
+      airport_car_type: selectedCarType,
+      special_requests: formData.special_requests || null
+    };
+
+    console.log('✈️ 공항 데이터:', airportData);
+
+    // 1. 공항 서비스 생성
+    const { data: airportServiceData, error: airportError } = await supabase
+      .from('airport')
+      .insert(airportData)
+      .select()
+      .single();
+
+    if (airportError) {
+      throw new Error(`공항 서비스 생성 실패: ${airportError.message}`);
+    }
+
+    console.log('✅ 공항 서비스 생성 성공:', airportServiceData);
+
+    // 2. 견적 아이템 생성
+    const { data: itemData, error: itemError } = await supabase
+      .from('quote_item')
+      .insert({
+        quote_id: quoteId,
+        service_type: 'airport',
+        service_ref_id: airportServiceData.id,
+        quantity: 1,
+        unit_price: 0,
+        total_price: 0
+      })
+      .select()
+      .single();
+
+    if (itemError) {
+      throw new Error(`견적 아이템 생성 실패: ${itemError.message}`);
+    }
+
+    console.log('✅ 견적 아이템 생성 성공:', itemData);
   };
 
   const isFormValid = selectedCategory && selectedRoute && selectedCarType;

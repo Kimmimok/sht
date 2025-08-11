@@ -14,6 +14,7 @@ function NewHotelQuoteContent() {
 
   const [loading, setLoading] = useState(false)
   const [quote, setQuote] = useState<any>(null)
+  const [isEditMode, setIsEditMode] = useState(false)
   const [hotelNameOptions, setHotelNameOptions] = useState<string[]>([])
   const [roomNameOptions, setRoomNameOptions] = useState<string[]>([])
   const [roomTypeOptions, setRoomTypeOptions] = useState<string[]>([])
@@ -31,6 +32,48 @@ function NewHotelQuoteContent() {
     checkout_date: '',
     special_requests: ''
   })
+
+  // 기존 견적 데이터 로드 (수정 모드용)
+  const loadExistingQuoteData = async () => {
+    try {
+      setLoading(true);
+
+      const { data: serviceData, error: serviceError } = await supabase
+        .from('hotel')
+        .select('*')
+        .eq('id', serviceRefId)
+        .single();
+
+      if (serviceError || !serviceData) {
+        console.error('서비스 데이터 조회 오류:', serviceError);
+        alert('서비스 데이터를 찾을 수 없습니다.');
+        return;
+      }
+
+      // 호텔 데이터로 폼 초기화
+      setFormData(prev => ({
+        ...prev,
+        checkin_date: serviceData.checkin_date || '',
+        checkout_date: serviceData.checkout_date || '',
+        nights: serviceData.nights || 1,
+        guest_count: serviceData.guest_count || 1,
+        special_requests: serviceData.special_requests || ''
+      }));
+
+      // 호텔 선택 정보 설정
+      if (serviceData.hotel_code) {
+        setSelectedHotelCode(serviceData.hotel_code);
+        // 호텔명 로드 후 자동 선택되도록 처리 필요
+      }
+
+      console.log('기존 호텔 견적 데이터 로드 완료:', serviceData);
+    } catch (error) {
+      console.error('기존 견적 데이터 로드 오류:', error);
+      alert('기존 견적 데이터를 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadQuote = async () => {
     if (!quoteId) return
@@ -58,7 +101,13 @@ function NewHotelQuoteContent() {
       return
     }
     loadQuote()
-  }, [quoteId, router])
+
+    // 수정 모드인 경우 기존 데이터 로드
+    if (mode === 'edit' && itemId && serviceRefId) {
+      setIsEditMode(true);
+      loadExistingQuoteData();
+    }
+  }, [quoteId, router, mode, itemId, serviceRefId])
 
   // 체크인/체크아웃 날짜가 설정되면 호텔명 옵션 업데이트
   useEffect(() => {
