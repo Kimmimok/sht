@@ -345,7 +345,8 @@ function NewTourQuoteContent() {
             service_ref_id: tourServiceData.id,
             quantity: 1,
             unit_price: 0,
-            total_price: 0
+            total_price: 0,
+            usage_date: formData.tour_date || null
           })
           .select()
           .single();

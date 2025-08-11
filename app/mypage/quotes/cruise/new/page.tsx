@@ -544,7 +544,8 @@ function CruiseQuoteNewContent() {
               service_ref_id: roomData.id,
               quantity: 1,
               unit_price: 0,
-              total_price: 0
+              total_price: 0,
+              usage_date: form.checkin || null
             });
           if (itemError) throw itemError;
         }
@@ -571,7 +572,8 @@ function CruiseQuoteNewContent() {
             service_ref_id: carData.id,
             quantity: 1,
             unit_price: 0,
-            total_price: 0
+            total_price: 0,
+            usage_date: form.checkin || null
           });
         if (itemError) throw itemError;
       }

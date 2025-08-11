@@ -332,7 +332,8 @@ function NewHotelQuoteContent() {
           service_ref_id: hotelServiceData.id,
           quantity: 1,
           unit_price: parseInt(selectedHotel.price) || 0,
-          total_price: parseInt(selectedHotel.price) || 0
+          total_price: parseInt(selectedHotel.price) || 0,
+          usage_date: formData.checkin_date || null
         })
         .select()
         .single()
