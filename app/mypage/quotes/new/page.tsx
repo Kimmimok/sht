@@ -8,11 +8,11 @@ import { Quote } from '@/lib/types';
 
 // 메뉴 정의 - quoteId를 URL 파라미터로 전달
 const menuList = [
-  { key: 'cruise', label: '🚢 크루즈', pathTemplate: '/mypage/quotes/cruise/new', description: '럭셔리 크루즈 여행을 예약하세요' },
-  { key: 'airport', label: '✈️ 공항', pathTemplate: '/mypage/quotes/airport/new', description: '공항 픽업 및 항공 서비스' },
-  { key: 'hotel', label: '🏨 호텔', pathTemplate: '/mypage/quotes/hotel/new', description: '최고급 호텔에서 편안한 휴식' },
-  { key: 'tour', label: '🗺️ 투어', pathTemplate: '/mypage/quotes/tour/new', description: '전문 가이드와 함께하는 맞춤 투어' },
-  { key: 'rentcar', label: '🚗 렌트카', pathTemplate: '/mypage/quotes/rentcar/new', description: '자유로운 여행을 위한 렌트카' }
+  { key: 'cruise', label: '🚢 크루즈', pathTemplate: '/mypage/quotes/cruise', description: '럭셔리 크루즈 여행을 예약하세요' },
+  { key: 'airport', label: '✈️ 공항', pathTemplate: '/mypage/quotes/airport', description: '공항 픽업 및 항공 서비스' },
+  { key: 'hotel', label: '🏨 호텔', pathTemplate: '/mypage/quotes/hotel', description: '최고급 호텔에서 편안한 휴식' },
+  { key: 'tour', label: '🗺️ 투어', pathTemplate: '/mypage/quotes/tour', description: '전문 가이드와 함께하는 맞춤 투어' },
+  { key: 'rentcar', label: '🚗 렌트카', pathTemplate: '/mypage/quotes/rentcar', description: '자유로운 여행을 위한 렌트카' }
 ];
 
 function QuoteManagementContent() {
