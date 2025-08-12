@@ -417,7 +417,7 @@ function DirectBookingCruiseContent() {
             // 견적에 연결된 데이터 로드
             await loadQuoteLinkedData(newQuote.id);
 
-            alert('견적이 성공적으로 저장되었습니다! 이제 예약을 진행해주세요.');
+            alert('가격 정보가 저장되었습니다! 이제 서비스 정보를 입력하세요.');
             setCurrentStep('reservation');
 
         } catch (error) {
