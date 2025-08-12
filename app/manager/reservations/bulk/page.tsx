@@ -90,7 +90,7 @@ export default function BulkReservationPage() {
 
             const rows = reservationsRows || [];
 
-            // 2) 관련 사용자 / 견적 일괄 조회
+            // 2) 관련 사용자 / 견적  조회
             const userIds = Array.from(new Set(rows.map((r: any) => r.re_user_id).filter(Boolean)));
             const quoteIds = Array.from(new Set(rows.map((r: any) => r.re_quote_id).filter(Boolean)));
 
@@ -213,8 +213,8 @@ export default function BulkReservationPage() {
             loadReservations(); // 목록 새로고침
 
         } catch (error) {
-            console.error('일괄 처리 실패:', error);
-            alert('일괄 처리 중 오류가 발생했습니다.');
+            console.error(' 처리 실패:', error);
+            alert(' 처리 중 오류가 발생했습니다.');
         } finally {
             setProcessing(false);
         }
@@ -258,7 +258,7 @@ export default function BulkReservationPage() {
 
     if (loading) {
         return (
-            <ManagerLayout title="일괄 처리" activeTab="reservations">
+            <ManagerLayout title=" 처리" activeTab="reservations">
                 <div className="flex justify-center items-center h-64">
                     <div className="text-center">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
@@ -270,7 +270,7 @@ export default function BulkReservationPage() {
     }
 
     return (
-        <ManagerLayout title="예약 일괄 처리" activeTab="reservations">
+        <ManagerLayout title="예약  처리" activeTab="reservations">
             <div className="space-y-6">
 
                 {/* 헤더 */}
@@ -285,7 +285,7 @@ export default function BulkReservationPage() {
                         <div>
                             <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                                 <Edit className="w-7 h-7 text-green-600" />
-                                예약 일괄 처리
+                                예약  처리
                             </h1>
                             <p className="text-gray-600 mt-1">여러 예약을 한 번에 처리합니다.</p>
                         </div>
@@ -306,7 +306,7 @@ export default function BulkReservationPage() {
                     </div>
                 )}
 
-                {/* 필터 및 일괄 작업 컨트롤 */}
+                {/* 필터 및  작업 컨트롤 */}
                 <div className="bg-white rounded-lg shadow-md p-6">
                     <div className="flex justify-between items-start mb-4">
                         <div>
@@ -332,22 +332,22 @@ export default function BulkReservationPage() {
                         </div>
                     </div>
 
-                    {/* 일괄 작업 설정 */}
+                    {/*  작업 설정 */}
                     <div className="border-t pt-4">
                         <div className="flex items-center gap-4 mb-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    일괄 작업
+                                     작업
                                 </label>
                                 <select
                                     value={bulkAction}
                                     onChange={(e) => setBulkAction(e.target.value as BulkAction)}
                                     className="px-3 py-2 border border-gray-300 rounded-lg"
                                 >
-                                    <option value="confirm">일괄 확정</option>
-                                    <option value="cancel">일괄 취소</option>
+                                    <option value="confirm"> 확정</option>
+                                    <option value="cancel"> 취소</option>
                                     <option value="status_update">상태 변경</option>
-                                    <option value="delete">일괄 삭제</option>
+                                    <option value="delete"> 삭제</option>
                                 </select>
                             </div>
 

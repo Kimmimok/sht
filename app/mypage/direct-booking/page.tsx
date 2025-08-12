@@ -26,7 +26,7 @@ function DirectBookingContent() {
     useEffect(() => {
         const initializePage = async () => {
             if (isInitialized) return; // 이미 초기화된 경우 실행하지 않음
-            
+
             setIsLoading(true);
             setError(null);
             try {
@@ -42,7 +42,7 @@ function DirectBookingContent() {
                 setIsLoading(false);
             }
         };
-        
+
         initializePage();
 
         // 완료 메시지 표시
@@ -279,7 +279,7 @@ function DirectBookingContent() {
             setActiveQuoteData(quoteData); // 전체 데이터 저장
             setIsFirstBooking(false);
             alert(`새 예약 "${quoteTitle}"이 생성되었습니다.`);
-            
+
             // 상태 새로고침
             checkBookingStatusAndAutoCreate();
         } catch (error) {
@@ -330,7 +330,7 @@ function DirectBookingContent() {
         {
             icon: '🚗',
             label: '렌터카 예약',
-            href: '/mypage/direct-booking/rentcar',
+            href: '/mypage/direct-booking/rentcar/1',
             description: '렌터카 서비스 직접 예약',
             color: 'from-green-500 to-emerald-500',
             type: 'rentcar'
@@ -371,8 +371,8 @@ function DirectBookingContent() {
                         <div>
                             <h3 className="text-red-800 font-semibold">오류가 발생했습니다</h3>
                             <p className="text-red-700 text-sm mt-1">{error}</p>
-                            <button 
-                                onClick={() => window.location.reload()} 
+                            <button
+                                onClick={() => window.location.reload()}
                                 className="mt-2 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
                             >
                                 페이지 새로고침
@@ -385,199 +385,191 @@ function DirectBookingContent() {
             {/* 정상 로드된 경우만 내용 표시 */}
             {!isLoading && !error && (
                 <>
-            {/* 완료 메시지 */}
-            {showCompletionMessage && completedService && (
-                <div className="mb-6 p-4 bg-green-100 border border-green-300 rounded-lg animate-pulse">
-                    <div className="flex items-center">
-                        <span className="text-green-600 text-xl mr-2">🎉</span>
-                        <div>
-                            <h3 className="text-green-800 font-semibold">
-                                {getServiceDisplayName(completedService)} 예약이 완료되었습니다!
-                            </h3>
-                            <p className="text-green-700 text-sm mt-1">
-                                예약 내용은 마이페이지 → 예약 관리에서 확인하실 수 있습니다.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* 안내 카드 */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 mb-8 text-white">
-                <h2 className="text-2xl font-bold mb-2">⚡ 빠른 예약 서비스</h2>
-                <p className="text-blue-100 mb-4">
-                    원하는 서비스를 선택하여 정보를 입력하시면 즉시 예약이 완료됩니다.
-                </p>
-                <div className="bg-white/20 rounded-lg p-3">
-                    <p className="text-sm font-medium">✨ 장점</p>
-                    <ul className="text-sm text-blue-100 mt-1 space-y-1">
-                        <li>• 빠른 예약 처리 (견적 대기 시간 없음)</li>
-                        <li>• 실시간 가격 확인 및 예약 확정</li>
-                        <li>• 통합된 예약 정보 관리</li>
-                    </ul>
-                </div>
-            </div>
-
-            {/* 현재 진행 중인 견적 정보 */}
-            {activeQuoteData && (
-                <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                            <span className="text-blue-600 text-xl mr-2">📋</span>
-                            <div>
-                                <h3 className="text-blue-800 font-semibold">
-                                    진행 중인 견적: {activeQuoteData.title}
-                                </h3>
-                                <p className="text-blue-700 text-sm mt-1">
-                                    생성일: {new Date(activeQuoteData.created_at).toLocaleDateString('ko-KR')} | ID: {activeQuoteData.id}
-                                </p>
-                                <p className="text-blue-600 text-xs mt-1">
-                                    이 견적에 서비스를 추가하거나 수정할 수 있습니다.
-                                </p>
-                            </div>
-                        </div>
-                      
-                    </div>
-                </div>
-            )}
-
-            {/* 견적이 없을 때 안내 */}
-            {!activeQuoteData && (
-                <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                            <span className="text-blue-600 text-xl mr-2">⏳</span>
-                            <div>
-                                <h3 className="text-blue-800 font-semibold">
-                                    견적을 생성하는 중입니다...
-                                </h3>
-                                <p className="text-blue-700 text-sm mt-1">
-                                    잠시만 기다려 주세요. 자동으로 새 견적이 생성됩니다.
-                                </p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={createNewBooking}
-                            className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 whitespace-nowrap"
-                        >
-                            수동 생성
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            <SectionBox title="예약할 서비스를 선택하세요">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {services.map((service, index) => {
-                        const isCompleted = completedServices.includes(service.type);
-                        const href = getServiceHref(service);
-                        const isAccessible = isServiceAccessible();
-                        
-                        const ServiceCard = ({ children }: { children: React.ReactNode }) => {
-                            // 견적이 있을 때만 서비스 접근 가능
-                            if (activeQuoteData) {
-                                return <Link href={href} className="group">{children}</Link>;
-                            } else {
-                                return <div className="cursor-not-allowed">{children}</div>;
-                            }
-                        };
-
-                        return (
-                            <ServiceCard key={index}>
-                                <div className={`relative overflow-hidden bg-white border border-gray-200 rounded-xl shadow-lg transform transition-all duration-300 ease-out ${
-                                    activeQuoteData 
-                                        ? 'hover:shadow-xl hover:-translate-y-2 cursor-pointer' 
-                                        : 'opacity-50 cursor-not-allowed'
-                                }`}>
-                                    <div className={`absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 opacity-0 transition-opacity duration-300 ${
-                                        activeQuoteData ? 'group-hover:opacity-5' : ''
-                                    }`}></div>
-
-                                    {/* 완료 배지 */}
-                                    {isCompleted && (
-                                        <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-semibold z-10 flex items-center gap-1">
-                                            <span>✅</span>
-                                            <span>완료</span>
-                                        </div>
-                                    )}
-
-                                    <div className="relative p-6">
-                                        <div className="flex items-center mb-4">
-                                            <div className={`text-4xl mr-4 transform transition-transform duration-300 ${
-                                                activeQuoteData ? 'group-hover:scale-110' : ''
-                                            }`}>
-                                                {service.icon}
-                                            </div>
-                                            <div>
-                                                <h3 className={`text-lg font-bold transition-colors duration-300 ${
-                                                    activeQuoteData 
-                                                        ? 'text-gray-800 group-hover:text-blue-700' 
-                                                        : 'text-gray-500'
-                                                }`}>
-                                                    {service.label}
-                                                </h3>
-                                                <p className={`text-sm mt-1 ${
-                                                    activeQuoteData ? 'text-gray-600' : 'text-gray-400'
-                                                }`}>
-                                                    {service.description}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center justify-between">
-                                            <span className={`text-sm font-medium ${
-                                                activeQuoteData 
-                                                    ? isCompleted ? 'text-green-600' : 'text-blue-600'
-                                                    : 'text-gray-400'
-                                            }`}>
-                                                {activeQuoteData 
-                                                    ? isCompleted 
-                                                        ? '수정하기 →' 
-                                                        : '견적에 추가 →'
-                                                    : '견적을 먼저 생성하세요'
-                                                }
-                                            </span>
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-300 ${
-                                                activeQuoteData 
-                                                    ? isCompleted
-                                                        ? 'bg-green-100 group-hover:bg-green-200'
-                                                        : 'bg-blue-100 group-hover:bg-blue-200'
-                                                    : 'bg-gray-100'
-                                            }`}>
-                                                <span className={`text-sm ${
-                                                    activeQuoteData 
-                                                        ? isCompleted ? 'text-green-600' : 'text-blue-600'
-                                                        : 'text-gray-400'
-                                                }`}>
-                                                    {activeQuoteData ? (isCompleted ? '✏️' : '➕') : '⏸️'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${service.color} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left`}></div>
+                    {/* 완료 메시지 */}
+                    {showCompletionMessage && completedService && (
+                        <div className="mb-6 p-4 bg-green-100 border border-green-300 rounded-lg animate-pulse">
+                            <div className="flex items-center">
+                                <span className="text-green-600 text-xl mr-2">🎉</span>
+                                <div>
+                                    <h3 className="text-green-800 font-semibold">
+                                        {getServiceDisplayName(completedService)} 예약이 완료되었습니다!
+                                    </h3>
+                                    <p className="text-green-700 text-sm mt-1">
+                                        예약 내용은 마이페이지 → 예약 관리에서 확인하실 수 있습니다.
+                                    </p>
                                 </div>
-                            </ServiceCard>
-                        );
-                    })}
-                </div>
-            </SectionBox>
+                            </div>
+                        </div>
+                    )}
 
-            {/* 기존 예약 방식 링크 */}
-            <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <h3 className="text-sm font-medium text-gray-700 mb-2">기존 예약 방식을 원하시나요?</h3>
-                <div className="flex gap-4 text-sm">
-                    <Link href="/mypage/quotes/new" className="text-blue-600 hover:text-blue-800 transition-colors">
-                        📝 견적 신청하기
-                    </Link>
-                    <Link href="/mypage/quotes" className="text-blue-600 hover:text-blue-800 transition-colors">
-                        📋 견적 목록 보기
-                    </Link>
-                    <Link href="/mypage/reservations" className="text-blue-600 hover:text-blue-800 transition-colors">
-                        📅 예약 관리하기
-                    </Link>
-                </div>
-            </div>
+                    {/* 안내 카드 */}
+                    <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 mb-8 text-white">
+                        <h2 className="text-2xl font-bold mb-2">⚡ 빠른 예약 서비스</h2>
+                        <p className="text-blue-100 mb-4">
+                            원하는 서비스를 선택하여 정보를 입력하시면 즉시 예약이 완료됩니다.
+                        </p>
+                        <div className="bg-white/20 rounded-lg p-3">
+                            <p className="text-sm font-medium">✨ 장점</p>
+                            <ul className="text-sm text-blue-100 mt-1 space-y-1">
+                                <li>• 빠른 예약 처리 (견적 대기 시간 없음)</li>
+                                <li>• 실시간 가격 확인 및 예약 확정</li>
+                                <li>• 통합된 예약 정보 관리</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    {/* 현재 진행 중인 견적 정보 */}
+                    {activeQuoteData && (
+                        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                    <span className="text-blue-600 text-xl mr-2">📋</span>
+                                    <div>
+                                        <h3 className="text-blue-800 font-semibold">
+                                            진행 중인 견적: {activeQuoteData.title}
+                                        </h3>
+                                        <p className="text-blue-700 text-sm mt-1">
+                                            생성일: {new Date(activeQuoteData.created_at).toLocaleDateString('ko-KR')} | ID: {activeQuoteData.id}
+                                        </p>
+                                        <p className="text-blue-600 text-xs mt-1">
+                                            이 견적에 서비스를 추가하거나 수정할 수 있습니다.
+                                        </p>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 견적이 없을 때 안내 */}
+                    {!activeQuoteData && (
+                        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                    <span className="text-blue-600 text-xl mr-2">⏳</span>
+                                    <div>
+                                        <h3 className="text-blue-800 font-semibold">
+                                            견적을 생성하는 중입니다...
+                                        </h3>
+                                        <p className="text-blue-700 text-sm mt-1">
+                                            잠시만 기다려 주세요. 자동으로 새 견적이 생성됩니다.
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={createNewBooking}
+                                    className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 whitespace-nowrap"
+                                >
+                                    수동 생성
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    <SectionBox title="예약할 서비스를 선택하세요">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {services.map((service, index) => {
+                                const isCompleted = completedServices.includes(service.type);
+                                const href = getServiceHref(service);
+                                const isAccessible = isServiceAccessible();
+
+                                const ServiceCard = ({ children }: { children: React.ReactNode }) => {
+                                    // 견적이 있을 때만 서비스 접근 가능
+                                    if (activeQuoteData) {
+                                        return <Link href={href} className="group">{children}</Link>;
+                                    } else {
+                                        return <div className="cursor-not-allowed">{children}</div>;
+                                    }
+                                };
+
+                                return (
+                                    <ServiceCard key={index}>
+                                        <div className={`relative overflow-hidden bg-white border border-gray-200 rounded-xl shadow-lg transform transition-all duration-300 ease-out ${activeQuoteData
+                                                ? 'hover:shadow-xl hover:-translate-y-2 cursor-pointer'
+                                                : 'opacity-50 cursor-not-allowed'
+                                            }`}>
+                                            <div className={`absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 opacity-0 transition-opacity duration-300 ${activeQuoteData ? 'group-hover:opacity-5' : ''
+                                                }`}></div>
+
+                                            {/* 완료 배지 */}
+                                            {isCompleted && (
+                                                <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-semibold z-10 flex items-center gap-1">
+                                                    <span>✅</span>
+                                                    <span>완료</span>
+                                                </div>
+                                            )}
+
+                                            <div className="relative p-6">
+                                                <div className="flex items-center mb-4">
+                                                    <div className={`text-4xl mr-4 transform transition-transform duration-300 ${activeQuoteData ? 'group-hover:scale-110' : ''
+                                                        }`}>
+                                                        {service.icon}
+                                                    </div>
+                                                    <div>
+                                                        <h3 className={`text-lg font-bold transition-colors duration-300 ${activeQuoteData
+                                                                ? 'text-gray-800 group-hover:text-blue-700'
+                                                                : 'text-gray-500'
+                                                            }`}>
+                                                            {service.label}
+                                                        </h3>
+                                                        <p className={`text-sm mt-1 ${activeQuoteData ? 'text-gray-600' : 'text-gray-400'
+                                                            }`}>
+                                                            {service.description}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center justify-between">
+                                                    <span className={`text-sm font-medium ${activeQuoteData
+                                                            ? isCompleted ? 'text-green-600' : 'text-blue-600'
+                                                            : 'text-gray-400'
+                                                        }`}>
+                                                        {activeQuoteData
+                                                            ? isCompleted
+                                                                ? '수정하기 →'
+                                                                : '견적에 추가 →'
+                                                            : '견적을 먼저 생성하세요'
+                                                        }
+                                                    </span>
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-300 ${activeQuoteData
+                                                            ? isCompleted
+                                                                ? 'bg-green-100 group-hover:bg-green-200'
+                                                                : 'bg-blue-100 group-hover:bg-blue-200'
+                                                            : 'bg-gray-100'
+                                                        }`}>
+                                                        <span className={`text-sm ${activeQuoteData
+                                                                ? isCompleted ? 'text-green-600' : 'text-blue-600'
+                                                                : 'text-gray-400'
+                                                            }`}>
+                                                            {activeQuoteData ? (isCompleted ? '✏️' : '➕') : '⏸️'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${service.color} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left`}></div>
+                                        </div>
+                                    </ServiceCard>
+                                );
+                            })}
+                        </div>
+                    </SectionBox>
+
+                    {/* 기존 예약 방식 링크 */}
+                    <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <h3 className="text-sm font-medium text-gray-700 mb-2">기존 예약 방식을 원하시나요?</h3>
+                        <div className="flex gap-4 text-sm">
+                            <Link href="/mypage/quotes/new" className="text-blue-600 hover:text-blue-800 transition-colors">
+                                📝 견적 신청하기
+                            </Link>
+                            <Link href="/mypage/quotes" className="text-blue-600 hover:text-blue-800 transition-colors">
+                                📋 견적 목록 보기
+                            </Link>
+                            <Link href="/mypage/reservations" className="text-blue-600 hover:text-blue-800 transition-colors">
+                                📅 예약 관리하기
+                            </Link>
+                        </div>
+                    </div>
                 </>
             )}
         </PageWrapper>

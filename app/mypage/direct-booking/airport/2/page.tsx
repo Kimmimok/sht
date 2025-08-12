@@ -39,7 +39,7 @@ function AirportServiceContent() {
 
     useEffect(() => {
         if (!quoteId) {
-            alert('견적 ID가 필요합니다.');
+            alert('가격 ID가 필요합니다.');
             router.push('/mypage/direct-booking/airport/1');
             return;
         }
@@ -48,7 +48,7 @@ function AirportServiceContent() {
         checkExistingReservation();
     }, [quoteId, router]);
 
-    // 견적 정보 로드
+    // 가격 정보 로드
     const loadQuote = async () => {
         try {
             const { data: quoteData, error } = await supabase
@@ -58,15 +58,15 @@ function AirportServiceContent() {
                 .single();
 
             if (error || !quoteData) {
-                alert('견적을 찾을 수 없습니다.');
+                alert('가격을 찾을 수 없습니다.');
                 router.push('/mypage/direct-booking/airport/1');
                 return;
             }
 
             setQuote(quoteData);
         } catch (error) {
-            console.error('견적 로드 오류:', error);
-            alert('견적 정보를 불러오는 중 오류가 발생했습니다.');
+            console.error('가격 로드 오류:', error);
+            alert('가격 정보를 불러오는 중 오류가 발생했습니다.');
         }
     };
 
@@ -121,7 +121,7 @@ function AirportServiceContent() {
     // 사용 가능한 공항 서비스 로드 (크루즈의 객실 가격 로드 방식과 동일)
     const loadAvailableAirportServices = async () => {
         try {
-            // 견적에 연결된 공항 서비스들 조회
+            // 가격에 연결된 공항 서비스들 조회
             const { data: quoteItems } = await supabase
                 .from('quote_item')
                 .select('service_type, service_ref_id, usage_date')
@@ -342,7 +342,7 @@ function AirportServiceContent() {
             }
 
             alert(isEditMode ? '공항 서비스 예약이 성공적으로 수정되었습니다!' : '공항 서비스 예약이 성공적으로 저장되었습니다!');
-            router.push(`/mypage/direct-booking?completionId=${reservationData.re_id}&service=airport`);
+            router.push('/mypage/direct-booking?completed=airport');
 
         } catch (error) {
             console.error('💥 공항서비스 예약 전체 처리 오류:', error);

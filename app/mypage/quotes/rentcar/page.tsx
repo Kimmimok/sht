@@ -17,7 +17,6 @@ function RentcarQuoteContent() {
   const [isEditMode, setIsEditMode] = useState(false);
 
   // 단계별 옵션들 (rent_price 테이블 기준)
-  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [routeOptions, setRouteOptions] = useState<string[]>([]);
   const [carTypeOptions, setCarTypeOptions] = useState<string[]>([]);
 
@@ -42,10 +41,8 @@ function RentcarQuoteContent() {
       if (isEditMode && itemId && serviceRefId) {
         // 수정 모드: 기존 데이터 로드
         await loadExistingQuoteData();
-      } else {
-        // 새 생성 모드: 카테고리 옵션 로드
-        await loadCategoryOptions();
       }
+      // 카테고리는 고정 버튼으로 처리하므로 별도 로드 불필요
     };
 
     initializeData();
@@ -144,22 +141,21 @@ function RentcarQuoteContent() {
     }
   }, [selectedCategory, selectedRoute, selectedCarType]);
 
-  const loadCategoryOptions = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('rent_price')
-        .select('rent_category')
-        .order('rent_category');
-
-      if (error) throw error;
-
-      // 중복 제거
-      const uniqueCategories = [...new Set(data.map((item: any) => item.rent_category).filter(Boolean))] as string[];
-      setCategoryOptions(uniqueCategories);
-    } catch (error) {
-      console.error('렌트카 카테고리 로드 실패:', error);
+  // 카테고리 표시명 변환 함수
+  const getCategoryDisplayName = (category: string) => {
+    switch (category) {
+      case '당일':
+        return '왕복 당일';
+      case '다른날':
+        return '왕복 다른날';
+      case '안함':
+        return '편도';
+      default:
+        return category;
     }
   };
+
+
 
   const loadRouteOptions = async (category: string) => {
     try {
@@ -362,7 +358,7 @@ function RentcarQuoteContent() {
               onClick={() => router.back()}
               className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
             >
-              ← 뒤로가기
+              ← 뒤로
             </button>
           </div>
 
@@ -397,17 +393,38 @@ function RentcarQuoteContent() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   📋 렌트카 카테고리 *
                 </label>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                >
-                  <option value="">카테고리를 선택하세요</option>
-                  {categoryOptions.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
+                <div className="grid grid-cols-3 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory('당일')}
+                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all text-center ${selectedCategory === '당일'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-white hover:border-blue-300 text-gray-700'
+                      }`}
+                  >
+                    <div className="font-medium">왕복 당일</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory('다른날')}
+                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all text-center ${selectedCategory === '다른날'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-white hover:border-blue-300 text-gray-700'
+                      }`}
+                  >
+                    <div className="font-medium">왕복 다른날</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory('안함')}
+                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all text-center ${selectedCategory === '안함'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-white hover:border-blue-300 text-gray-700'
+                      }`}
+                  >
+                    <div className="font-medium">편도</div>
+                  </button>
+                </div>
               </div>
 
               {/* 2단계: 경로 선택 */}
@@ -469,7 +486,7 @@ function RentcarQuoteContent() {
                 <div className="bg-green-50 p-6 rounded-lg border border-green-200">
                   <h3 className="font-semibold text-green-800 mb-3">✅ 선택 요약</h3>
                   <div className="text-green-700 space-y-2">
-                    <div><strong>카테고리:</strong> {selectedCategory}</div>
+                    <div><strong>카테고리:</strong> {getCategoryDisplayName(selectedCategory)}</div>
                     <div><strong>경로:</strong> {selectedRoute}</div>
                     <div><strong>차량 타입:</strong> {selectedCarType}</div>
                     {selectedRentCode && (

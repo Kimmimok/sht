@@ -1026,10 +1026,10 @@ export default function ManagerReservationsPage() {
                 <div className="p-2 bg-green-500 text-white rounded">
                   <Edit className="w-5 h-5" />
                 </div>
-                <span className="font-medium">일괄 처리</span>
+                <span className="font-medium">예약 처리</span>
               </div>
               <p className="text-sm text-gray-600">
-                여러 예약을 한 번에 처리합니다.
+                예약을 처리합니다.
               </p>
             </button>
 

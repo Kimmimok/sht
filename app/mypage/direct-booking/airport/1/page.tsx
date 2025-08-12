@@ -9,7 +9,7 @@ import SectionBox from '../../../../../components/SectionBox';
 function AirportPriceContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const quoteId = searchParams.get('quoteId'); // URL에서 견적 ID 가져오기
+    const quoteId = searchParams.get('quoteId'); // URL에서 가격 ID 가져오기
 
     const [loading, setLoading] = useState(false);
     const [existingQuoteData, setExistingQuoteData] = useState<any>(null);
@@ -57,8 +57,8 @@ function AirportPriceContent() {
 
     useEffect(() => {
         loadCategoryOptions();
-        
-        // 견적 ID가 있으면 기존 데이터 로드, 없으면 다이렉트 홈으로 리다이렉트
+
+        // 가격 ID가 있으면 기존 데이터 로드, 없으면 다이렉트 홈으로 리다이렉트
         if (quoteId) {
             loadExistingQuote();
         } else {
@@ -178,7 +178,7 @@ function AirportPriceContent() {
         }
     }, [selectedCategory2, selectedRoute2, selectedCarType2]);
 
-    // 기존 견적 데이터 로드
+    // 기존 가격 데이터 로드
     const loadExistingQuote = async () => {
         try {
             const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -188,7 +188,7 @@ function AirportPriceContent() {
                 return;
             }
 
-            console.log('📋 기존 견적 로드 시작:', quoteId);
+            console.log('📋 기존 가격 로드 시작:', quoteId);
 
             const { data: quoteData, error: quoteError } = await supabase
                 .from('quote')
@@ -198,17 +198,17 @@ function AirportPriceContent() {
                 .single();
 
             if (quoteError) {
-                console.error('❌ 견적 조회 오류:', quoteError);
-                alert('견적 정보를 찾을 수 없습니다. 다이렉트 예약 메인으로 이동합니다.');
+                console.error('❌ 가격 조회 오류:', quoteError);
+                alert('가격 정보를 찾을 수 없습니다. 다이렉트 예약 메인으로 이동합니다.');
                 router.push('/mypage/direct-booking');
                 return;
             }
 
-            console.log('✅ 견적 로드 성공:', quoteData);
+            console.log('✅ 가격 로드 성공:', quoteData);
             setExistingQuoteData(quoteData);
         } catch (error) {
-            console.error('❌ 기존 견적 로드 오류:', error);
-            alert('견적 로드 중 오류가 발생했습니다.');
+            console.error('❌ 기존 가격 로드 오류:', error);
+            alert('가격 로드 중 오류가 발생했습니다.');
             router.push('/mypage/direct-booking');
         }
     };
@@ -330,7 +330,7 @@ function AirportPriceContent() {
         }
 
         if (!existingQuoteData) {
-            alert('견적 정보가 없습니다. 페이지를 새로고침해주세요.');
+            alert('가격 정보가 없습니다. 페이지를 새로고침해주세요.');
             return;
         }
 
@@ -346,8 +346,8 @@ function AirportPriceContent() {
 
             const currentDate = new Date().toISOString().split('T')[0];
 
-            // 공항 서비스 1: 메인 서비스 (기존 견적에 추가)
-            console.log('공항 서비스 1 생성 시도 (기존 견적에 추가):', {
+            // 공항 서비스 1: 메인 서비스 (기존 가격에 추가)
+            console.log('공항 서비스 1 생성 시도 (기존 가격에 추가):', {
                 quote_id: existingQuoteData.id,
                 airport_code: selectedAirportCode,
                 passenger_count: 1,
@@ -370,7 +370,7 @@ function AirportPriceContent() {
                 return;
             }
 
-            // quote_item 1: 메인 서비스 (기존 견적의 ID 사용)
+            // quote_item 1: 메인 서비스 (기존 가격의 ID 사용)
             const price1 = await getPriceFromCode(selectedAirportCode);
             const { error: itemError1 } = await supabase
                 .from('quote_item')
@@ -385,13 +385,13 @@ function AirportPriceContent() {
                 });
 
             if (itemError1) {
-                console.error('견적 아이템 1 생성 오류:', itemError1);
+                console.error('가격 아이템 1 생성 오류:', itemError1);
             }
 
-            // 공항 서비스 2: 추가 서비스 (기존 견적에 추가)
+            // 공항 서비스 2: 추가 서비스 (기존 가격에 추가)
             if (selectedAirportCode2) {
-                console.log('공항 서비스 2 생성 시도 (기존 견적에 추가):', {
-                    quote_id: existingQuoteData.quote_id,
+                console.log('공항 서비스 2 생성 시도 (기존 가격에 추가):', {
+                    quote_id: existingQuoteData.id,
                     airport_price_code: selectedAirportCode2,
                     vehicle_count: 1,
                     request_note: `추가 서비스: ${selectedCategory2} ${selectedRoute2} ${selectedCarType2}`
@@ -408,7 +408,7 @@ function AirportPriceContent() {
                     .single();
 
                 if (!airportError2) {
-                    // quote_item 2: 추가 서비스 (기존 견적의 ID 사용)
+                    // quote_item 2: 추가 서비스 (기존 가격의 ID 사용)
                     const price2 = await getPriceFromCode(selectedAirportCode2);
                     const { error: itemError2 } = await supabase
                         .from('quote_item')
@@ -423,15 +423,15 @@ function AirportPriceContent() {
                         });
 
                     if (itemError2) {
-                        console.error('견적 아이템 2 생성 오류:', itemError2);
+                        console.error('가격 아이템 2 생성 오류:', itemError2);
                     }
                 } else {
                     console.error('공항 서비스 2 생성 오류:', airportError2);
                 }
             }
 
-            alert('공항 서비스가 견적에 추가되었습니다. 다음 단계로 이동합니다.');
-            router.push(`/mypage/direct-booking/airport/2?quoteId=${existingQuoteData.quote_id}`);
+            alert('공항 서비스가 가격에 추가되었습니다. 다음 단계로 이동합니다.');
+            router.push(`/mypage/direct-booking/airport/2?quoteId=${existingQuoteData.id}`);
 
         } catch (error) {
             console.error('서비스 추가 오류:', error);
@@ -449,14 +449,14 @@ function AirportPriceContent() {
                     <div>
                         <h1 className="text-lg font-bold text-gray-800">✈️ 공항 서비스 가격 산정</h1>
                         <p className="text-sm text-gray-600 mt-1">
-                            {existingQuoteData 
-                                ? `견적 "${existingQuoteData.title}"에 공항 서비스를 추가합니다`
-                                : '공항 서비스를 선택하면 견적이 자동으로 생성됩니다'
+                            {existingQuoteData
+                                ? `가격 "${existingQuoteData.title}"에 공항 서비스를 추가합니다`
+                                : '공항 서비스를 선택하면 가격이 자동으로 생성됩니다'
                             }
                         </p>
                         {existingQuoteData && (
                             <div className="bg-blue-50 rounded-lg p-2 mt-2">
-                                <p className="text-xs text-blue-600">견적 ID: {existingQuoteData.quote_id}</p>
+                                <p className="text-xs text-blue-600">가격 ID: {existingQuoteData.id}</p>
                             </div>
                         )}
                     </div>
@@ -615,7 +615,7 @@ function AirportPriceContent() {
                 {/* 추가 요청사항 */}
                 <SectionBox title="📝 추가 요청사항">
                     <div>
-                        
+
                         <textarea
                             value={formData.additional_note}
                             onChange={(e) => setFormData(prev => ({ ...prev, additional_note: e.target.value }))}
