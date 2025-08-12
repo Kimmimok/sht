@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function HotelDirectBookingPage() {
+function HotelDirectBookingContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -19,6 +19,14 @@ export default function HotelDirectBookingPage() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
             <p className="ml-4 text-gray-600">호텔 가격 페이지로 이동 중...</p>
         </div>
+    );
+}
+
+export default function HotelDirectBookingPage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center items-center h-64">로딩 중...</div>}>
+            <HotelDirectBookingContent />
+        </Suspense>
     );
 }
 
