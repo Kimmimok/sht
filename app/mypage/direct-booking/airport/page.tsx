@@ -79,11 +79,105 @@ function DirectBookingAirportContent() {
             setUser(user);
         };
 
-        checkUser();
-        loadCategoryOptions();
-    }, [router]);
+        const initializePage = async () => {
+            await checkUser();
+            
+            // URL 파라미터에서 quoteId 확인
+            const urlQuoteId = searchParams.get('quoteId');
+            if (urlQuoteId) {
+                console.log('📋 URL에서 견적 ID 발견:', urlQuoteId);
+                setQuoteId(urlQuoteId);
+                await loadExistingQuote(urlQuoteId);
+                setStep(2); // 기존 견적이 있으면 바로 예약 단계로
+            } else {
+                console.log('🔄 새 견적 생성 모드');
+                // 새 견적 생성 모드
+                setStep(1);
+            }
+            
+            await loadCategoryOptions();
+        };
+
+        initializePage();
+    }, [router, searchParams]);
 
     // === 견적 공항 페이지 함수들 ===
+    
+    // 기존 견적 로드 함수
+    const loadExistingQuote = async (quoteIdParam: string) => {
+        try {
+            console.log('📋 기존 견적 로드 시작:', quoteIdParam);
+            
+            const { data: quoteData, error: quoteError } = await supabase
+                .from('quote')
+                .select('*')
+                .eq('id', quoteIdParam)
+                .single();
+
+            if (quoteError) {
+                console.error('❌ 견적 조회 실패:', quoteError);
+                alert('견적 정보를 찾을 수 없습니다. 새로 생성합니다.');
+                setStep(1);
+                return;
+            }
+
+            console.log('✅ 견적 로드 성공:', quoteData);
+            setQuote(quoteData);
+            
+            // 견적에 연결된 공항 서비스 정보 로드
+            await loadQuoteAirportServices(quoteIdParam);
+            
+        } catch (error) {
+            console.error('❌ 견적 로드 오류:', error);
+            alert('견적 로드 중 오류가 발생했습니다.');
+            setStep(1);
+        }
+    };
+
+    // 견적의 공항 서비스 정보 로드
+    const loadQuoteAirportServices = async (quoteIdParam: string) => {
+        try {
+            const { data: quoteItems, error: itemsError } = await supabase
+                .from('quote_item')
+                .select(`
+                    *,
+                    airport:service_ref_id (
+                        id,
+                        airport_code,
+                        special_requests
+                    )
+                `)
+                .eq('quote_id', quoteIdParam)
+                .eq('service_type', 'airport');
+
+            if (itemsError) {
+                console.error('❌ 견적 아이템 조회 실패:', itemsError);
+                return;
+            }
+
+            if (quoteItems && quoteItems.length > 0) {
+                // 첫 번째 공항 서비스 정보 설정
+                const firstService = quoteItems[0].airport;
+                if (firstService && firstService.airport_price_code) {
+                    setSelectedAirportCode(firstService.airport_price_code);
+                    
+                    // 특별 요청사항 설정
+                    if (firstService.special_requests) {
+                        setQuoteFormData(prev => ({
+                            ...prev,
+                            special_requests: firstService.special_requests
+                        }));
+                    }
+                }
+                
+                console.log('✅ 견적 공항 서비스 로드 완료:', quoteItems);
+            }
+            
+        } catch (error) {
+            console.error('❌ 견적 공항 서비스 로드 오류:', error);
+        }
+    };
+
     // 신청 종류에 따른 자동 카테고리 매핑
     const getCategoryFromApplyType = (type: 'pickup' | 'sending' | 'both') => {
         switch (type) {
@@ -303,23 +397,44 @@ function DirectBookingAirportContent() {
                 return;
             }
 
-            // 견적 생성
-            const { data: newQuote, error: quoteError } = await supabase
-                .from('quote')
-                .insert({
-                    user_id: user.id,
-                    title: `공항 서비스 견적`,
-                    status: 'pending',
-                    created_at: new Date().toISOString()
-                })
-                .select()
-                .single();
+            // 기존 견적이 있으면 해당 견적 사용, 없으면 새로 생성
+            let currentQuote;
+            if (quoteId) {
+                // 기존 견적 사용
+                const { data: existingQuote, error: quoteError } = await supabase
+                    .from('quote')
+                    .select('*')
+                    .eq('id', quoteId)
+                    .single();
 
-            if (quoteError) throw quoteError;
+                if (quoteError) {
+                    alert('기존 견적을 찾을 수 없습니다.');
+                    return;
+                }
+                currentQuote = existingQuote;
+                console.log('✅ 기존 견적 사용:', currentQuote);
+            } else {
+                // 새 견적 생성
+                const { data: newQuote, error: quoteError } = await supabase
+                    .from('quote')
+                    .insert({
+                        user_id: user.id,
+                        title: `공항 서비스 견적`,
+                        status: 'draft',
+                        created_at: new Date().toISOString()
+                    })
+                    .select()
+                    .single();
+
+                if (quoteError) throw quoteError;
+                currentQuote = newQuote;
+                setQuoteId(newQuote.id);
+                console.log('✅ 새 견적 생성:', currentQuote);
+            }
 
             // 공항 서비스 저장 (A)
             const airportData = {
-                quote_id: newQuote.id,
+                quote_id: currentQuote.id,
                 airport_price_code: selectedAirportCode,
                 special_requests: quoteFormData.special_requests || null
             };
@@ -334,7 +449,7 @@ function DirectBookingAirportContent() {
 
             // 견적 아이템 생성 (A)
             const quoteItemData = {
-                quote_id: newQuote.id,
+                quote_id: currentQuote.id,
                 service_type: 'airport',
                 service_ref_id: airportResponse.id,
                 quantity: 1,
@@ -351,7 +466,7 @@ function DirectBookingAirportContent() {
             // 두 번째 서비스가 있는 경우 추가 (B)
             if (selectedAirportCode2) {
                 const airport2Data = {
-                    quote_id: newQuote.id,
+                    quote_id: currentQuote.id,
                     airport_price_code: selectedAirportCode2,
                     special_requests: quoteFormData.special_requests || null
                 };
@@ -365,7 +480,7 @@ function DirectBookingAirportContent() {
                 if (airport2Error) throw airport2Error;
 
                 const quoteItem2Data = {
-                    quote_id: newQuote.id,
+                    quote_id: currentQuote.id,
                     service_type: 'airport',
                     service_ref_id: airport2Response.id,
                     quantity: 1,
@@ -380,8 +495,7 @@ function DirectBookingAirportContent() {
                 if (item2Error) throw item2Error;
             }
 
-            setQuoteId(newQuote.id);
-            setQuote(newQuote);
+            setQuote(currentQuote);
             setStep(2);
 
             // 예약을 위한 서비스 로드
@@ -517,6 +631,17 @@ function DirectBookingAirportContent() {
             {/* Step 1: 견적 공항 페이지 내용 */}
             {step === 1 && (
                 <SectionBox title="1단계: 공항 서비스 견적">
+                    {/* 기존 견적 정보 표시 */}
+                    {quoteId && quote && (
+                        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <h3 className="text-lg font-medium text-blue-800 mb-2">📋 기존 견적 정보</h3>
+                            <p className="text-blue-700"><strong>견적 ID:</strong> {quote.id}</p>
+                            <p className="text-blue-700"><strong>제목:</strong> {quote.title}</p>
+                            <p className="text-blue-700"><strong>상태:</strong> {quote.status}</p>
+                            <p className="text-sm text-blue-600 mt-2">기존 견적에 공항 서비스를 추가합니다.</p>
+                        </div>
+                    )}
+
                     <div className="space-y-6">
                         {/* 신청 타입 선택 */}
                         <div>

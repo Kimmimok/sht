@@ -58,11 +58,12 @@ function AirportPriceContent() {
     useEffect(() => {
         loadCategoryOptions();
         
-        // 견적 ID가 있으면 기존 데이터 로드, 없으면 새 견적 생성
+        // 견적 ID가 있으면 기존 데이터 로드, 없으면 다이렉트 홈으로 리다이렉트
         if (quoteId) {
             loadExistingQuote();
         } else {
-            createNewQuoteIfNeeded();
+            alert('잘못된 접근입니다. 다이렉트 예약 메인 페이지에서 시작해주세요.');
+            router.push('/mypage/direct-booking');
         }
     }, [quoteId]);
 
@@ -187,78 +188,28 @@ function AirportPriceContent() {
                 return;
             }
 
+            console.log('📋 기존 견적 로드 시작:', quoteId);
+
             const { data: quoteData, error: quoteError } = await supabase
                 .from('quote')
                 .select('*')
-                .eq('quote_id', quoteId)
+                .eq('id', quoteId) // quote_id 대신 id 사용
                 .eq('user_id', user.id)
                 .single();
 
             if (quoteError) {
-                console.error('견적 조회 오류:', quoteError);
-                alert('견적 정보를 찾을 수 없습니다.');
+                console.error('❌ 견적 조회 오류:', quoteError);
+                alert('견적 정보를 찾을 수 없습니다. 다이렉트 예약 메인으로 이동합니다.');
                 router.push('/mypage/direct-booking');
                 return;
             }
 
+            console.log('✅ 견적 로드 성공:', quoteData);
             setExistingQuoteData(quoteData);
         } catch (error) {
-            console.error('기존 견적 로드 오류:', error);
-        }
-    };
-
-    // 새 견적 생성 (견적 ID가 없는 경우 자동 생성)
-    const createNewQuoteIfNeeded = async () => {
-        try {
-            const { data: { user }, error: userError } = await supabase.auth.getUser();
-            if (userError || !user) {
-                alert('로그인이 필요합니다.');
-                router.push('/login');
-                return;
-            }
-
-            // 사용자의 기존 draft 견적 확인
-            const { data: existingQuotes } = await supabase
-                .from('quote')
-                .select('id, quote_id, title')
-                .eq('user_id', user.id)
-                .eq('status', 'draft')
-                .order('created_at', { ascending: false })
-                .limit(1);
-
-            if (existingQuotes && existingQuotes.length > 0) {
-                // 기존 견적이 있으면 해당 견적 사용
-                setExistingQuoteData(existingQuotes[0]);
-                router.replace(`/mypage/direct-booking/airport/1?quoteId=${existingQuotes[0].quote_id}`);
-                return;
-            }
-
-            // 새 견적 생성 (견적 ID가 없는 경우 누구나 생성 가능)
-            const quoteTitle = await generateQuoteTitle(user.id);
-            const newQuoteId = `Q${Date.now()}${Math.random().toString(36).substr(2, 5)}`;
-
-            const { data: quoteData, error: quoteError } = await supabase
-                .from('quote')
-                .insert({
-                    quote_id: newQuoteId,
-                    user_id: user.id,
-                    title: quoteTitle,
-                    status: 'draft'
-                })
-                .select()
-                .single();
-
-            if (quoteError) {
-                console.error('견적 생성 오류:', quoteError);
-                alert('견적 생성 중 오류가 발생했습니다.');
-                return;
-            }
-
-            setExistingQuoteData(quoteData);
-            // URL 업데이트
-            router.replace(`/mypage/direct-booking/airport/1?quoteId=${newQuoteId}`);
-        } catch (error) {
-            console.error('새 견적 생성 오류:', error);
+            console.error('❌ 기존 견적 로드 오류:', error);
+            alert('견적 로드 중 오류가 발생했습니다.');
+            router.push('/mypage/direct-booking');
         }
     };
 
@@ -371,46 +322,6 @@ function AirportPriceContent() {
         }
     };
 
-    // 사용자 이름 기반 견적 타이틀 생성 함수
-    const generateQuoteTitle = async (userId: string, userName?: string) => {
-        try {
-            // 사용자 이름이 없으면 users 테이블에서 조회
-            let finalUserName = userName;
-            if (!finalUserName) {
-                const { data: userData, error: userError } = await supabase
-                    .from('users')
-                    .select('name')
-                    .eq('id', userId)
-                    .single();
-                
-                if (!userError && userData?.name) {
-                    finalUserName = userData.name;
-                } else {
-                    // users 테이블에 없으면 auth 정보에서 가져오기
-                    const { data: { user } } = await supabase.auth.getUser();
-                    finalUserName = user?.user_metadata?.name || user?.email?.split('@')[0] || '견적자';
-                }
-            }
-
-            // 해당 사용자의 기존 견적 개수 조회하여 번호 생성
-            const { data: existingQuotes, error: countError } = await supabase
-                .from('quote')
-                .select('id')
-                .eq('user_id', userId)
-                .order('created_at', { ascending: false });
-
-            if (countError) {
-                console.error('기존 견적 조회 오류:', countError);
-            }
-
-            const quoteNumber = (existingQuotes?.length || 0) + 1;
-            return `${finalUserName}${quoteNumber}`;
-        } catch (error) {
-            console.error('견적 타이틀 생성 오류:', error);
-            return `견적자${Date.now()}`;
-        }
-    };
-
     // 폼 제출
     const handleSubmit = async () => {
         if (!selectedAirportCode) {
@@ -437,18 +348,18 @@ function AirportPriceContent() {
 
             // 공항 서비스 1: 메인 서비스 (기존 견적에 추가)
             console.log('공항 서비스 1 생성 시도 (기존 견적에 추가):', {
-                quote_id: existingQuoteData.quote_id,
-                airport_price_code: selectedAirportCode,
-                vehicle_count: formData.vehicle_count,
-                request_note: formData.additional_note || ''
+                quote_id: existingQuoteData.id,
+                airport_code: selectedAirportCode,
+                passenger_count: 1,
+                special_requests: formData.additional_note || ''
             });
 
             const { data: airportData1, error: airportError1 } = await supabase
                 .from('airport')
                 .insert({
-                    airport_price_code: selectedAirportCode,
-                    vehicle_count: formData.vehicle_count,
-                    request_note: formData.additional_note || ''
+                    airport_code: selectedAirportCode,
+                    passenger_count: 1,
+                    special_requests: formData.additional_note || ''
                 })
                 .select()
                 .single();
@@ -554,7 +465,7 @@ function AirportPriceContent() {
                 {/* 기본 정보 삭제됨 */}
 
                 {/* 신청 유형 - 작은 버튼 방식 */}
-                <SectionBox title="신청 유형">
+                <SectionBox title="🔄 신청 유형">
                     <div className="space-y-4">
                         <div className="flex gap-2">
                             <button
@@ -565,7 +476,7 @@ function AirportPriceContent() {
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                     }`}
                             >
-                                🔄 픽업+샌딩
+                                픽업+샌딩
                             </button>
                             <button
                                 type="button"
@@ -575,7 +486,7 @@ function AirportPriceContent() {
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                     }`}
                             >
-                                🚗 픽업
+                                픽업
                             </button>
                             <button
                                 type="button"
@@ -585,7 +496,7 @@ function AirportPriceContent() {
                                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                     }`}
                             >
-                                ✈️ 샌딩
+                                샌딩
                             </button>
                         </div>
                         <div>

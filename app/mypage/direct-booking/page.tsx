@@ -406,7 +406,6 @@ function DirectBookingContent() {
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 mb-8 text-white">
                 <h2 className="text-2xl font-bold mb-2">⚡ 빠른 예약 서비스</h2>
                 <p className="text-blue-100 mb-4">
-                    견적 신청 과정을 생략하고 바로 예약하실 수 있습니다.<br />
                     원하는 서비스를 선택하여 정보를 입력하시면 즉시 예약이 완료됩니다.
                 </p>
                 <div className="bg-white/20 rounded-lg p-3">
@@ -437,12 +436,7 @@ function DirectBookingContent() {
                                 </p>
                             </div>
                         </div>
-                        <button
-                            onClick={createNewBooking}
-                            className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 whitespace-nowrap"
-                        >
-                            새 견적 생성
-                        </button>
+                      
                     </div>
                 </div>
             )}
