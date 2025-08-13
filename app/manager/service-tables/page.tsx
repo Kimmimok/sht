@@ -26,6 +26,7 @@ export default function ManagerServiceTablesPage() {
     const [serviceData, setServiceData] = useState<ServiceData[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [selectedItem, setSelectedItem] = useState<ServiceData | null>(null);
     const [showDetails, setShowDetails] = useState(false);
 
@@ -37,96 +38,122 @@ export default function ManagerServiceTablesPage() {
         { id: 'rentcar', label: '렌터카', icon: <Car className="w-4 h-4" />, color: 'red' }
     ];
 
-    // 서비스별 데이터 로드
+    // 서비스별 데이터 로드 (중첩 embed 회피: 서비스 → 예약 → 사용자 순으로 별도 조회 후 병합)
     const loadServiceData = async (serviceType: string) => {
         setLoading(true);
+        setLoadError(null);
         try {
             let tableName = '';
-            let selectQuery = '*';
+            // 서비스별 기본 정렬 키 후보
+            const orderCandidates: string[] = [];
 
             switch (serviceType) {
                 case 'cruise':
                     tableName = 'reservation_cruise';
-                    selectQuery = `
-                        *,
-                        reservation:reservation_id (
-                            re_id,
-                            re_user_id,
-                            re_status,
-                            re_created_at,
-                            users:re_user_id (name, email, phone)
-                        )
-                    `;
+                    orderCandidates.push('created_at', 'checkin', 'id');
                     break;
                 case 'airport':
                     tableName = 'reservation_airport';
-                    selectQuery = `
-                        *,
-                        reservation:reservation_id (
-                            re_id,
-                            re_user_id,
-                            re_status,
-                            re_created_at,
-                            users:re_user_id (name, email, phone)
-                        )
-                    `;
+                    orderCandidates.push('ra_datetime', 'created_at', 'id');
                     break;
                 case 'hotel':
                     tableName = 'reservation_hotel';
-                    selectQuery = `
-                        *,
-                        reservation:reservation_id (
-                            re_id,
-                            re_user_id,
-                            re_status,
-                            re_created_at,
-                            users:re_user_id (name, email, phone)
-                        )
-                    `;
+                    orderCandidates.push('checkin_date', 'created_at', 'id');
                     break;
                 case 'tour':
                     tableName = 'reservation_tour';
-                    selectQuery = `
-                        *,
-                        reservation:reservation_id (
-                            re_id,
-                            re_user_id,
-                            re_status,
-                            re_created_at,
-                            users:re_user_id (name, email, phone)
-                        )
-                    `;
+                    orderCandidates.push('created_at', 'id');
                     break;
                 case 'rentcar':
                     tableName = 'reservation_rentcar';
-                    selectQuery = `
-                        *,
-                        reservation:reservation_id (
-                            re_id,
-                            re_user_id,
-                            re_status,
-                            re_created_at,
-                            users:re_user_id (name, email, phone)
-                        )
-                    `;
+                    orderCandidates.push('pickup_datetime', 'created_at', 'id');
                     break;
                 default:
                     return;
             }
 
-            const { data, error } = await supabase
-                .from(tableName)
-                .select(selectQuery)
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                console.error(`${serviceType} 데이터 로딩 실패:`, error);
-                setServiceData([]);
-            } else {
-                setServiceData(data || []);
+            // 1) 서비스 행만 먼저 조회
+            let serviceRows: any[] = [];
+            let lastError: any = null;
+            for (const col of orderCandidates) {
+                const { data, error } = await supabase.from(tableName).select('*').order(col as any, { ascending: false });
+                if (!error) {
+                    serviceRows = data || [];
+                    lastError = null;
+                    break;
+                } else {
+                    lastError = error;
+                    console.warn(`[${serviceType}] ${col} 정렬 실패, 다음 후보 시도:`, error.message || error);
+                }
             }
+            if (!serviceRows.length && lastError) {
+                // 마지막으로 정렬 없이 재시도
+                const { data, error } = await supabase.from(tableName).select('*');
+                if (error) {
+                    setLoadError(error.message || '데이터 로딩 실패');
+                    setServiceData([]);
+                    setLoading(false);
+                    return;
+                }
+                serviceRows = data || [];
+            }
+
+            if (serviceRows.length === 0) {
+                setServiceData([]);
+                setLoading(false);
+                return;
+            }
+
+            // 2) 예약 정보 일괄 조회
+            const reservationIds = Array.from(new Set(serviceRows.map(r => r.reservation_id).filter(Boolean)));
+            let reservationMap: Record<string, any> = {};
+            if (reservationIds.length) {
+                const { data: reservations, error: resErr } = await supabase
+                    .from('reservation')
+                    .select('re_id, re_user_id, re_status, re_created_at')
+                    .in('re_id', reservationIds);
+                if (resErr) {
+                    console.warn(`[${serviceType}] 예약 조회 실패:`, resErr.message || resErr);
+                } else if (reservations) {
+                    reservationMap = (reservations as any[]).reduce((acc, r) => {
+                        acc[r.re_id] = r;
+                        return acc;
+                    }, {} as Record<string, any>);
+                }
+            }
+
+            // 3) 사용자 정보 일괄 조회 (예약에서 사용자ID 수집)
+            const userIds = Array.from(new Set(Object.values(reservationMap).map((r: any) => r.re_user_id).filter(Boolean)));
+            let userMap: Record<string, any> = {};
+            if (userIds.length) {
+                const { data: users, error: userErr } = await supabase
+                    .from('users')
+                    .select('id, name, email, phone')
+                    .in('id', userIds);
+                if (userErr) {
+                    console.warn(`[${serviceType}] 사용자 조회 실패:`, userErr.message || userErr);
+                } else if (users) {
+                    userMap = (users as any[]).reduce((acc, u) => {
+                        acc[u.id] = u;
+                        return acc;
+                    }, {} as Record<string, any>);
+                }
+            }
+
+            // 4) 병합: 각 서비스 행에 reservation, users 연결
+            const merged = serviceRows.map(row => {
+                const res = reservationMap[row.reservation_id];
+                const user = res ? userMap[res.re_user_id] : undefined;
+                return {
+                    ...row,
+                    reservation: res ? { ...res, users: user } : undefined
+                } as ServiceData;
+            });
+
+            setServiceData(merged);
         } catch (error) {
             console.error('서비스 데이터 로딩 실패:', error);
+            setLoadError((error as any)?.message || '데이터 로딩 실패');
             setServiceData([]);
         } finally {
             setLoading(false);
@@ -325,7 +352,13 @@ export default function ManagerServiceTablesPage() {
                         </h3>
                     </div>
 
-                    {filteredData.length === 0 ? (
+                    {loadError && (
+                        <div className="p-4 bg-red-50 text-red-700 text-sm border-t border-red-200">
+                            로딩 오류: {loadError}
+                        </div>
+                    )}
+
+                    {filteredData.length === 0 && !loadError ? (
                         <div className="p-8 text-center">
                             <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                             <h3 className="text-lg font-medium text-gray-600 mb-2">데이터가 없습니다</h3>
