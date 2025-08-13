@@ -103,7 +103,7 @@ export default function ManagerAnalyticsPage() {
             console.error('견적 데이터 조회 오류:', quotesError);
           } else {
             const recentQuotes = quotes?.filter(q => new Date(q.created_at) >= last30Days) || [];
-            
+
             // 견적 7일 트렌드
             const quoteTrend = [...last7Days];
             for (const q of recentQuotes) {
@@ -776,11 +776,10 @@ export default function ManagerAnalyticsPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  activeTab === tab.id
+                className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === tab.id
                     ? `bg-${tab.color}-600 text-white shadow-md`
                     : 'text-gray-600 hover:text-gray-900 hover:bg-white'
-                }`}
+                  }`}
               >
                 {tab.icon}
                 <span>{tab.label}</span>

@@ -148,14 +148,27 @@ function ReservationViewContent() {
             };
 
             const tableName = serviceTableMap[reservationRow.re_type];
+            console.log('🔍 서비스 조회 시작:', {
+                serviceType: reservationRow.re_type,
+                tableName,
+                reservationId
+            });
+
             if (tableName) {
-                const { data: serviceData } = await supabase
+                const { data: serviceData, error: serviceError } = await supabase
                     .from(tableName)
                     .select('*')
                     .eq('reservation_id', reservationId)
                     .order('created_at', { ascending: false });
 
-                serviceDetails = Array.isArray(serviceData) ? serviceData : (serviceData ? [serviceData] : []);
+                if (serviceError) {
+                    console.error(`🚨 ${tableName} 데이터 조회 오류:`, serviceError);
+                } else {
+                    serviceDetails = Array.isArray(serviceData) ? serviceData : (serviceData ? [serviceData] : []);
+                    console.log(`✅ ${tableName} 데이터 조회 완료:`, serviceDetails?.length || 0, '건');
+                }
+            } else {
+                console.warn('⚠️ 알 수 없는 서비스 타입:', reservationRow.re_type);
             }
 
             // 추가 연결 데이터: 크루즈 차량
@@ -364,68 +377,81 @@ function ReservationViewContent() {
         cruise: {
             reservation_id: '예약 ID',
             room_price_code: '객실 가격 코드',
-            checkin: '체크인',
+            checkin: '체크인 날짜',
             guest_count: '탑승객 수',
             unit_price: '단가',
-            boarding_assist: '승선 지원',
+            boarding_assist: '승선 지원 여부',
             room_total_price: '객실 총액',
             request_note: '요청사항',
-            created_at: '생성일시'
+            created_at: '예약 생성일시',
+            nights: '숙박 일수',
+            passenger_names: '승객 명단'
         },
         airport: {
             reservation_id: '예약 ID',
             airport_price_code: '공항 가격 코드',
             ra_airport_location: '공항 위치',
             ra_flight_number: '항공편 번호',
-            ra_datetime: '일시',
+            ra_datetime: '운행 일시',
             ra_stopover_location: '경유지',
-            ra_stopover_wait_minutes: '경유 대기(분)',
+            ra_stopover_wait_minutes: '경유 대기시간 (분)',
             ra_car_count: '차량 수',
             ra_passenger_count: '승객 수',
-            ra_luggage_count: '수하물 수',
+            ra_luggage_count: '수하물 개수',
             request_note: '요청사항',
-            ra_is_processed: '처리 여부',
-            created_at: '생성일시'
+            ra_is_processed: '처리 완료 여부',
+            created_at: '예약 생성일시',
+            ra_pickup_location: '픽업 장소',
+            ra_dropoff_location: '하차 장소'
         },
         hotel: {
             reservation_id: '예약 ID',
             hotel_price_code: '호텔 가격 코드',
             schedule: '스케줄',
             room_count: '객실 수',
-            checkin_date: '체크인',
+            checkin_date: '체크인 날짜',
+            checkout_date: '체크아웃 날짜',
+            nights: '숙박 일수',
             breakfast_service: '조식 서비스',
-            hotel_category: '호텔 카테고리',
+            hotel_category: '호텔 등급',
             guest_count: '투숙객 수',
-            total_price: '총액',
+            total_price: '총 결제 금액',
             request_note: '요청사항',
-            created_at: '생성일시'
+            created_at: '예약 생성일시'
         },
         rentcar: {
             reservation_id: '예약 ID',
             rentcar_price_code: '렌터카 가격 코드',
-            rentcar_count: '렌터카 수',
+            rentcar_count: '렌터카 수량',
             unit_price: '단가',
             car_count: '차량 수',
             passenger_count: '승객 수',
             pickup_datetime: '픽업 일시',
+            return_datetime: '반납 일시',
             pickup_location: '픽업 장소',
+            return_location: '반납 장소',
             destination: '목적지',
             via_location: '경유지',
-            via_waiting: '경유 대기',
-            luggage_count: '수하물 수',
-            total_price: '총액',
+            via_waiting: '경유 대기시간',
+            luggage_count: '수하물 개수',
+            rental_days: '렌터카 이용 일수',
+            driver_count: '운전자 수',
+            total_price: '총 결제 금액',
             request_note: '요청사항',
-            created_at: '생성일시'
+            created_at: '예약 생성일시'
         },
         tour: {
             reservation_id: '예약 ID',
             tour_price_code: '투어 가격 코드',
             tour_capacity: '투어 정원',
+            tour_date: '투어 날짜',
+            participant_count: '참가자 수',
             pickup_location: '픽업 장소',
             dropoff_location: '하차 장소',
-            total_price: '총액',
+            tour_duration: '투어 소요시간',
+            total_price: '총 결제 금액',
             request_note: '요청사항',
-            created_at: '생성일시'
+            created_at: '예약 생성일시'
         },
         cruise_car: {
             reservation_id: '예약 ID',
@@ -444,64 +470,79 @@ function ReservationViewContent() {
             reservation_id: '예약 ID',
             vehicle_number: '차량 번호',
             seat_number: '좌석 수',
-            color_label: '색상 라벨',
-            created_at: '생성일시'
+            color_label: '차량 색상',
+            created_at: '등록일시'
         }
     };
 
     const priceLabelMap: Record<string, Record<string, string>> = {
         room_price: {
             room_code: '객실 코드',
-            schedule: '스케줄',
-            room_category: '객실 카테고리',
-            cruise: '크루즈',
+            schedule: '운항 스케줄',
+            room_category: '객실 등급',
+            cruise: '크루즈명',
             room_type: '객실 타입',
-            price: '가격',
-            start_date: '시작일',
-            end_date: '종료일',
-            payment: '결제 방식'
+            price: '가격 (원)',
+            start_date: '운항 시작일',
+            end_date: '운항 종료일',
+            payment: '결제 방식',
+            base_price: '기본 가격',
+            adult_price: '성인 가격',
+            child_price: '소아 가격'
         },
         airport_price: {
-            airport_code: '공항 코드',
-            airport_category: '카테고리',
-            airport_route: '노선',
-            airport_car_type: '차량 타입',
-            price: '가격'
+            airport_code: '공항 서비스 코드',
+            airport_category: '서비스 카테고리',
+            airport_route: '운행 노선',
+            airport_car_type: '차량 종류',
+            price: '가격 (원)',
+            base_price: '기본 요금',
+            distance_km: '운행 거리 (km)',
+            duration_minutes: '소요 시간 (분)'
         },
         hotel_price: {
             hotel_code: '호텔 코드',
             hotel_name: '호텔명',
             room_name: '객실명',
             room_type: '객실 타입',
-            price: '가격',
-            start_date: '시작일',
-            end_date: '종료일',
-            weekday_type: '요일 구분'
+            price: '1박 가격 (원)',
+            start_date: '적용 시작일',
+            end_date: '적용 종료일',
+            weekday_type: '요일 구분',
+            season: '성수기/비수기',
+            breakfast_included: '조식 포함 여부'
         },
         rent_price: {
-            rent_code: '렌트 코드',
-            rent_type: '렌트 타입',
-            rent_category: '카테고리',
-            rent_route: '경로',
-            rent_car_type: '차량 타입',
-            price: '가격'
+            rent_code: '렌터카 코드',
+            rent_type: '렌터카 종류',
+            rent_category: '차량 등급',
+            rent_route: '이용 경로',
+            rent_car_type: '차량 모델',
+            price: '1일 가격 (원)',
+            base_price: '기본 요금',
+            insurance_included: '보험 포함 여부',
+            fuel_type: '연료 타입'
         },
         tour_price: {
             tour_code: '투어 코드',
             tour_name: '투어명',
-            tour_capacity: '정원',
-            tour_vehicle: '이동수단',
-            tour_type: '투어 타입',
-            price: '가격'
+            tour_capacity: '최대 인원',
+            tour_vehicle: '이동 수단',
+            tour_type: '투어 유형',
+            price: '1인 가격 (원)',
+            duration_hours: '소요 시간 (시간)',
+            includes_meal: '식사 포함 여부',
+            guide_included: '가이드 포함 여부'
         },
         car_price: {
-            car_code: '차량 코드',
-            car_category: '카테고리',
-            cruise: '크루즈',
-            car_type: '차량 타입',
-            price: '가격',
-            schedule: '스케줄',
-            passenger_count: '승객 수'
+            car_code: '차량 서비스 코드',
+            car_category: '서비스 카테고리',
+            cruise: '연결 크루즈',
+            car_type: '차량 종류',
+            price: '가격 (원)',
+            schedule: '운행 스케줄',
+            passenger_count: '승객 정원',
+            luggage_capacity: '수하물 용량'
         }
     };
 
@@ -779,36 +820,95 @@ function ReservationViewContent() {
                 )}
 
                 {/* 서비스 상세 정보 */}
-                {reservation.serviceDetails && (
-                    <div className="bg-white rounded-lg shadow-md p-6">
-                        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                            {getTypeIcon(reservation.re_type)}
-                            {getTypeName(reservation.re_type)} 서비스 상세
-                        </h3>
+                <div className="bg-white rounded-lg shadow-md p-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                        {getTypeIcon(reservation.re_type)}
+                        {getTypeName(reservation.re_type)} 서비스 상세
+                    </h3>
 
-                        {renderServiceWithPrices(
-                            Array.isArray(reservation.serviceDetails) ? reservation.serviceDetails : [reservation.serviceDetails],
-                            reservation.re_type as any,
-                            reservation.servicePriceDetails,
-                            (reservation.re_type === 'cruise' ? 'room_price' :
-                                reservation.re_type === 'airport' ? 'airport_price' :
-                                    reservation.re_type === 'hotel' ? 'hotel_price' :
-                                        reservation.re_type === 'rentcar' ? 'rent_price' :
-                                            reservation.re_type === 'tour' ? 'tour_price' : 'room_price') as any
-                        )}
+                    {reservation.serviceDetails && reservation.serviceDetails.length > 0 ? (
+                        <>
+                            {/* 서비스별 렌더링 개선 */}
+                            {reservation.re_type === 'cruise' && renderServiceWithPrices(
+                                Array.isArray(reservation.serviceDetails) ? reservation.serviceDetails : [reservation.serviceDetails],
+                                'cruise',
+                                reservation.servicePriceDetails,
+                                'room_price'
+                            )}
 
-                        {reservation.serviceDetails.request_note && (
-                            <div className="mt-4">
-                                <h4 className="font-medium text-gray-700 mb-2">고객 요청사항</h4>
-                                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                                    <p className="text-sm text-gray-700">
-                                        {reservation.serviceDetails.request_note}
+                            {reservation.re_type === 'airport' && renderServiceWithPrices(
+                                Array.isArray(reservation.serviceDetails) ? reservation.serviceDetails : [reservation.serviceDetails],
+                                'airport',
+                                reservation.servicePriceDetails,
+                                'airport_price'
+                            )}
+
+                            {reservation.re_type === 'hotel' && renderServiceWithPrices(
+                                Array.isArray(reservation.serviceDetails) ? reservation.serviceDetails : [reservation.serviceDetails],
+                                'hotel',
+                                reservation.servicePriceDetails,
+                                'hotel_price'
+                            )}
+
+                            {reservation.re_type === 'rentcar' && renderServiceWithPrices(
+                                Array.isArray(reservation.serviceDetails) ? reservation.serviceDetails : [reservation.serviceDetails],
+                                'rentcar',
+                                reservation.servicePriceDetails,
+                                'rent_price'
+                            )}
+
+                            {reservation.re_type === 'tour' && renderServiceWithPrices(
+                                Array.isArray(reservation.serviceDetails) ? reservation.serviceDetails : [reservation.serviceDetails],
+                                'tour',
+                                reservation.servicePriceDetails,
+                                'tour_price'
+                            )}
+
+                            {/* 서비스 타입별 추가 정보 표시 */}
+                            {!['cruise', 'airport', 'hotel', 'rentcar', 'tour'].includes(reservation.re_type) && (
+                                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                    <p className="text-sm text-yellow-800 mb-3">
+                                        ⚠️ 알 수 없는 서비스 타입: {reservation.re_type}
                                     </p>
+                                    {renderTableList(
+                                        Array.isArray(reservation.serviceDetails) ? reservation.serviceDetails : [reservation.serviceDetails],
+                                        'reservation'
+                                    )}
                                 </div>
+                            )}
+
+                            {/* 고객 요청사항 - 각 서비스별로 처리 */}
+                            {(() => {
+                                const serviceData = Array.isArray(reservation.serviceDetails) ? reservation.serviceDetails[0] : reservation.serviceDetails;
+                                const requestNote = serviceData?.request_note;
+
+                                if (requestNote) {
+                                    return (
+                                        <div className="mt-4">
+                                            <h4 className="font-medium text-gray-700 mb-2">고객 요청사항</h4>
+                                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                                <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                                    {requestNote}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
+                        </>
+                    ) : (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                            <div className="text-gray-500 mb-2">
+                                <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                <p className="text-sm">서비스 상세 정보가 없습니다.</p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    서비스 타입: {reservation.re_type} | 예약 ID: {reservation.re_id}
+                                </p>
                             </div>
-                        )}
-                    </div>
-                )}
+                        </div>
+                    )}
+                </div>
 
                 {/* 크루즈 연결 차량 (reservation_cruise_car) */}
                 {reservation.re_type === 'cruise' && reservation.serviceDetailsExtra && (
