@@ -11,13 +11,52 @@
 /* 🎯 HTML 및 폰트 초기화 */
 html,
 body {
-  max-width: 100vw;
+  width: 100%;
+  max-width: 100%;
   overflow-x: hidden;
   color: var(--foreground);
   background: var(--background);
   font-family: 'Pretendard', 'Arial', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* 🎯 매니저 패널 최대 너비 강제 적용 */
+#__next {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* 🎯 최상위 컨테이너만 전체 너비 사용 */
+.min-h-screen {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* 🎯 테이블은 컨테이너 내에서 최대 너비 사용 */
+.overflow-x-auto {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* 🎯 body와 html에서 모든 여백 제거 */
+body,
+html {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* 🎯 모든 div 컨테이너의 기본 box-sizing 설정 */
+* {
+  box-sizing: border-box !important;
 }
 
 * {
@@ -52,23 +91,23 @@ select {
   h1 {
     @apply text-lg font-semibold text-gray-700;
   }
-  
+
   h2 {
     @apply text-base font-medium text-gray-600;
   }
-  
+
   h3 {
     @apply text-sm font-medium text-gray-600;
   }
-  
+
   .title-large {
     @apply text-lg font-semibold text-gray-700;
   }
-  
+
   .title-medium {
     @apply text-base font-medium text-gray-600;
   }
-  
+
   .title-small {
     @apply text-sm font-medium text-gray-600;
   }

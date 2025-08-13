@@ -73,6 +73,8 @@ export default function ManagerLayout({ children, title, activeTab }: ManagerLay
     { id: 'analytics', label: '분석 대시보드', path: '/manager/analytics', icon: '📊' },
     { id: 'quotes', label: '견적 관리', path: '/manager/quotes', icon: '📋' },
     { id: 'reservations', label: '예약 관리', path: '/manager/reservations', icon: '🎫' },
+    { id: 'reservation-details', label: '예약상세', path: '/manager/reservation-details', icon: '📝' },
+    { id: 'service-tables', label: '서비스별 조회', path: '/manager/service-tables', icon: '🔍' },
     { id: 'payments', label: '결제 관리', path: '/manager/payments', icon: '💳' },
     { id: 'confirmation', label: '예약확인서', path: '/manager/confirmation', icon: '📄' },
     { id: 'customer-send', label: '고객 발송 관리', path: '/customer/send-management', icon: '📧' },
@@ -80,10 +82,10 @@ export default function ManagerLayout({ children, title, activeTab }: ManagerLay
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 overflow-x-hidden">
       {/* Manager Header */}
       <header className="bg-blue-600 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-2">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
               <div className="w-10 h-10 bg-blue-800 rounded-full flex items-center justify-center text-white text-xl font-bold">
@@ -117,8 +119,8 @@ export default function ManagerLayout({ children, title, activeTab }: ManagerLay
 
       {/* Manager Navigation */}
       <nav className="bg-white shadow border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-2 overflow-x-auto">
+        <div className="w-full px-2">
+          <div className="flex space-x-1 overflow-x-auto">
             {managerTabs.map((tab) => (
               <Link
                 key={tab.id}
@@ -137,13 +139,15 @@ export default function ManagerLayout({ children, title, activeTab }: ManagerLay
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {title && (
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-          </div>
-        )}
-        {children}
+      <main className="w-full py-4">
+        <div className="px-2 md:px-4 lg:px-6">
+          {title && (
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+            </div>
+          )}
+          {children}
+        </div>
       </main>
     </div>
   );

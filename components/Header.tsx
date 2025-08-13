@@ -10,10 +10,10 @@ export default function Header() {
 
   return (
     <header className="bg-white shadow-sm border-b">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* 로고만 유지 */}
-          <div className="w-full flex justify-center">
+      <div className="w-full px-4">
+        <div className="flex items-center h-16">
+          {/* 로고만 좌측 정렬 */}
+          <div className="flex">
             <Link href="/" className="flex items-center space-x-2">
               <Image
                 src="/images/logo.png"

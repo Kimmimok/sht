@@ -14,8 +14,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* ✅ 머릿글 */}
         <Header />
 
-        {/* ✅ 본문 */}
-        <main className="max-w-4xl mx-auto px-4 py-6">{children}</main>
+        {/* ✅ 본문: 전체 너비 사용 (페이지별 레이아웃에서 여백 처리) */}
+        <main className="w-full">{children}</main>
       </body>
     </html>
   );
