@@ -15,6 +15,10 @@ function RentcarReservationContent() {
   const [availableServices, setAvailableServices] = useState<any[]>([]);
   const [selectedServices, setSelectedServices] = useState<any[]>([]);
 
+  // 예약에 필요한 추가 state
+  const [rentcarCount, setRentcarCount] = useState(1);
+  const [unitPrice, setUnitPrice] = useState(0);
+
   // 폼 데이터
   const [formData, setFormData] = useState({
     pickup_datetime: '',
@@ -78,6 +82,8 @@ function RentcarReservationContent() {
         .eq('quote_id', quoteId)
         .eq('service_type', 'rentcar');
 
+      console.log('🔍 Quote Items:', quoteItems);
+
       if (quoteItems && quoteItems.length > 0) {
         const allServices = [];
 
@@ -88,39 +94,58 @@ function RentcarReservationContent() {
             .eq('id', item.service_ref_id)
             .single();
 
-          if (rentcarData?.rentcar_code) {
-            const { data: priceOptions } = await supabase
-              .from('rentcar_price')
-              .select('*')
-              .eq('rentcar_code', rentcarData.rentcar_code);
+          console.log('🚗 Rentcar Data:', rentcarData);
 
-            if (priceOptions) {
+          if (rentcarData?.rentcar_code) {
+            // rent_price 테이블에서 조회 (rentcar_price가 아님)
+            const { data: priceOptions } = await supabase
+              .from('rent_price')
+              .select('*')
+              .eq('rent_code', rentcarData.rentcar_code);
+
+            console.log('💰 Price Options:', priceOptions);
+
+            if (priceOptions && priceOptions.length > 0) {
               allServices.push(...priceOptions.map(option => ({
                 ...option,
-                usage_date: item.usage_date
+                usage_date: item.usage_date,
+                // 호환성을 위한 필드 매핑
+                rentcar_code: option.rent_code,
+                car_model: option.rent_car_type || '일반 차량',
+                vehicle_type: option.rent_type || '렌터카',
+                seats: '4',
+                features: `${option.rent_category} - ${option.rent_route}`
               })));
             }
           }
         }
 
+        console.log('📋 All Services:', allServices);
         setAvailableServices(allServices);
+
+        // 1단계에서 선택된 렌터카 정보를 자동으로 설정 (읽기 전용)
+        if (allServices.length > 0) {
+          console.log('💡 1단계에서 선택된 렌터카 정보를 확인합니다:', allServices.length, '개');
+
+          const firstService = allServices[0];
+          console.log('🎯 선택된 렌터카:', firstService.car_model);
+
+          setSelectedServices([firstService]);
+          setRentcarCount(1);
+          setUnitPrice(firstService.price || 0);
+
+          console.log('💰 계산된 총 금액:', (firstService.price || 0), '동');
+        }
       }
     } catch (error) {
       console.error('렌터카 서비스 로드 오류:', error);
     }
   };
 
-  // 서비스 선택/해제
-  const toggleService = (service: any) => {
-    setSelectedServices(prev => {
-      const isSelected = prev.some(s => s.rentcar_code === service.rentcar_code);
-      if (isSelected) {
-        return prev.filter(s => s.rentcar_code !== service.rentcar_code);
-      } else {
-        return [...prev, service];
-      }
-    });
-  };
+  // 서비스 선택/해제 함수 제거 (읽기 전용으로 변경)
+  // const toggleService = (service: any) => {
+  //   // 더 이상 선택/해제 불가 - 1단계에서 선택된 정보만 표시
+  // };
 
   // 차량 타입별 서비스 분류
   const getServicesByType = () => {
@@ -212,7 +237,7 @@ function RentcarReservationContent() {
       const mainService = selectedServices[0];
       const additionalServicesNote = selectedServices
         .slice(1)
-        .map(service => `추가 차량: ${service.car_model} - ${service.vehicle_type} (${service.price?.toLocaleString()}동/일)`)
+        .map(service => `추가 차량: ${service.car_model} - ${service.vehicle_type} (${service.price?.toLocaleString()}동)`)
         .join('\n');
 
       const fullRequestNote = [
@@ -222,16 +247,20 @@ function RentcarReservationContent() {
 
       const rentcarReservationData = {
         reservation_id: reservationData.re_id,
-        rentcar_price_code: mainService.rentcar_code,
+        rentcar_price_code: mainService.rent_code, // rent_code 사용
+        rentcar_count: 1, // 필수 컬럼
+        unit_price: mainService.price || 0, // 필수 컬럼
+        car_count: formData.driver_count || 1,
+        passenger_count: formData.passenger_count || 1,
         pickup_datetime: formData.pickup_datetime ? new Date(formData.pickup_datetime).toISOString() : null,
-        return_datetime: formData.return_datetime ? new Date(formData.return_datetime).toISOString() : null,
         pickup_location: formData.pickup_location || null,
         destination: formData.destination || null,
-        driver_count: formData.driver_count || 1,
-        passenger_count: formData.passenger_count || 1,
         luggage_count: formData.luggage_count || 0,
+        total_price: selectedServices.reduce((sum, service) => sum + (service.price || 0), 0),
         request_note: fullRequestNote || null
       };
+
+      console.log('💾 Rentcar Reservation Data:', rentcarReservationData);
 
       const { error: rentcarError } = await supabase
         .from('reservation_rentcar')
@@ -303,53 +332,35 @@ function RentcarReservationContent() {
               </div>
             </div>
 
-            {/* 차량 선택 영역 */}
-            {availableServices.length > 0 && (
+            {/* 선택된 차량 정보 표시 (읽기 전용) */}
+            {availableServices.length > 0 ? (
               <div className="space-y-4 mb-6">
-                <h3 className="text-lg font-semibold text-gray-800">🚗 차량 선택</h3>
+                <h3 className="text-lg font-semibold text-gray-800">🚗 선택된 렌터카 정보 (1단계에서 선택됨)</h3>
 
-                {Object.entries(servicesByType).map(([type, services]) => (
-                  <div key={type} className="space-y-3">
-                    <h4 className="text-md font-medium text-purple-700 border-l-4 border-purple-500 pl-3">
-                      {type}
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {services.map((service) => (
+                {/* 선택된 서비스 표시 (클릭 불가) */}
+                {selectedServices.length > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="text-md font-medium text-blue-800 mb-3">✅ 확정된 렌터카</h4>
+                    <div className="space-y-3">
+                      {selectedServices.map((service, index) => (
                         <div
-                          key={service.rentcar_code}
-                          className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedServices.some(s => s.rentcar_code === service.rentcar_code)
-                            ? 'border-purple-500 bg-purple-50'
-                            : 'border-gray-200 bg-white hover:border-purple-300'
-                            }`}
-                          onClick={() => toggleService(service)}
+                          key={index}
+                          className="p-4 rounded-lg border-2 border-blue-500 bg-blue-50"
                         >
                           <div className="flex justify-between items-start mb-2">
-                            <span className="font-medium">{service.car_model}</span>
-                            <span className="text-purple-600 font-bold">{service.price?.toLocaleString()}동</span>
+                            <span className="font-medium text-blue-900">{service.car_model}</span>
+                            <span className="text-blue-600 font-bold">{service.price?.toLocaleString()}동</span>
                           </div>
-                          <div className="text-sm text-gray-600">
+                          <div className="text-sm text-blue-700">
                             <div>좌석: {service.seats}인승</div>
                             <div>특징: {service.features}</div>
+                            <div className="text-blue-600 mt-1">카테고리: {service.rent_category}</div>
+                            <div className="text-blue-600">경로: {service.rent_route}</div>
                           </div>
                         </div>
                       ))}
-                    </div>
-                  </div>
-                ))}
-
-                {/* 선택된 서비스 요약 */}
-                {selectedServices.length > 0 && (
-                  <div className="bg-yellow-50 rounded-lg p-4">
-                    <h4 className="text-md font-medium text-yellow-800 mb-2">✅ 선택된 차량</h4>
-                    <div className="space-y-2">
-                      {selectedServices.map((service, index) => (
-                        <div key={index} className="flex justify-between text-sm">
-                          <span>{service.car_model} - {service.vehicle_type}</span>
-                          <span className="font-medium">{service.price?.toLocaleString()}동</span>
-                        </div>
-                      ))}
-                      <div className="border-t border-yellow-300 pt-2 mt-2">
-                        <div className="flex justify-between font-bold text-red-600">
+                      <div className="border-t border-blue-300 pt-3 mt-3">
+                        <div className="flex justify-between font-bold text-blue-800">
                           <span>총 예상 금액:</span>
                           <span>{totalPrice.toLocaleString()}동</span>
                         </div>
@@ -357,6 +368,32 @@ function RentcarReservationContent() {
                     </div>
                   </div>
                 )}
+
+                {/* 수정 안내 */}
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <p className="text-sm text-gray-600 flex items-center">
+                    <span className="mr-2">💡</span>
+                    렌터카 선택을 변경하려면 <button
+                      onClick={() => router.push(`/mypage/direct-booking/rentcar/1?quoteId=${quoteId}`)}
+                      className="text-blue-600 hover:text-blue-800 underline mx-1"
+                    >
+                      이전 단계
+                    </button>로 돌아가세요.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6">
+                <div className="text-center">
+                  <div className="text-orange-500 text-3xl mb-3">🚗</div>
+                  <h3 className="text-lg font-medium text-orange-800 mb-2">차량 정보를 불러오는 중...</h3>
+                  <p className="text-orange-600 text-sm">
+                    1단계에서 선택한 렌터카 정보를 확인하고 있습니다.
+                  </p>
+                  <p className="text-orange-500 text-xs mt-2">
+                    Quote ID: {quoteId} | Available Services: {availableServices.length}
+                  </p>
+                </div>
               </div>
             )}
 
@@ -373,7 +410,7 @@ function RentcarReservationContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">반납 일시</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">샌딩 일시</label>
                   <input
                     type="datetime-local"
                     value={formData.return_datetime}
@@ -402,7 +439,7 @@ function RentcarReservationContent() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">운전자 수</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">차량 수</label>
                   <input
                     type="number"
                     min="1"
@@ -457,12 +494,20 @@ function RentcarReservationContent() {
               >
                 이전 단계
               </button>
+
+              {/* 디버깅 정보 표시 */}
+              {selectedServices.length === 0 && (
+                <div className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-xs">
+                  차량 선택 필요 (Available: {availableServices.length})
+                </div>
+              )}
+
               <button
                 onClick={handleSubmit}
                 disabled={loading || selectedServices.length === 0}
                 className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors text-xs"
               >
-                {loading ? '예약 중...' : '예약 완료'}
+                {loading ? '예약 중...' : selectedServices.length === 0 ? '차량을 선택하세요' : '예약 완료'}
               </button>
             </div>
           </div>

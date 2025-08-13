@@ -35,7 +35,7 @@ function NewTourQuoteContent() {
 
   useEffect(() => {
     if (!quoteId) {
-      alert('견적 ID가 필요합니다.');
+      alert('가격 ID가 필요합니다.');
       router.push('/mypage');
       return;
     }
@@ -99,7 +99,7 @@ function NewTourQuoteContent() {
     }
   }, [selectedTourName, selectedVehicle, selectedPayment, selectedCategory]);
 
-  // 기존 견적 데이터 로드 (수정 모드용)
+  // 기존 가격 데이터 로드 (수정 모드용)
   const loadExistingQuoteData = async () => {
     try {
       setLoading(true);
@@ -150,10 +150,10 @@ function NewTourQuoteContent() {
         special_requests: serviceData.special_requests || ''
       });
 
-      console.log('기존 투어 견적 데이터 로드 완료:', serviceData);
+      console.log('기존 투어 가격 데이터 로드 완료:', serviceData);
     } catch (error) {
-      console.error('기존 견적 데이터 로드 오류:', error);
-      alert('기존 견적 데이터를 불러오는 중 오류가 발생했습니다.');
+      console.error('기존 가격 데이터 로드 오류:', error);
+      alert('기존 가격 데이터를 불러오는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -246,8 +246,8 @@ function NewTourQuoteContent() {
       if (error) throw error;
       setQuote(data);
     } catch (error) {
-      console.error('견적 정보 로드 실패:', error);
-      alert('견적 정보를 불러올 수 없습니다.');
+      console.error('가격 정보 로드 실패:', error);
+      alert('가격 정보를 불러올 수 없습니다.');
       router.push('/mypage/quotes');
     }
   };
@@ -281,7 +281,7 @@ function NewTourQuoteContent() {
     }
 
     if (!quoteId) {
-      alert('견적 ID가 없습니다.');
+      alert('가격 ID가 없습니다.');
       return;
     }
 
@@ -336,7 +336,7 @@ function NewTourQuoteContent() {
 
         console.log('✅ 투어 서비스 생성 성공:', tourServiceData);
 
-        // 견적 아이템 생성
+        // 가격 아이템 생성
         const { data: itemData, error: itemError } = await supabase
           .from('quote_item')
           .insert({
@@ -352,20 +352,24 @@ function NewTourQuoteContent() {
           .single();
 
         if (itemError) {
-          console.error('❌ 견적 아이템 생성 오류:', itemError);
-          alert(`견적 아이템 생성 실패: ${itemError.message}`);
+          console.error('❌ 가격 아이템 생성 오류:', itemError);
+          alert(`가격 아이템 생성 실패: ${itemError.message}`);
           return;
         }
 
-        console.log('✅ 견적 아이템 생성 성공:', itemData);
-        alert('투어가 견적에 추가되었습니다!');
+        console.log('✅ 가격 아이템 생성 성공:', itemData);
+        alert('투어가 가격에 추가되었습니다!');
       }
 
-      // 수정 완료 후 견적 목록으로 이동
-      router.push(`/mypage/quotes/new?quoteId=${quoteId}`);
+      // 수정 완료 후 2폴더로 이동 (렌터카 패턴과 동일)
+      if (isEditMode) {
+        router.push(`/mypage/quotes/new?quoteId=${quoteId}`);
+      } else {
+        router.push(`/mypage/direct-booking/tour/2?quoteId=${quoteId}`);
+      }
 
     } catch (error) {
-      console.error('❌ 투어 견적 처리 중 오류:', error);
+      console.error('❌ 투어 가격 처리 중 오류:', error);
       alert('오류가 발생했습니다: ' + (error as Error).message);
     } finally {
       setLoading(false);
@@ -379,7 +383,7 @@ function NewTourQuoteContent() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
-          <p className="mt-4 text-gray-600">견적 정보를 불러오는 중...</p>
+          <p className="mt-4 text-gray-600">가격 정보를 불러오는 중...</p>
         </div>
       </div>
     );
@@ -393,10 +397,10 @@ function NewTourQuoteContent() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl font-bold mb-2">
-                🎯 투어 견적 {isEditMode ? '수정' : '신청'}
+                🎯 투어 가격 {isEditMode ? '수정' : '신청'}
               </h1>
               <p className="text-lg opacity-90">
-                투어 여행을 위한 견적을 {isEditMode ? '수정' : '작성'}해주세요.
+                투어 여행을 위한 가격을 {isEditMode ? '수정' : '작성'}해주세요.
               </p>
             </div>
             <div className="flex gap-2">
@@ -409,11 +413,11 @@ function NewTourQuoteContent() {
             </div>
           </div>
 
-          {/* 견적 정보 */}
+          {/* 가격 정보 */}
           <div className="bg-white/70 backdrop-blur rounded-lg p-4 mb-6">
-            <h3 className="font-semibold text-gray-800 mb-2">현재 견적 정보</h3>
+            <h3 className="font-semibold text-gray-800 mb-2">현재 가격 정보</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div>견적명: <span className="font-semibold text-blue-600">{quote.title}</span></div>
+              <div>가격명: <span className="font-semibold text-blue-600">{quote.title}</span></div>
               <div>상태: {quote.status === 'draft' ? '작성 중' : quote.status}</div>
               <div>작성일: {new Date(quote.created_at).toLocaleDateString('ko-KR')}</div>
             </div>
@@ -431,8 +435,8 @@ function NewTourQuoteContent() {
 
             {/* 투어 안내 카드 */}
             <div className="bg-blue-600 rounded-lg p-6 mb-6 border border-blue-700">
-              <h3 className="text-white text-lg font-semibold mb-2">📝 견적안내</h3>
-              <p className="text-white/90 text-sm">투어 예약을 위해 아래 정보를 순서대로 입력해 주세요.<br />정확한 투어명, 차량, 투어 타입, 참가자수 정보를 입력하시면 빠른 견적 안내가 가능합니다.</p>
+              <h3 className="text-white text-lg font-semibold mb-2">📝 가격안내</h3>
+              <p className="text-white/90 text-sm">투어 예약을 위해 아래 정보를 순서대로 입력해 주세요.<br />정확한 투어명, 차량, 투어 타입, 참가자수 정보를 입력하시면 빠른 가격 안내가 가능합니다.</p>
             </div>
 
             {/* 투어 선택 폼 */}
@@ -578,7 +582,7 @@ function NewTourQuoteContent() {
                 disabled={!isFormValid || loading}
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? '처리 중...' : isEditMode ? '수정 완료' : '견적에 추가'}
+                {loading ? '처리 중...' : isEditMode ? '수정 완료' : '다음'}
               </button>
             </div>
           </form>

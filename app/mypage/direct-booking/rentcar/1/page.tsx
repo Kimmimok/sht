@@ -29,8 +29,8 @@ function RentcarQuoteContent() {
 
   useEffect(() => {
     if (!quoteId) {
-      alert('견적 ID가 필요합니다.');
-      router.push('/mypage');
+      alert('가격 ID가 필요합니다.');
+      router.push('/mypage/direct-booking');
       return;
     }
     loadQuote();
@@ -131,9 +131,9 @@ function RentcarQuoteContent() {
       if (error) throw error;
       setQuote(data);
     } catch (error) {
-      console.error('견적 정보 로드 실패:', error);
-      alert('견적 정보를 불러올 수 없습니다.');
-      router.push('/mypage/quotes');
+      console.error('가격 정보 로드 실패:', error);
+      alert('가격 정보를 불러올 수 없습니다.');
+      router.push('/mypage/direct-booking');
     }
   };
 
@@ -165,7 +165,7 @@ function RentcarQuoteContent() {
     }
 
     if (!quoteId) {
-      alert('견적 ID가 없습니다.');
+      alert('가격 ID가 없습니다.');
       return;
     }
 
@@ -202,7 +202,7 @@ function RentcarQuoteContent() {
 
       console.log('✅ 렌트카 서비스 생성 성공:', rentcarServiceData);
 
-      // 견적 아이템 생성
+      // 가격 아이템 생성
       const { data: itemData, error: itemError } = await supabase
         .from('quote_item')
         .insert({
@@ -217,19 +217,19 @@ function RentcarQuoteContent() {
         .single();
 
       if (itemError) {
-        console.error('❌ 견적 아이템 생성 오류:', itemError);
-        alert(`견적 아이템 생성 실패: ${itemError.message}`);
+        console.error('❌ 가격 아이템 생성 오류:', itemError);
+        alert(`가격 아이템 생성 실패: ${itemError.message}`);
         return;
       }
 
-      console.log('✅ 견적 아이템 생성 성공:', itemData);
-      alert('렌트카 서비스가 견적에 추가되었습니다!');
+      console.log('✅ 가격 아이템 생성 성공:', itemData);
+      alert('렌트카 서비스가 추가되었습니다!');
 
-      // 견적 목록으로 이동
-      router.push(`/mypage/quotes/new?quoteId=${quoteId}`);
+      // 2 폴더 (예약 단계)로 이동
+      router.push(`/mypage/direct-booking/rentcar/2?quoteId=${quoteId}`);
 
     } catch (error) {
-      console.error('❌ 렌트카 견적 처리 중 오류:', error);
+      console.error('❌ 렌트카 가격 처리 중 오류:', error);
       alert('오류가 발생했습니다: ' + (error as Error).message);
     } finally {
       setLoading(false);
@@ -243,7 +243,7 @@ function RentcarQuoteContent() {
       <div className="min-h-screen bg-gray-50">
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">견적 정보를 불러오는 중...</p>
+          <p className="mt-4 text-gray-600">가격 정보를 불러오는 중...</p>
         </div>
       </div>
     );
@@ -267,16 +267,16 @@ function RentcarQuoteContent() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-lg font-bold text-gray-800">🚗 렌터카 서비스 견적</h1>
+              <h1 className="text-lg font-bold text-gray-800">🚗 렌터카 서비스 가격</h1>
               <p className="text-sm text-gray-600 mt-1">
-                견적 "{quote.title}"에 렌터카 서비스를 추가합니다
+                가격 "{quote.title}"에 렌터카 서비스를 추가합니다
               </p>
               <div className="bg-blue-50 rounded-lg p-2 mt-2">
-                <p className="text-xs text-blue-600">견적 ID: {quoteId}</p>
+                <p className="text-xs text-blue-600">가격 ID: {quoteId}</p>
               </div>
             </div>
             <button
-              onClick={() => router.push(`/mypage/quotes/new?quoteId=${quoteId}`)}
+              onClick={() => router.push('/mypage/direct-booking')}
               className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-xs"
             >
               ← 뒤로
@@ -295,7 +295,7 @@ function RentcarQuoteContent() {
             <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg p-6 mb-6">
               <h3 className="text-white text-lg font-semibold mb-2">🚗 렌터카 서비스 안내</h3>
               <p className="text-white/90 text-sm">
-                카테고리, 경로, 차량 타입을 선택하여 렌터카 서비스를 견적에 추가할 수 있습니다.
+                카테고리, 경로, 차량 타입을 선택하여 렌터카 서비스를 추가할 수 있습니다.
               </p>
             </div>
 
@@ -309,8 +309,8 @@ function RentcarQuoteContent() {
                     type="button"
                     onClick={() => setSelectedCategory('당일')}
                     className={`p-4 rounded-lg border-2 cursor-pointer transition-all text-center ${selectedCategory === '당일'
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 bg-white hover:border-blue-300 text-gray-700'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-white hover:border-blue-300 text-gray-700'
                       }`}
                   >
                     <div className="font-medium">왕복 당일</div>
@@ -319,8 +319,8 @@ function RentcarQuoteContent() {
                     type="button"
                     onClick={() => setSelectedCategory('다른날')}
                     className={`p-4 rounded-lg border-2 cursor-pointer transition-all text-center ${selectedCategory === '다른날'
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 bg-white hover:border-blue-300 text-gray-700'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-white hover:border-blue-300 text-gray-700'
                       }`}
                   >
                     <div className="font-medium">왕복 다른날</div>
@@ -329,8 +329,8 @@ function RentcarQuoteContent() {
                     type="button"
                     onClick={() => setSelectedCategory('안함')}
                     className={`p-4 rounded-lg border-2 cursor-pointer transition-all text-center ${selectedCategory === '안함'
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 bg-white hover:border-blue-300 text-gray-700'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-white hover:border-blue-300 text-gray-700'
                       }`}
                   >
                     <div className="font-medium">편도</div>
@@ -410,7 +410,7 @@ function RentcarQuoteContent() {
             <div className="flex justify-end space-x-4 mt-8">
               <button
                 type="button"
-                onClick={() => router.push(`/mypage/quotes/new?quoteId=${quoteId}`)}
+                onClick={() => router.push('/mypage/direct-booking')}
                 className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors text-xs"
               >
                 취소
@@ -420,7 +420,7 @@ function RentcarQuoteContent() {
                 disabled={loading || !isFormValid}
                 className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors text-xs"
               >
-                {loading ? '저장 중...' : '견적에 추가'}
+                {loading ? '저장 중...' : '다음'}
               </button>
             </div>
           </form>

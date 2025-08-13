@@ -338,7 +338,7 @@ function DirectBookingContent() {
         {
             icon: '🗺️',
             label: '투어 예약',
-            href: '/mypage/direct-booking/tour',
+            href: '/mypage/direct-booking/tour/1',
             description: '관광 투어 서비스 직접 예약',
             color: 'from-orange-500 to-red-500',
             type: 'tour'
@@ -485,8 +485,8 @@ function DirectBookingContent() {
                                 return (
                                     <ServiceCard key={index}>
                                         <div className={`relative overflow-hidden bg-white border border-gray-200 rounded-xl shadow-lg transform transition-all duration-300 ease-out ${activeQuoteData
-                                                ? 'hover:shadow-xl hover:-translate-y-2 cursor-pointer'
-                                                : 'opacity-50 cursor-not-allowed'
+                                            ? 'hover:shadow-xl hover:-translate-y-2 cursor-pointer'
+                                            : 'opacity-50 cursor-not-allowed'
                                             }`}>
                                             <div className={`absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 opacity-0 transition-opacity duration-300 ${activeQuoteData ? 'group-hover:opacity-5' : ''
                                                 }`}></div>
@@ -507,8 +507,8 @@ function DirectBookingContent() {
                                                     </div>
                                                     <div>
                                                         <h3 className={`text-lg font-bold transition-colors duration-300 ${activeQuoteData
-                                                                ? 'text-gray-800 group-hover:text-blue-700'
-                                                                : 'text-gray-500'
+                                                            ? 'text-gray-800 group-hover:text-blue-700'
+                                                            : 'text-gray-500'
                                                             }`}>
                                                             {service.label}
                                                         </h3>
@@ -521,8 +521,8 @@ function DirectBookingContent() {
 
                                                 <div className="flex items-center justify-between">
                                                     <span className={`text-sm font-medium ${activeQuoteData
-                                                            ? isCompleted ? 'text-green-600' : 'text-blue-600'
-                                                            : 'text-gray-400'
+                                                        ? isCompleted ? 'text-green-600' : 'text-blue-600'
+                                                        : 'text-gray-400'
                                                         }`}>
                                                         {activeQuoteData
                                                             ? isCompleted
@@ -532,14 +532,14 @@ function DirectBookingContent() {
                                                         }
                                                     </span>
                                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-300 ${activeQuoteData
-                                                            ? isCompleted
-                                                                ? 'bg-green-100 group-hover:bg-green-200'
-                                                                : 'bg-blue-100 group-hover:bg-blue-200'
-                                                            : 'bg-gray-100'
+                                                        ? isCompleted
+                                                            ? 'bg-green-100 group-hover:bg-green-200'
+                                                            : 'bg-blue-100 group-hover:bg-blue-200'
+                                                        : 'bg-gray-100'
                                                         }`}>
                                                         <span className={`text-sm ${activeQuoteData
-                                                                ? isCompleted ? 'text-green-600' : 'text-blue-600'
-                                                                : 'text-gray-400'
+                                                            ? isCompleted ? 'text-green-600' : 'text-blue-600'
+                                                            : 'text-gray-400'
                                                             }`}>
                                                             {activeQuoteData ? (isCompleted ? '✏️' : '➕') : '⏸️'}
                                                         </span>

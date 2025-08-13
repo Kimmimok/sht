@@ -69,6 +69,7 @@ export default function MyPage() {
     { icon: '📜', label: '예약 목록', href: '/mypage/reservations/list' },
     { icon: '💳', label: '결제하기', href: '/mypage/payments' },
     { icon: '📄', label: '예약확인서', href: '/mypage/confirmations' },
+    { icon: '🔒', label: '보안 설정', href: '/mypage/security' },
   ];
 
   return (

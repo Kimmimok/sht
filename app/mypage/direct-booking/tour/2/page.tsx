@@ -4,162 +4,148 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import supabase from '@/lib/supabase';
 import PageWrapper from '@/components/PageWrapper';
-import SectionBox from '@/components/SectionBox';
 
-// 클라이언트 컴포넌트로 명시적 선언
 function TourReservationContent() {
-    // useSearchParams()는 클라이언트 컴포넌트에서만 사용 가능
     const router = useRouter();
     const searchParams = useSearchParams();
     const quoteId = searchParams.get('quoteId');
-    const reservationId = searchParams.get('reservationId');
-    const mode = searchParams.get('mode');
 
-    // 폼 상태 - 크루즈 패턴 적용 (서비스 정보 입력)
-    const [form, setForm] = useState({
-        // 서비스 타입별 폼 데이터
-        serviceData: {
-            tour_date: '',
-            participant_count: 1,
-            pickup_location: '',
-            dropoff_location: '',
-            tour_duration: '',
-            special_requirements: ''
-        },
+    const [loading, setLoading] = useState(false);
+    const [quote, setQuote] = useState<any>(null);
+    const [user, setUser] = useState<any>(null);
+    const [availableServices, setAvailableServices] = useState<any[]>([]);
+    const [selectedServices, setSelectedServices] = useState<any[]>([]);
+
+    // 예약에 필요한 추가 state
+    const [tourCount, setTourCount] = useState(1);
+    const [unitPrice, setUnitPrice] = useState(0);
+
+    // 폼 데이터
+    const [formData, setFormData] = useState({
+        tour_date: '',
+        participant_count: 1,
+        pickup_location: '',
+        dropoff_location: '',
+        tour_duration: '',
         request_note: ''
     });
 
-    // 데이터 상태
-    const [availableServices, setAvailableServices] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [quote, setQuote] = useState<any>(null);
-    const [existingReservation, setExistingReservation] = useState<any>(null);
-    const [isEditMode, setIsEditMode] = useState(false);
-
     useEffect(() => {
         if (!quoteId) {
-            alert('견적 ID가 필요합니다.');
-            router.push('/mypage/reservations');
+            alert('가격 ID가 필요합니다.');
+            router.push('/mypage/direct-booking');
             return;
         }
-        loadQuote();
-        loadAvailableTourServices();
-        checkExistingReservation();
+
+        // 사용자 인증 확인
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            if (!user) {
+                router.push('/login');
+                return;
+            }
+            setUser(user);
+            loadQuote();
+            loadTourServices();
+        });
     }, [quoteId, router]);
 
-    // 견적 정보 로드
     const loadQuote = async () => {
         try {
-            const { data: quoteData, error } = await supabase
+            const { data, error } = await supabase
                 .from('quote')
-                .select('id, title, status')
+                .select('*')
                 .eq('id', quoteId)
                 .single();
 
-            if (error || !quoteData) {
-                alert('견적을 찾을 수 없습니다.');
-                router.push('/mypage/reservations');
-                return;
-            }
-
-            setQuote(quoteData);
+            if (error) throw error;
+            setQuote(data);
         } catch (error) {
             console.error('견적 로드 오류:', error);
-            alert('견적 정보를 불러오는 중 오류가 발생했습니다.');
+            alert('견적을 불러올 수 없습니다.');
         }
     };
 
-    // 기존 예약 확인 (중복 방지)
-    const checkExistingReservation = async () => {
+    // 투어 서비스 로드 (크루즈 패턴과 동일)
+    const loadTourServices = async () => {
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            console.log('🎯 투어 서비스 로드 시작, Quote ID:', quoteId);
 
-            const { data: existingRes } = await supabase
-                .from('reservation')
-                .select(`
-                    *,
-                    reservation_tour (*)
-                `)
-                .eq('re_user_id', user.id)
-                .eq('re_quote_id', quoteId)
-                .eq('re_type', 'tour')
-                .maybeSingle();
-
-            if (existingRes) {
-                setExistingReservation(existingRes);
-                setIsEditMode(true);
-
-                // 기존 데이터로 폼 초기화
-                if (existingRes.reservation_tour && existingRes.reservation_tour.length > 0) {
-                    const tourData = existingRes.reservation_tour[0];
-                    setForm(prev => ({
-                        ...prev,
-                        serviceData: {
-                            tour_date: tourData.tour_date ? new Date(tourData.tour_date).toISOString().split('T')[0] : '',
-                            participant_count: tourData.tour_capacity || 1,
-                            pickup_location: tourData.pickup_location || '',
-                            dropoff_location: tourData.dropoff_location || '',
-                            tour_duration: tourData.tour_duration || '',
-                            special_requirements: tourData.special_requirements || '',
-                        },
-                        request_note: tourData.request_note || ''
-                    }));
-                }
-            }
-        } catch (error) {
-            console.error('기존 예약 확인 오류:', error);
-        }
-    };
-
-    // 사용 가능한 투어 서비스 로드 (크루즈의 객실 가격 로드 방식과 동일)
-    const loadAvailableTourServices = async () => {
-        try {
-            // 견적에 연결된 투어 서비스들 조회
-            const { data: quoteItems } = await supabase
+            // 1단계에서 생성된 quote_item 조회
+            const { data: quoteItems, error: itemsError } = await supabase
                 .from('quote_item')
                 .select('service_type, service_ref_id, usage_date')
                 .eq('quote_id', quoteId)
                 .eq('service_type', 'tour');
 
+            console.log('📋 Quote Items:', quoteItems);
+
+            if (itemsError) {
+                console.error('Quote items 조회 오류:', itemsError);
+                return;
+            }
+
             if (quoteItems && quoteItems.length > 0) {
                 const allServices = [];
 
-                // 각 투어 아이템에 대해 가격 옵션들 조회 (크루즈의 room_price 방식)
                 for (const item of quoteItems) {
-                    const { data: tourData } = await supabase
+                    console.log('🔍 Processing item:', item);
+
+                    // tour 테이블에서 tour_code 조회
+                    const { data: tourData, error: tourError } = await supabase
                         .from('tour')
                         .select('tour_code')
                         .eq('id', item.service_ref_id)
                         .single();
 
+                    console.log('🎫 Tour Data:', tourData);
+
                     if (tourData?.tour_code) {
-                        // 해당 투어 코드의 모든 가격 옵션 조회 (크루즈의 카테고리별 가격과 동일)
-                        const { data: priceOptions } = await supabase
+                        // tour_price 테이블에서 가격 정보 조회 (크루즈의 room_price 방식)
+                        const { data: priceOptions, error: priceError } = await supabase
                             .from('tour_price')
                             .select('*')
                             .eq('tour_code', tourData.tour_code);
 
-                        if (priceOptions) {
+                        console.log('💰 Tour Price Options:', priceOptions);
+
+                        if (priceOptions && priceOptions.length > 0) {
                             allServices.push(...priceOptions.map(option => ({
-                                ...option,
-                                usage_date: item.usage_date
+                                tour_code: option.tour_code,
+                                tour_name: option.tour_name,
+                                tour_vehicle: option.tour_vehicle,
+                                tour_type: option.tour_type,
+                                tour_capacity: option.tour_capacity,
+                                price: option.price,
+                                tour_duration: option.tour_duration,
+                                description: option.description
                             })));
                         }
                     }
                 }
 
+                console.log('📋 All Services:', allServices);
                 setAvailableServices(allServices);
 
-                // 첫 번째 서비스 정보로 투어 날짜 설정
-                if (allServices.length > 0 && quoteItems[0]?.usage_date) {
-                    setForm(prev => ({
-                        ...prev,
-                        serviceData: {
-                            ...prev.serviceData,
+                // 1단계에서 선택된 투어 정보를 자동으로 설정 (읽기 전용)
+                if (allServices.length > 0) {
+                    console.log('💡 1단계에서 선택된 투어 정보를 확인합니다:', allServices.length, '개');
+
+                    const firstService = allServices[0];
+                    console.log('🎯 선택된 투어:', firstService.tour_name);
+
+                    setSelectedServices([firstService]);
+                    setTourCount(1);
+                    setUnitPrice(firstService.price || 0);
+
+                    console.log('💰 계산된 총 금액:', (firstService.price || 0), '원');
+
+                    // 투어 날짜를 폼에 설정 (1단계에서 설정한 날짜 사용)
+                    if (quoteItems[0]?.usage_date) {
+                        setFormData(prev => ({
+                            ...prev,
                             tour_date: quoteItems[0].usage_date
-                        }
-                    }));
+                        }));
+                    }
                 }
             }
         } catch (error) {
@@ -167,157 +153,126 @@ function TourReservationContent() {
         }
     };
 
-    // 폼 입력 핸들러
-    const handleInputChange = (field: string, value: any) => {
-        setForm(prev => ({
-            ...prev,
-            serviceData: {
-                ...prev.serviceData,
-                [field]: value
-            }
-        }));
-    };
+    // 총 금액 계산
+    const totalPrice = selectedServices.reduce((sum, service) => sum + (service.price || 0), 0);
 
-    // 예약 제출/수정 (중복 방지 적용)
-    const handleSubmit = async () => {
-        if (availableServices.length === 0) {
-            alert('예약할 투어 서비스가 없습니다.');
+    // 예약 처리
+    const handleReservation = async () => {
+        if (!user) {
+            alert('로그인이 필요합니다.');
+            router.push('/login');
+            return;
+        }
+
+        if (selectedServices.length === 0) {
+            alert('선택된 투어가 없습니다.');
+            return;
+        }
+
+        if (!formData.tour_date || !formData.participant_count) {
+            alert('투어 날짜와 참가 인원을 입력해주세요.');
             return;
         }
 
         setLoading(true);
 
         try {
-            // 사용자 인증 및 역할 확인
-            const { data: { user }, error: userError } = await supabase.auth.getUser();
-            if (userError || !user) {
+            // 중복 예약 확인
+            const { data: existingReservation } = await supabase
+                .from('reservation')
+                .select('re_id')
+                .eq('re_user_id', user.id)
+                .eq('re_quote_id', quoteId)
+                .eq('re_type', 'tour')
+                .maybeSingle();
+
+            if (existingReservation) {
+                alert('이미 이 견적에 대한 투어 예약이 존재합니다. 기존 예약을 수정하시겠습니까?');
                 router.push(`/mypage/reservations?quoteId=${quoteId}`);
                 return;
             }
 
-            // 사용자 역할 업데이트 (크루즈와 동일)
-            const { data: existingUser } = await supabase
+            // 사용자 역할 확인 및 업데이트
+            const { data: userData } = await supabase
                 .from('users')
-                .select('id, role')
+                .select('role')
                 .eq('id', user.id)
                 .single();
 
-            if (!existingUser || existingUser.role === 'guest') {
-                await supabase
-                    .from('users')
-                    .upsert({
-                        id: user.id,
-                        email: user.email,
-                        role: 'member',
-                        updated_at: new Date().toISOString()
-                    }, { onConflict: 'id' });
+            if (!userData || userData.role === 'guest') {
+                await supabase.from('users').upsert({
+                    id: user.id,
+                    email: user.email,
+                    role: 'member',
+                    updated_at: new Date().toISOString()
+                });
             }
 
-            let reservationData;
+            // 메인 예약 생성
+            const { data: reservationData, error: reservationError } = await supabase
+                .from('reservation')
+                .insert({
+                    re_user_id: user.id,
+                    re_quote_id: quoteId,
+                    re_type: 'tour',
+                    re_status: 'pending'
+                })
+                .select()
+                .single();
 
-            if (isEditMode && existingReservation) {
-                // 수정 모드: 기존 예약 사용
-                reservationData = existingReservation;
-
-                // 기존 reservation_tour의 모든 행 삭제
-                await supabase
-                    .from('reservation_tour')
-                    .delete()
-                    .eq('reservation_id', existingReservation.re_id);
-            } else {
-                // 새 예약 생성 (중복 확인 강화)
-                const { data: duplicateCheck } = await supabase
-                    .from('reservation')
-                    .select('re_id')
-                    .eq('re_user_id', user.id)
-                    .eq('re_quote_id', quoteId)
-                    .eq('re_type', 'tour')
-                    .maybeSingle();
-
-                if (duplicateCheck) {
-                    // 기존 예약이 있으면 해당 예약의 tour 데이터도 삭제하고 재생성
-                    console.log('🔄 기존 투어 예약 발견 - 업데이트 모드로 전환');
-                    reservationData = { re_id: duplicateCheck.re_id };
-
-                    // 기존 투어 예약 데이터 삭제
-                    await supabase
-                        .from('reservation_tour')
-                        .delete()
-                        .eq('reservation_id', duplicateCheck.re_id);
-                } else {
-                    // 완전히 새로운 예약 생성
-                    const { data: newReservation, error: reservationError } = await supabase
-                        .from('reservation')
-                        .insert({
-                            re_user_id: user.id,
-                            re_quote_id: quoteId,
-                            re_type: 'tour',
-                            re_status: 'pending',
-                            re_created_at: new Date().toISOString()
-                        })
-                        .select()
-                        .single();
-
-                    if (reservationError) {
-                        console.error('예약 생성 오류:', reservationError);
-                        alert('예약 생성 중 오류가 발생했습니다.');
-                        return;
-                    }
-                    reservationData = newReservation;
-                }
-            }
-
-            // 선택된 투어 서비스들 저장 (크루즈와 같은 패턴)
-            let errors = [];
-
-            if (availableServices.length > 0) {
-                console.log('🗺️ 투어 서비스 저장 중...', availableServices.length, '개');
-
-                // 첫 번째 투어 서비스를 메인으로 저장 (크루즈의 객실 선택 방식)
-                const mainTour = availableServices[0];
-                const tourData = {
-                    reservation_id: reservationData.re_id,
-                    tour_price_code: mainTour.tour_code,
-                    tour_capacity: form.serviceData.participant_count || 1,
-                    pickup_location: form.serviceData.pickup_location || null,
-                    dropoff_location: form.serviceData.dropoff_location || null,
-                    total_price: mainTour.price || 0,
-                    request_note: form.request_note || null
-                };
-
-                console.log('🗺️ 투어 데이터:', tourData);
-                const { error: tourError } = await supabase
-                    .from('reservation_tour')
-                    .insert(tourData);
-
-                if (tourError) {
-                    console.error('투어 서비스 저장 오류:', tourError);
-                    errors.push(`투어 서비스 오류: ${tourError.message}`);
-                }
-            }
-
-            if (errors.length > 0) {
-                console.error('💥 투어서비스 예약 저장 중 오류 발생:', errors);
-                alert('투어 예약 저장 중 오류가 발생했습니다:\n' + errors.join('\n'));
+            if (reservationError) {
+                console.error('예약 생성 오류:', reservationError);
+                alert('예약 생성 중 오류가 발생했습니다.');
                 return;
             }
 
-            alert(isEditMode ? '투어 서비스 예약이 성공적으로 수정되었습니다!' : '투어 서비스 예약이 성공적으로 저장되었습니다!');
-            router.push(`/mypage/reservations?quoteId=${quoteId}`);
+            // 투어 예약 상세 정보 저장 (크루즈 패턴과 동일)
+            const mainService = selectedServices[0];
+
+            // 요청사항에 투어 시간 정보 포함
+            const requestNotes = [
+                formData.request_note,
+                formData.tour_duration ? `투어 시간: ${formData.tour_duration}` : null
+            ].filter(Boolean).join('\n');
+
+            const tourReservationData = {
+                reservation_id: reservationData.re_id,
+                tour_price_code: mainService.tour_code,
+                tour_capacity: formData.participant_count || 1,
+                pickup_location: formData.pickup_location || null,
+                dropoff_location: formData.dropoff_location || null,
+                total_price: totalPrice,
+                request_note: requestNotes || null
+            };
+
+            console.log('💾 Tour Reservation Data:', tourReservationData);
+
+            const { error: tourError } = await supabase
+                .from('reservation_tour')
+                .insert(tourReservationData);
+
+            if (tourError) {
+                console.error('투어 예약 저장 오류:', tourError);
+                alert('투어 예약 저장 중 오류가 발생했습니다.');
+                return;
+            }
+
+            alert('투어 예약이 성공적으로 완료되었습니다!');
+            router.push('/mypage/reservations');
 
         } catch (error) {
-            console.error('💥 투어서비스 예약 전체 처리 오류:', error);
-            alert('예약 저장 중 오류가 발생했습니다.');
+            console.error('예약 처리 오류:', error);
+            alert('예약 처리 중 오류가 발생했습니다.');
         } finally {
             setLoading(false);
         }
     };
 
-    if (!quote) {
+    if (loading && !quote) {
         return (
             <PageWrapper>
                 <div className="flex justify-center items-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto"></div>
                     <p className="mt-4 text-gray-600">데이터를 불러오는 중...</p>
                 </div>
             </PageWrapper>
@@ -330,138 +285,172 @@ function TourReservationContent() {
                 {/* 헤더 */}
                 <div className="flex justify-between items-center">
                     <div>
-                        <h1 className="text-lg font-bold text-gray-800">
-                            🗺️ 투어 서비스 {isEditMode ? '수정' : '예약'}
-                        </h1>
-                        <p className="text-sm text-gray-600 mt-1">행복 여행 이름: {quote.title}</p>
-                        {isEditMode && (
-                            <p className="text-sm text-blue-600 mt-1">📝 기존 예약을 수정하고 있습니다</p>
-                        )}
+                        <h1 className="text-lg font-bold text-gray-800">🎯 투어 예약 (2단계)</h1>
+                        <p className="text-sm text-gray-600 mt-1">
+                            행복여행 이름: {quote?.title}
+                        </p>
                     </div>
+                    <button
+                        onClick={() => router.back()}
+                        className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 text-sm"
+                    >
+                        ← 이전
+                    </button>
                 </div>
 
-                {/* 사용 가능한 서비스 옵션들 - 정보 표시만 (선택 불가) */}
-                <SectionBox title="견적에 포함된 투어 서비스">
-                    {availableServices.length > 0 && (
-                        <div className="mb-6">
-                            <h4 className="text-md font-medium text-purple-800 mb-3">🗺️ 투어 서비스</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {availableServices.map((service, index) => (
-                                    <div
-                                        key={index}
-                                        className="p-4 rounded-lg border-2 border-purple-200 bg-purple-50"
-                                    >
-                                        <div className="flex justify-between items-start mb-2">
-                                            <span className="font-medium text-gray-800">{service.tour_name}</span>
-                                            <span className="text-purple-600 font-bold">{service.price?.toLocaleString()}원</span>
-                                        </div>
-                                        <div className="text-sm text-gray-600 space-y-1">
-                                            <div>정원: {service.tour_capacity}명</div>
-                                            <div>차량: {service.tour_vehicle}</div>
-                                            <div>타입: {service.tour_type}</div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </SectionBox>
+                {/* 선택된 투어 정보 표시 (읽기 전용) */}
+                {availableServices.length > 0 ? (
+                    <div className="space-y-4 mb-6">
+                        <h3 className="text-lg font-semibold text-gray-800">🎯 선택된 투어 정보 (1단계에서 선택됨)</h3>
 
-                {/* 입력 폼 - 서비스 존재 여부에 따라 자동 표시 */}
-                {availableServices.length > 0 && (
-                    <SectionBox title="투어 상세 정보">
-                        <div className="space-y-6">
-                            {/* 투어 기본 정보 */}
-                            <div className="bg-purple-50 rounded-lg p-4">
-                                <h4 className="text-md font-medium text-purple-800 mb-3">투어 기본 정보</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">투어 날짜 *</label>
-                                        <input
-                                            type="date"
-                                            value={form.serviceData.tour_date}
-                                            onChange={(e) => handleInputChange('tour_date', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">참가 인원 *</label>
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            value={form.serviceData.participant_count}
-                                            onChange={(e) => handleInputChange('participant_count', parseInt(e.target.value))}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">픽업 장소</label>
-                                        <input
-                                            type="text"
-                                            value={form.serviceData.pickup_location}
-                                            onChange={(e) => handleInputChange('pickup_location', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            placeholder="픽업 희망 장소를 입력해주세요"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">드롭오프 장소</label>
-                                        <input
-                                            type="text"
-                                            value={form.serviceData.dropoff_location}
-                                            onChange={(e) => handleInputChange('dropoff_location', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            placeholder="드롭오프 희망 장소를 입력해주세요"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">투어 시간</label>
-                                        <input
-                                            type="text"
-                                            value={form.serviceData.tour_duration}
-                                            onChange={(e) => handleInputChange('tour_duration', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            placeholder="예: 8시간, 하루종일 등"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">특별 요구사항</label>
-                                        <input
-                                            type="text"
-                                            value={form.serviceData.special_requirements}
-                                            onChange={(e) => handleInputChange('special_requirements', e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            placeholder="음식, 접근성, 언어 등 특별 요구사항"
-                                        />
+                        {/* 선택된 서비스 표시 (클릭 불가) */}
+                        {selectedServices.length > 0 && (
+                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                <h4 className="text-md font-medium text-purple-800 mb-3">✅ 확정된 투어</h4>
+                                <div className="space-y-3">
+                                    {selectedServices.map((service, index) => (
+                                        <div
+                                            key={index}
+                                            className="p-4 rounded-lg border-2 border-purple-500 bg-purple-50"
+                                        >
+                                            <div className="flex justify-between items-start mb-2">
+                                                <span className="font-medium text-purple-900">{service.tour_name}</span>
+                                                <span className="text-purple-600 font-bold">{service.price?.toLocaleString()}원</span>
+                                            </div>
+                                            <div className="text-sm text-purple-700">
+                                                <div>정원: {service.tour_capacity}명</div>
+                                                <div>차량: {service.tour_vehicle}</div>
+                                                <div>타입: {service.tour_type}</div>
+                                                {service.description && <div>설명: {service.description}</div>}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <div className="border-t border-purple-300 pt-3 mt-3">
+                                        <div className="flex justify-between font-bold text-purple-800">
+                                            <span>총 예상 금액:</span>
+                                            <span>{totalPrice.toLocaleString()}원</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                        )}
 
-                            {/* 특별 요청사항 */}
+                        {/* 수정 안내 */}
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                            <p className="text-sm text-gray-600 flex items-center">
+                                <span className="mr-2">💡</span>
+                                투어 선택을 변경하려면 <button
+                                    onClick={() => router.push(`/mypage/direct-booking/tour/1?quoteId=${quoteId}`)}
+                                    className="text-blue-600 hover:text-blue-800 underline mx-1"
+                                >
+                                    이전 단계
+                                </button>로 돌아가세요.
+                            </p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6">
+                        <div className="text-center">
+                            <div className="text-orange-500 text-3xl mb-3">🎯</div>
+                            <h3 className="text-lg font-medium text-orange-800 mb-2">투어 정보를 불러오는 중...</h3>
+                            <p className="text-orange-600 text-sm">
+                                1단계에서 선택한 투어 정보를 확인하고 있습니다.
+                            </p>
+                            <p className="text-orange-500 text-xs mt-2">
+                                Quote ID: {quoteId} | Available Services: {availableServices.length}
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* 예약 정보 입력 폼 */}
+                {selectedServices.length > 0 && (
+                    <div className="bg-white rounded-lg shadow-sm border p-6">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4">📝 예약 정보 입력</h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">특별 요청사항</label>
-                                <textarea
-                                    value={form.request_note}
-                                    onChange={(e) => setForm(prev => ({ ...prev, request_note: e.target.value }))}
-                                    rows={4}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                    placeholder="투어 관련 기타 요청사항을 입력해주세요..."
+                                <label className="block text-sm font-medium text-gray-700 mb-2">투어 날짜 *</label>
+                                <input
+                                    type="date"
+                                    value={formData.tour_date}
+                                    onChange={(e) => setFormData({ ...formData, tour_date: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">참가 인원 *</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={formData.participant_count}
+                                    onChange={(e) => setFormData({ ...formData, participant_count: parseInt(e.target.value) })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">픽업 장소</label>
+                                <input
+                                    type="text"
+                                    value={formData.pickup_location}
+                                    onChange={(e) => setFormData({ ...formData, pickup_location: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
+                                    placeholder="픽업 희망 장소"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">드롭오프 장소</label>
+                                <input
+                                    type="text"
+                                    value={formData.dropoff_location}
+                                    onChange={(e) => setFormData({ ...formData, dropoff_location: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
+                                    placeholder="드롭오프 희망 장소"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">투어 시간</label>
+                                <input
+                                    type="text"
+                                    value={formData.tour_duration}
+                                    onChange={(e) => setFormData({ ...formData, tour_duration: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
+                                    placeholder="예: 8시간, 하루종일 등"
                                 />
                             </div>
                         </div>
-                    </SectionBox>
+
+                        <div className="mt-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">특별 요청사항</label>
+                            <textarea
+                                value={formData.request_note}
+                                onChange={(e) => setFormData({ ...formData, request_note: e.target.value })}
+                                rows={4}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500"
+                                placeholder="투어 관련 기타 요청사항을 입력해주세요..."
+                            />
+                        </div>
+                    </div>
                 )}
 
+
+
                 {/* 예약 버튼 */}
-                <div className="flex justify-end">
+                <div className="flex justify-end space-x-4">
                     <button
-                        onClick={handleSubmit}
-                        disabled={loading}
-                        className="bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 disabled:opacity-50"
+                        onClick={() => router.push(`/mypage/direct-booking/tour/1?quoteId=${quoteId}`)}
+                        className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600"
                     >
-                        {loading ? (isEditMode ? '수정 처리 중...' : '예약 처리 중...') : (isEditMode ? '예약 수정' : '예약 추가')}
+                        이전 단계
+                    </button>
+                    <button
+                        onClick={handleReservation}
+                        disabled={!selectedServices.length || !formData.tour_date || !formData.participant_count || loading}
+                        className="bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                        {loading ? '예약 처리 중...' : '예약 완료'}
                     </button>
                 </div>
             </div>
@@ -469,7 +458,6 @@ function TourReservationContent() {
     );
 }
 
-// 페이지 컴포넌트는 Suspense로 감싸서 export
 export default function TourReservationPage() {
     return (
         <Suspense fallback={
