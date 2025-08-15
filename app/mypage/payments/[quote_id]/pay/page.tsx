@@ -272,8 +272,8 @@ export default function PaymentPage() {
                         <button
                             onClick={() => setPaymentMethod('card')}
                             className={`p-4 border-2 rounded-lg transition-all ${paymentMethod === 'card'
-                                    ? 'border-blue-500 bg-blue-50'
-                                    : 'border-gray-200 hover:border-blue-300'
+                                ? 'border-blue-500 bg-blue-50'
+                                : 'border-gray-200 hover:border-blue-300'
                                 }`}
                         >
                             <div className="text-2xl mb-2">💳</div>
@@ -283,8 +283,8 @@ export default function PaymentPage() {
                         <button
                             onClick={() => setPaymentMethod('transfer')}
                             className={`p-4 border-2 rounded-lg transition-all ${paymentMethod === 'transfer'
-                                    ? 'border-blue-500 bg-blue-50'
-                                    : 'border-gray-200 hover:border-blue-300'
+                                ? 'border-blue-500 bg-blue-50'
+                                : 'border-gray-200 hover:border-blue-300'
                                 }`}
                         >
                             <div className="text-2xl mb-2">🏦</div>
@@ -294,8 +294,8 @@ export default function PaymentPage() {
                         <button
                             onClick={() => setPaymentMethod('deposit')}
                             className={`p-4 border-2 rounded-lg transition-all ${paymentMethod === 'deposit'
-                                    ? 'border-blue-500 bg-blue-50'
-                                    : 'border-gray-200 hover:border-blue-300'
+                                ? 'border-blue-500 bg-blue-50'
+                                : 'border-gray-200 hover:border-blue-300'
                                 }`}
                         >
                             <div className="text-2xl mb-2">🏧</div>
@@ -440,7 +440,7 @@ export default function PaymentPage() {
                                         </label>
                                         <input
                                             type="text"
-                                            value={quoteData.total_price.toLocaleString() + '원'}
+                                            value={quoteData.total_price.toLocaleString() + '동'}
                                             disabled
                                             className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
                                         />
@@ -494,7 +494,7 @@ export default function PaymentPage() {
                         disabled={processing}
                         className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
                     >
-                        {processing ? '결제 처리 중...' : `${quoteData.total_price.toLocaleString()}원 결제하기`}
+                        {processing ? '결제 처리 중...' : `${quoteData.total_price.toLocaleString()}동 결제하기`}
                     </button>
                 </div>
             </div>

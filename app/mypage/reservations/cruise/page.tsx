@@ -840,15 +840,15 @@ function CruiseReservationContent() {
                         <div className="flex flex-col gap-2 text-sm">
                             <div>
                                 <span className="text-gray-600">객실 비용:</span>
-                                <span className="font-medium text-blue-600 ml-2">{form.room_total_price?.toLocaleString()}원</span>
+                                <span className="font-medium text-blue-600 ml-2">{form.room_total_price?.toLocaleString()}동</span>
                             </div>
                             <div>
                                 <span className="text-gray-600">차량 비용:</span>
-                                <span className="font-medium text-green-600 ml-2">{form.car_total_price?.toLocaleString()}원</span>
+                                <span className="font-medium text-green-600 ml-2">{form.car_total_price?.toLocaleString()}동</span>
                             </div>
                             <div className="border-t border-yellow-300 pt-2 mt-2">
                                 <span className="text-gray-800 font-medium">총 예상 금액:</span>
-                                <span className="font-bold text-lg text-red-600 ml-2">{(form.room_total_price + form.car_total_price)?.toLocaleString()}원</span>
+                                <span className="font-bold text-lg text-red-600 ml-2">{(form.room_total_price + form.car_total_price)?.toLocaleString()}동</span>
                             </div>
                         </div>
                         <p className="mt-3 text-xs text-gray-600">

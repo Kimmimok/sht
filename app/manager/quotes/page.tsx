@@ -344,7 +344,7 @@ function ManagerQuotesContent() {
                         <div>✅ 승인일: {new Date(quote.approved_at).toLocaleDateString('ko-KR')}</div>
                       )}
                       {quote.total_price && (
-                        <div>💰 총 금액: <strong>{quote.total_price.toLocaleString()}원</strong></div>
+                        <div>💰 총 금액: <strong>{quote.total_price.toLocaleString()}동</strong></div>
                       )}
                       <div className="text-xs text-gray-400">
                         🆔 견적 ID: {quote.id.slice(0, 8)}...

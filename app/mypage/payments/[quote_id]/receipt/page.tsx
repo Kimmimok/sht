@@ -328,7 +328,7 @@ export default function PaymentReceiptPage() {
                         <div className="border-t pt-6 mb-8">
                             <div className="flex justify-between items-center text-2xl font-bold">
                                 <span>총 결제 금액:</span>
-                                <span className="text-blue-600">{quoteData.total_price.toLocaleString()}원</span>
+                                <span className="text-blue-600">{quoteData.total_price.toLocaleString()}동</span>
                             </div>
                         </div>
 

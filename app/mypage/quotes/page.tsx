@@ -174,7 +174,7 @@ export default function QuotesPage() {
                         <div className="text-sm text-gray-600 space-y-1">
                           <p>견적명: <span className="font-semibold text-blue-600">{quote.title}</span></p>
                           <p>생성일: {new Date(quote.created_at).toLocaleDateString('ko-KR')}</p>
-                          <p>총 금액: <span className="font-semibold text-blue-600">{quote.total_price > 0 ? `${quote.total_price.toLocaleString()}원` : '견적 대기'}</span></p>
+                          <p>총 금액: <span className="font-semibold text-blue-600">{quote.total_price > 0 ? `${quote.total_price.toLocaleString()}동` : '견적 대기'}</span></p>
                           {quote.description && (
                             <p className="text-gray-700 mt-2">{quote.description}</p>
                           )}

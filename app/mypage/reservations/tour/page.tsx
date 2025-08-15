@@ -353,7 +353,7 @@ function TourReservationContent() {
                                     >
                                         <div className="flex justify-between items-start mb-2">
                                             <span className="font-medium text-gray-800">{service.tour_name}</span>
-                                            <span className="text-purple-600 font-bold">{service.price?.toLocaleString()}원</span>
+                                            <span className="text-purple-600 font-bold">{service.price?.toLocaleString()}동</span>
                                         </div>
                                         <div className="text-sm text-gray-600 space-y-1">
                                             <div>정원: {service.tour_capacity}명</div>

@@ -207,7 +207,7 @@ export default function QuoteViewPage() {
                         <div>
                             {quote.total_price && (
                                 <div className="text-lg font-medium text-blue-600">
-                                    총 금액: {quote.total_price.toLocaleString()}원
+                                    총 금액: {quote.total_price.toLocaleString()}동
                                 </div>
                             )}
                         </div>
@@ -275,12 +275,12 @@ export default function QuoteViewPage() {
                                         </div>
                                         <div>
                                             <span className="text-gray-600">단가: </span>
-                                            <span>{item.unit_price?.toLocaleString()}원</span>
+                                            <span>{item.unit_price?.toLocaleString()}동</span>
                                         </div>
                                         <div>
                                             <span className="text-gray-600">총액: </span>
                                             <span className="font-medium text-blue-600">
-                                                {item.total_price?.toLocaleString()}원
+                                                {item.total_price?.toLocaleString()}동
                                             </span>
                                         </div>
                                     </div>

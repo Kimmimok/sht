@@ -364,7 +364,7 @@ function RentcarReservationContent() {
                   >
                     <div className="flex justify-between items-start mb-2">
                       <span className="font-medium text-gray-800">{service.rent_type}</span>
-                      <span className="text-green-600 font-bold">{service.price?.toLocaleString()}원</span>
+                      <span className="text-green-600 font-bold">{service.price?.toLocaleString()}동</span>
                     </div>
                     <div className="text-sm text-gray-600 space-y-1">
                       <div>카테고리: {service.rent_category}</div>

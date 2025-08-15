@@ -722,7 +722,7 @@ function QuoteEditContent() {
                                 {serviceItems.map((item, index) => (
                                     <div key={index} className="flex justify-between">
                                         <span>{item.name} (x{item.quantity})</span>
-                                        <span className="font-medium">{item.total_price.toLocaleString()}원</span>
+                                        <span className="font-medium">{item.total_price.toLocaleString()}동</span>
                                     </div>
                                 ))}
                                 {serviceItems.length === 0 && (
@@ -734,7 +734,7 @@ function QuoteEditContent() {
                         <div>
                             <h4 className="font-medium text-gray-700 mb-2">총 견적 금액</h4>
                             <div className="text-2xl font-bold text-blue-600 mb-4">
-                                {calculateTotalPrice().toLocaleString()}원
+                                {calculateTotalPrice().toLocaleString()}동
                             </div>
 
                             <div className="text-sm text-gray-600 space-y-1">

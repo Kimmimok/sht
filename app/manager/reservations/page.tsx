@@ -31,6 +31,7 @@ interface ReservationData {
   re_status: string;
   re_created_at: string;
   re_quote_id: string;
+  re_user_id: string;
   users: {
     id: string;
     name: string;
@@ -130,34 +131,92 @@ export default function ManagerReservationsPage() {
       console.log('✅ 예약 기본 정보 조회 성공:', baseReservations?.length || 0, '건');
 
       // 사용자/견적 ID 수집 후 배치 조회
-      const userIds = Array.from(new Set((baseReservations || []).map(r => r.re_user_id).filter(Boolean)));
-      const quoteIds = Array.from(new Set((baseReservations || []).map(r => r.re_quote_id).filter(Boolean)));
+      const userIds = Array.from(new Set((baseReservations || []).map((r: any) => r.re_user_id).filter(Boolean)));
+      const quoteIds = Array.from(new Set((baseReservations || []).map((r: any) => r.re_quote_id).filter(Boolean)));
 
-      const [usersRes, quotesRes] = await Promise.all([
+      // 서비스 타입별로 예약 ID 수집 (배치 조회 준비)
+      const cruiseIds = (baseReservations || []).filter((r: any) => r.re_type === 'cruise').map((r: any) => r.re_id);
+      const airportIds = (baseReservations || []).filter((r: any) => r.re_type === 'airport').map((r: any) => r.re_id);
+      const hotelIds = (baseReservations || []).filter((r: any) => r.re_type === 'hotel').map((r: any) => r.re_id);
+      const rentcarIds = (baseReservations || []).filter((r: any) => r.re_type === 'rentcar').map((r: any) => r.re_id);
+      const tourIds = (baseReservations || []).filter((r: any) => r.re_type === 'tour').map((r: any) => r.re_id);
+
+      const [usersRes, quotesRes, cruiseRes, cruiseCarRes, airportRes, hotelRes, rentcarRes, tourRes] = await Promise.all([
         userIds.length
-          ? supabase.from('users').select('id, name, email, phone').in('id', userIds)
+          ? supabase.from('users').select('id, name, email, phone_number').in('id', userIds)
           : Promise.resolve({ data: [], error: null } as any),
+        // 예약.re_quote_id는 quote.quote_id를 참조하는 경우가 있음 → quote_id 기준으로 조회
         quoteIds.length
-          ? supabase.from('quote').select('id, title, status').in('id', quoteIds)
-          : Promise.resolve({ data: [], error: null } as any)
+          ? supabase.from('quote').select('quote_id, title, status').in('quote_id', quoteIds)
+          : Promise.resolve({ data: [], error: null } as any),
+        cruiseIds.length
+          ? supabase.from('reservation_cruise').select('*').in('reservation_id', cruiseIds)
+          : Promise.resolve({ data: [], error: null } as any),
+        cruiseIds.length
+          ? supabase.from('reservation_cruise_car').select('*').in('reservation_id', cruiseIds).order('created_at', { ascending: false })
+          : Promise.resolve({ data: [], error: null } as any),
+        airportIds.length
+          ? supabase.from('reservation_airport').select('*').in('reservation_id', airportIds)
+          : Promise.resolve({ data: [], error: null } as any),
+        hotelIds.length
+          ? supabase.from('reservation_hotel').select('*').in('reservation_id', hotelIds)
+          : Promise.resolve({ data: [], error: null } as any),
+        rentcarIds.length
+          ? supabase.from('reservation_rentcar').select('*').in('reservation_id', rentcarIds)
+          : Promise.resolve({ data: [], error: null } as any),
+        tourIds.length
+          ? supabase.from('reservation_tour').select('*').in('reservation_id', tourIds)
+          : Promise.resolve({ data: [], error: null } as any),
       ]);
 
       if (usersRes.error) console.warn('⚠️ 사용자 배치 조회 일부 실패:', usersRes.error);
       if (quotesRes.error) console.warn('⚠️ 견적 배치 조회 일부 실패:', quotesRes.error);
 
       const userMap = new Map<string, { id: string; name: string; email: string; phone: string }>();
-      (usersRes.data || []).forEach((u: any) => userMap.set(u.id, u));
+      (usersRes.data || []).forEach((u: any) => {
+        userMap.set(u.id, {
+          id: u.id,
+          name: u.name || (u.email ? u.email.split('@')[0] : '사용자'),
+          email: u.email,
+          phone: u.phone_number || '',
+        });
+      });
 
-      const quoteMap = new Map<string, { id: string; title: string; status: string }>();
-      (quotesRes.data || []).forEach((q: any) => quoteMap.set(q.id, q));
+      // quote_id 기준 맵 구성
+      const quoteMap = new Map<string, { quote_id: string; title: string; status: string }>();
+      (quotesRes.data || []).forEach((q: any) => {
+        if (q.quote_id) quoteMap.set(q.quote_id, q);
+      });
+
+      // 서비스 상세 맵
+      const cruiseMap = new Map<string, any>();
+      (cruiseRes.data || []).forEach((row: any) => cruiseMap.set(row.reservation_id, row));
+
+      const cruiseCarLatestMap = new Map<string, any>();
+      if (Array.isArray(cruiseCarRes.data)) {
+        for (const row of cruiseCarRes.data as any[]) {
+          if (!cruiseCarLatestMap.has(row.reservation_id)) {
+            cruiseCarLatestMap.set(row.reservation_id, row); // created_at 내림차순 정렬된 첫 행이 최신
+          }
+        }
+      }
+
+      const airportMap = new Map<string, any>();
+      (airportRes.data || []).forEach((row: any) => airportMap.set(row.reservation_id, row));
+      const hotelMap = new Map<string, any>();
+      (hotelRes.data || []).forEach((row: any) => hotelMap.set(row.reservation_id, row));
+      const rentcarMap = new Map<string, any>();
+      (rentcarRes.data || []).forEach((row: any) => rentcarMap.set(row.reservation_id, row));
+      const tourMap = new Map<string, any>();
+      (tourRes.data || []).forEach((row: any) => tourMap.set(row.reservation_id, row));
 
       // 사용자 정보와 견적 정보를 매핑하여 확장
       const enrichedReservations: ReservationData[] = [];
 
       for (const reservation of baseReservations || []) {
         try {
-          const userInfo = userMap.get(reservation.re_user_id) || {
-            id: reservation.re_user_id,
+          const userInfo = userMap.get((reservation as any).re_user_id) || {
+            id: (reservation as any).re_user_id,
             name: '미등록 사용자',
             email: '',
             phone: ''
@@ -165,92 +224,50 @@ export default function ManagerReservationsPage() {
 
           const qInfo = reservation.re_quote_id ? quoteMap.get(reservation.re_quote_id) : null;
 
-          // 서비스별 상세 정보 조회
-          let serviceDetails = null as any;
-          let serviceDetailsExtra = null as any;
-          try {
-            switch (reservation.re_type) {
-              case 'cruise': {
-                const { data: cruiseDetails } = await supabase
-                  .from('reservation_cruise')
-                  .select('*')
-                  .eq('reservation_id', reservation.re_id)
-                  .single();
-                serviceDetails = cruiseDetails;
-                try {
-                  const { data: cruiseCars } = await supabase
-                    .from('reservation_cruise_car')
-                    .select('*')
-                    .eq('reservation_id', reservation.re_id)
-                    .order('created_at', { ascending: false })
-                    .limit(1);
-                  serviceDetailsExtra = Array.isArray(cruiseCars) ? cruiseCars[0] : null;
-                } catch (_) { /* noop */ }
-                break;
-              }
-              case 'airport': {
-                const { data: airportDetails } = await supabase
-                  .from('reservation_airport')
-                  .select('*')
-                  .eq('reservation_id', reservation.re_id)
-                  .single();
-                serviceDetails = airportDetails;
-                break;
-              }
-              case 'hotel': {
-                const { data: hotelDetails } = await supabase
-                  .from('reservation_hotel')
-                  .select('*')
-                  .eq('reservation_id', reservation.re_id)
-                  .single();
-                serviceDetails = hotelDetails;
-                break;
-              }
-              case 'rentcar': {
-                const { data: rentcarDetails } = await supabase
-                  .from('reservation_rentcar')
-                  .select('*')
-                  .eq('reservation_id', reservation.re_id)
-                  .single();
-                serviceDetails = rentcarDetails;
-                break;
-              }
-              case 'tour': {
-                const { data: tourDetails } = await supabase
-                  .from('reservation_tour')
-                  .select('*')
-                  .eq('reservation_id', reservation.re_id)
-                  .single();
-                serviceDetails = tourDetails;
-                break;
-              }
-            }
-          } catch (serviceError) {
-            console.warn('⚠️ 서비스 상세 정보 조회 실패:', reservation.re_type, serviceError);
+          // 배치 조회 결과에서 매핑
+          let serviceDetails: any = null;
+          let serviceDetailsExtra: any = null;
+          switch (reservation.re_type) {
+            case 'cruise':
+              serviceDetails = cruiseMap.get(reservation.re_id) || null;
+              serviceDetailsExtra = cruiseCarLatestMap.get(reservation.re_id) || null;
+              break;
+            case 'airport':
+              serviceDetails = airportMap.get(reservation.re_id) || null;
+              break;
+            case 'hotel':
+              serviceDetails = hotelMap.get(reservation.re_id) || null;
+              break;
+            case 'rentcar':
+              serviceDetails = rentcarMap.get(reservation.re_id) || null;
+              break;
+            case 'tour':
+              serviceDetails = tourMap.get(reservation.re_id) || null;
+              break;
           }
 
           enrichedReservations.push({
-            ...reservation,
+            ...(reservation as any),
             users: userInfo,
             quote: qInfo
               ? { title: qInfo.title ?? '제목 없음', status: qInfo.status ?? 'unknown' }
               : { title: '연결된 견적 없음', status: 'unknown' },
             serviceDetails,
-            serviceDetailsExtra
+            serviceDetailsExtra,
           });
         } catch (enrichError) {
-          console.warn('⚠️ 예약 상세 정보 구성 실패:', reservation.re_id, enrichError);
+          console.warn('⚠️ 예약 상세 정보 구성 실패:', (reservation as any).re_id, enrichError);
           enrichedReservations.push({
-            ...reservation,
+            ...(reservation as any),
             users: {
-              id: reservation.re_user_id,
+              id: (reservation as any).re_user_id,
               name: '미등록 사용자',
               email: '',
               phone: ''
             },
             quote: { title: reservation.re_quote_id ? '제목 없음' : '연결된 견적 없음', status: 'unknown' },
             serviceDetails: null
-          });
+          } as any);
         }
       }
 

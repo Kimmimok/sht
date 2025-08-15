@@ -128,13 +128,18 @@ export default function ManagerServiceTablesPage() {
             if (userIds.length) {
                 const { data: users, error: userErr } = await supabase
                     .from('users')
-                    .select('id, name, email, phone')
+                    .select('id, name, email, phone_number')
                     .in('id', userIds);
                 if (userErr) {
                     console.warn(`[${serviceType}] 사용자 조회 실패:`, userErr.message || userErr);
                 } else if (users) {
                     userMap = (users as any[]).reduce((acc, u) => {
-                        acc[u.id] = u;
+                        acc[u.id] = {
+                            id: u.id,
+                            name: u.name || (u.email ? u.email.split('@')[0] : '사용자'),
+                            email: u.email,
+                            phone: u.phone_number || '',
+                        };
                         return acc;
                     }, {} as Record<string, any>);
                 }

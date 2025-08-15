@@ -482,7 +482,7 @@ function ReservationViewContent() {
             room_category: '객실 등급',
             cruise: '크루즈명',
             room_type: '객실 타입',
-            price: '가격 (원)',
+            price: '가격 (동)',
             start_date: '운항 시작일',
             end_date: '운항 종료일',
             payment: '결제 방식',
@@ -495,7 +495,7 @@ function ReservationViewContent() {
             airport_category: '서비스 카테고리',
             airport_route: '운행 노선',
             airport_car_type: '차량 종류',
-            price: '가격 (원)',
+            price: '가격 (동)',
             base_price: '기본 요금',
             distance_km: '운행 거리 (km)',
             duration_minutes: '소요 시간 (분)'
@@ -505,7 +505,7 @@ function ReservationViewContent() {
             hotel_name: '호텔명',
             room_name: '객실명',
             room_type: '객실 타입',
-            price: '1박 가격 (원)',
+            price: '1박 가격 (동)',
             start_date: '적용 시작일',
             end_date: '적용 종료일',
             weekday_type: '요일 구분',
@@ -518,7 +518,7 @@ function ReservationViewContent() {
             rent_category: '차량 등급',
             rent_route: '이용 경로',
             rent_car_type: '차량 모델',
-            price: '1일 가격 (원)',
+            price: '1일 가격 (동)',
             base_price: '기본 요금',
             insurance_included: '보험 포함 여부',
             fuel_type: '연료 타입'
@@ -529,7 +529,7 @@ function ReservationViewContent() {
             tour_capacity: '최대 인원',
             tour_vehicle: '이동 수단',
             tour_type: '투어 유형',
-            price: '1인 가격 (원)',
+            price: '1인 가격 (동)',
             duration_hours: '소요 시간 (시간)',
             includes_meal: '식사 포함 여부',
             guide_included: '가이드 포함 여부'
@@ -539,7 +539,7 @@ function ReservationViewContent() {
             car_category: '서비스 카테고리',
             cruise: '연결 크루즈',
             car_type: '차량 종류',
-            price: '가격 (원)',
+            price: '가격 (동)',
             schedule: '운행 스케줄',
             passenger_count: '승객 정원',
             luggage_capacity: '수하물 용량'
@@ -804,7 +804,7 @@ function ReservationViewContent() {
                             <div>
                                 <span className="text-gray-600 text-sm">총 금액:</span>
                                 <p className="font-medium text-blue-600">
-                                    {reservation.quote.total_price?.toLocaleString()}원
+                                    {reservation.quote.total_price?.toLocaleString()}동
                                 </p>
                             </div>
                         </div>

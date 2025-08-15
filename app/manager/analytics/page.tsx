@@ -292,7 +292,7 @@ export default function ManagerAnalyticsPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">총 견적가</p>
-                <p className="text-2xl font-bold text-gray-800">{(data.totalValue / 10000).toFixed(0)}만원</p>
+                <p className="text-2xl font-bold text-gray-800">{data.totalValue.toLocaleString()}동</p>
               </div>
             </div>
           </div>
@@ -304,7 +304,7 @@ export default function ManagerAnalyticsPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">평균 견적가</p>
-                <p className="text-2xl font-bold text-gray-800">{(data.avgValue / 10000).toFixed(0)}만원</p>
+                <p className="text-2xl font-bold text-gray-800">{data.avgValue.toLocaleString()}동</p>
               </div>
             </div>
           </div>
@@ -527,7 +527,7 @@ export default function ManagerAnalyticsPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">총 결제액</p>
-                <p className="text-2xl font-bold text-gray-800">{(data.totalAmount / 100000000).toFixed(1)}억원</p>
+                <p className="text-2xl font-bold text-gray-800">{data.totalAmount.toLocaleString()}동</p>
               </div>
             </div>
           </div>
@@ -539,7 +539,7 @@ export default function ManagerAnalyticsPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">평균 결제액</p>
-                <p className="text-2xl font-bold text-gray-800">{(data.avgAmount / 10000).toFixed(0)}만원</p>
+                <p className="text-2xl font-bold text-gray-800">{data.avgAmount.toLocaleString()}동</p>
               </div>
             </div>
           </div>
@@ -777,8 +777,8 @@ export default function ManagerAnalyticsPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === tab.id
-                    ? `bg-${tab.color}-600 text-white shadow-md`
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-white'
+                  ? `bg-${tab.color}-600 text-white shadow-md`
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-white'
                   }`}
               >
                 {tab.icon}

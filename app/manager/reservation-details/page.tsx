@@ -57,19 +57,34 @@ export default function ManagerReservationDetailsPage() {
                 case 'rentcar':
                     tableName = 'rentcar_price';
                     break;
+                case 'car':
+                    tableName = 'car_price';
+                    break;
                 default:
                     return null;
             }
 
+            const codeColumn = serviceType === 'cruise'
+                ? 'room_code'
+                : serviceType === 'airport'
+                    ? 'airport_code'
+                    : serviceType === 'hotel'
+                        ? 'hotel_code'
+                        : serviceType === 'tour'
+                            ? 'tour_code'
+                            : serviceType === 'rentcar'
+                                ? 'rentcar_code'
+                                : serviceType === 'car'
+                                    ? 'car_code'
+                                    : undefined;
+
+            if (!codeColumn) return null;
+
             const { data, error } = await supabase
                 .from(tableName)
                 .select('*')
-                .eq(serviceType === 'cruise' ? 'room_code' :
-                    serviceType === 'airport' ? 'airport_code' :
-                        serviceType === 'hotel' ? 'hotel_code' :
-                            serviceType === 'tour' ? 'tour_code' :
-                                'rentcar_code', priceCode)
-                .single();
+                .eq(codeColumn, priceCode)
+                .maybeSingle();
 
             if (error) {
                 console.error(`${tableName} 조회 실패:`, error);
@@ -91,7 +106,7 @@ export default function ManagerReservationDetailsPage() {
             const { data: reservationsData, error: reservationsError } = await supabase
                 .from('reservation')
                 .select('*')
-                .order('re_created_at', { ascending: false });
+                .order('re_created_at', { ascending: false })
 
             if (reservationsError) {
                 console.error('예약 조회 오류:', reservationsError);
@@ -103,81 +118,134 @@ export default function ManagerReservationDetailsPage() {
                 return;
             }
 
+            console.log('📊 전체 예약 데이터 샘플:', reservationsData.slice(0, 2));
+
             // 사용자 정보 조회
             const userIds = [...new Set(reservationsData.map(r => r.re_user_id).filter(Boolean))];
             let usersById = new Map<string, any>();
 
+            console.log('🔍 사용자 ID 목록:', userIds);
+
             if (userIds.length > 0) {
-                const { data: usersData } = await supabase
+                const { data: usersData, error: usersError } = await supabase
                     .from('users')
-                    .select('id, name, email, phone')
+                    .select('id, name, email, phone_number, role')
                     .in('id', userIds);
+
+                console.log('👥 조회된 사용자 데이터:', usersData);
+                console.log('❌ 사용자 조회 오류:', usersError);
+
                 usersById = new Map((usersData || []).map(u => [u.id, u]));
+                console.log('📋 사용자 맵 크기:', usersById.size);
             }
 
-            // 각 예약의 서비스별 상세 정보 조회
-            const detailedReservations = await Promise.all(
-                reservationsData.map(async (reservation) => {
-                    let serviceDetails = null;
+            // 각 서비스 타입별로 reservation_id를 수집하여 배치 조회
+            const cruiseIds = reservationsData.filter(r => r.re_type === 'cruise').map(r => r.re_id);
+            const airportIds = reservationsData.filter(r => r.re_type === 'airport').map(r => r.re_id);
+            const hotelIds = reservationsData.filter(r => r.re_type === 'hotel').map(r => r.re_id);
+            const tourIds = reservationsData.filter(r => r.re_type === 'tour').map(r => r.re_id);
+            const rentcarIds = reservationsData.filter(r => r.re_type === 'rentcar').map(r => r.re_id);
+            const carIds = reservationsData.filter(r => r.re_type === 'car').map(r => r.re_id);
 
-                    try {
-                        switch (reservation.re_type) {
-                            case 'cruise':
-                                const { data: cruiseData } = await supabase
-                                    .from('reservation_cruise')
-                                    .select('*')
-                                    .eq('reservation_id', reservation.re_id)
-                                    .maybeSingle();
-                                serviceDetails = cruiseData;
-                                break;
+            const [cruiseRes, airportRes, hotelRes, tourRes, rentcarRes, carRes] = await Promise.all([
+                cruiseIds.length
+                    ? supabase.from('reservation_cruise').select('*').in('reservation_id', cruiseIds)
+                    : Promise.resolve({ data: [], error: null }),
+                airportIds.length
+                    ? supabase.from('reservation_airport').select('*').in('reservation_id', airportIds)
+                    : Promise.resolve({ data: [], error: null }),
+                hotelIds.length
+                    ? supabase.from('reservation_hotel').select('*').in('reservation_id', hotelIds)
+                    : Promise.resolve({ data: [], error: null }),
+                tourIds.length
+                    ? supabase.from('reservation_tour').select('*').in('reservation_id', tourIds)
+                    : Promise.resolve({ data: [], error: null }),
+                rentcarIds.length
+                    ? supabase.from('reservation_rentcar').select('*').in('reservation_id', rentcarIds)
+                    : Promise.resolve({ data: [], error: null }),
+                carIds.length
+                    ? supabase.from('reservation_car_sht').select('*').in('reservation_id', carIds)
+                    : Promise.resolve({ data: [], error: null }),
+            ]);
 
-                            case 'airport':
-                                const { data: airportData } = await supabase
-                                    .from('reservation_airport')
-                                    .select('*')
-                                    .eq('reservation_id', reservation.re_id)
-                                    .maybeSingle();
-                                serviceDetails = airportData;
-                                break;
+            if (cruiseRes.error) console.warn('reservation_cruise 조회 오류:', cruiseRes.error);
+            if (airportRes.error) console.warn('reservation_airport 조회 오류:', airportRes.error);
+            if (hotelRes.error) console.warn('reservation_hotel 조회 오류:', hotelRes.error);
+            if (tourRes.error) console.warn('reservation_tour 조회 오류:', tourRes.error);
+            if (rentcarRes.error) console.warn('reservation_rentcar 조회 오류:', rentcarRes.error);
+            if (carRes.error) console.warn('reservation_car_sht 조회 오류:', carRes.error);
 
-                            case 'hotel':
-                                const { data: hotelData } = await supabase
-                                    .from('reservation_hotel')
-                                    .select('*')
-                                    .eq('reservation_id', reservation.re_id)
-                                    .maybeSingle();
-                                serviceDetails = hotelData;
-                                break;
-
-                            case 'tour':
-                                const { data: tourData } = await supabase
-                                    .from('reservation_tour')
-                                    .select('*')
-                                    .eq('reservation_id', reservation.re_id)
-                                    .maybeSingle();
-                                serviceDetails = tourData;
-                                break;
-
-                            case 'rentcar':
-                                const { data: rentcarData } = await supabase
-                                    .from('reservation_rentcar')
-                                    .select('*')
-                                    .eq('reservation_id', reservation.re_id)
-                                    .maybeSingle();
-                                serviceDetails = rentcarData;
-                                break;
-                        }
-                    } catch (error) {
-                        console.error(`${reservation.re_type} 상세 정보 조회 오류:`, error);
+            // 크루즈/공항: 대체 키로 누락분 추가 조회
+            let cruiseRows: any[] = cruiseRes.data || [];
+            if (cruiseIds.length && cruiseRows.length < cruiseIds.length) {
+                const foundIds = new Set(cruiseRows.map((r: any) => r.reservation_id));
+                const missing = cruiseIds.filter(id => !foundIds.has(id));
+                if (missing.length) {
+                    const alt = await supabase
+                        .from('reservation_cruise')
+                        .select('*')
+                        .in('re_id', missing);
+                    if (!alt.error && alt.data) {
+                        cruiseRows = cruiseRows.concat(alt.data);
                     }
+                }
+            }
 
-                    return {
-                        ...reservation,
-                        user: usersById.get(reservation.re_user_id) || null,
-                        service_details: serviceDetails
-                    };
-                })
-            );
+            let airportRows: any[] = airportRes.data || [];
+            if (airportIds.length && airportRows.length < airportIds.length) {
+                const foundIds = new Set(airportRows.map((r: any) => r.reservation_id));
+                const missing = airportIds.filter(id => !foundIds.has(id));
+                if (missing.length) {
+                    const alt = await supabase
+                        .from('reservation_airport')
+                        .select('*')
+                        .in('ra_reservation_id', missing);
+                    if (!alt.error && alt.data) {
+                        airportRows = airportRows.concat(alt.data);
+                    }
+                }
+            }
+
+            const cruiseMap = new Map(cruiseRows.map((r: any) => [r.reservation_id || r.re_id, r]));
+            const airportMap = new Map(airportRows.map((r: any) => [r.reservation_id || r.ra_reservation_id, r]));
+            const hotelMap = new Map((hotelRes.data || []).map((r: any) => [r.reservation_id, r]));
+            const tourMap = new Map((tourRes.data || []).map((r: any) => [r.reservation_id, r]));
+            const rentcarMap = new Map((rentcarRes.data || []).map((r: any) => [r.reservation_id, r]));
+            const carMap = new Map((carRes.data || []).map((r: any) => [r.reservation_id, r]));
+
+            const detailedReservations = reservationsData.map((reservation) => {
+                let serviceDetails: any = null;
+                switch (reservation.re_type) {
+                    case 'cruise':
+                        serviceDetails = cruiseMap.get(reservation.re_id) || null;
+                        break;
+                    case 'airport':
+                        serviceDetails = airportMap.get(reservation.re_id) || null;
+                        break;
+                    case 'hotel':
+                        serviceDetails = hotelMap.get(reservation.re_id) || null;
+                        break;
+                    case 'tour':
+                        serviceDetails = tourMap.get(reservation.re_id) || null;
+                        break;
+                    case 'rentcar':
+                        serviceDetails = rentcarMap.get(reservation.re_id) || null;
+                        break;
+                    case 'car':
+                        serviceDetails = carMap.get(reservation.re_id) || null;
+                        break;
+                }
+
+                const customer = usersById.get(reservation.re_user_id) || null;
+                return {
+                    ...reservation,
+                    user: customer,
+                    customer_name: customer?.name || '고객명 없음',
+                    customer_email: customer?.email || null,
+                    customer_phone: customer?.phone_number || null,
+                    service_details: serviceDetails,
+                };
+            });
 
             setReservations(detailedReservations);
         } catch (error) {
@@ -194,6 +262,7 @@ export default function ManagerReservationDetailsPage() {
             case 'hotel': return <Building className="w-5 h-5 text-purple-600" />;
             case 'tour': return <MapPin className="w-5 h-5 text-orange-600" />;
             case 'rentcar': return <Car className="w-5 h-5 text-red-600" />;
+            case 'car': return <Car className="w-5 h-5 text-amber-600" />;
             default: return <FileText className="w-5 h-5 text-gray-600" />;
         }
     };
@@ -205,6 +274,7 @@ export default function ManagerReservationDetailsPage() {
             case 'hotel': return '호텔';
             case 'tour': return '투어';
             case 'rentcar': return '렌터카';
+            case 'car': return '차량';
             default: return type;
         }
     };
@@ -227,10 +297,211 @@ export default function ManagerReservationDetailsPage() {
         }
     };
 
-    const handleViewDetails = (reservation: any) => {
-        setSelectedReservation(reservation);
+    const handleViewDetails = async (reservation: any) => {
+        let res = reservation;
+
+        // 1) 상세 누락 시, 타입별 상세를 모달 직전에 재조회하여 연결
+        if (!res?.service_details && res?.re_type === 'cruise' && res?.re_id) {
+            let cruiseData: any = null;
+            // reservation_id 우선
+            const r1 = await supabase
+                .from('reservation_cruise')
+                .select('*')
+                .eq('reservation_id', res.re_id)
+                .maybeSingle();
+            cruiseData = r1.data || null;
+            // 대체키 re_id
+            if (!cruiseData) {
+                const r2 = await supabase
+                    .from('reservation_cruise')
+                    .select('*')
+                    .eq('re_id', res.re_id)
+                    .maybeSingle();
+                cruiseData = r2.data || null;
+            }
+            // 패턴 매칭(최후 수단)
+            if (!cruiseData) {
+                const r3 = await supabase
+                    .from('reservation_cruise')
+                    .select('*')
+                    .limit(1000);
+                const all = r3.data || [];
+                const shortId = String(res.re_id).slice(0, 8);
+                cruiseData = all.find((row: any) =>
+                    row?.reservation_id?.includes?.(shortId) ||
+                    row?.re_id?.includes?.(shortId) ||
+                    JSON.stringify(row).includes(shortId)
+                ) || null;
+            }
+
+            if (cruiseData?.room_price_code) {
+                const rp = await supabase
+                    .from('room_price')
+                    .select('*')
+                    .eq('room_code', cruiseData.room_price_code)
+                    .maybeSingle();
+                const roomPriceData = rp.data || null;
+                if (roomPriceData) {
+                    cruiseData = {
+                        ...cruiseData,
+                        room_price_info: roomPriceData,
+                        cruise_name: roomPriceData?.cruise || '크루즈명 없음',
+                        room_name: roomPriceData?.room_category || '객실명 없음',
+                        room_type: roomPriceData?.room_type || '객실타입 없음',
+                    };
+                }
+            }
+
+            if (cruiseData) {
+                res = { ...res, service_details: cruiseData };
+            }
+        }
+
+        // 2) 크루즈 room_price_info 지연 로드(이미 상세가 있을 때 보강)
+        if (res?.re_type === 'cruise' && res?.service_details?.room_price_code && !res?.service_details?.room_price_info) {
+            const { data: roomPriceData } = await supabase
+                .from('room_price')
+                .select('*')
+                .eq('room_code', res.service_details.room_price_code)
+                .maybeSingle();
+            if (roomPriceData) {
+                res = {
+                    ...res,
+                    service_details: {
+                        ...res.service_details,
+                        room_price_info: roomPriceData,
+                        cruise_name: roomPriceData?.cruise || res.service_details?.cruise_name || '크루즈명 없음',
+                        room_name: roomPriceData?.room_category || res.service_details?.room_name || '객실명 없음',
+                        room_type: roomPriceData?.room_type || res.service_details?.room_type || '객실타입 없음',
+                    }
+                };
+            }
+        }
+
+        setSelectedReservation(res);
         setShowDetails(true);
     };
+
+    // 상세 데이터가 없을 때도 항상 표시되는 Fallback 상세 컴포넌트
+    const FallbackServiceDetails = ({ reservation }: { reservation: any }) => {
+        const [loading, setLoading] = React.useState(false);
+        const [rawData, setRawData] = React.useState<any | null>(null);
+        const [error, setError] = React.useState<string | null>(null);
+
+        React.useEffect(() => {
+            const run = async () => {
+                try {
+                    setLoading(true);
+                    setError(null);
+                    setRawData(null);
+
+                    const type = reservation?.re_type;
+                    const reId = reservation?.re_id;
+                    const tableMap: Record<string, string> = {
+                        cruise: 'reservation_cruise',
+                        airport: 'reservation_airport',
+                        hotel: 'reservation_hotel',
+                        tour: 'reservation_tour',
+                        rentcar: 'reservation_rentcar',
+                        car: 'reservation_car_sht',
+                    };
+
+                    const table = tableMap[type];
+                    if (!table || !reId) {
+                        setError('유효한 서비스 타입 또는 예약 ID가 없습니다.');
+                    } else {
+                        // 1차: reservation_id
+                        let { data, error } = await supabase
+                            .from(table)
+                            .select('*')
+                            .eq('reservation_id', reId)
+                            .maybeSingle();
+
+                        // 2차: re_id, 또는 공항의 경우 ra_reservation_id
+                        if (!data) {
+                            const r2 = await supabase
+                                .from(table)
+                                .select('*')
+                                .eq(type === 'airport' ? 'ra_reservation_id' : 're_id', reId)
+                                .maybeSingle();
+                            data = r2.data as any;
+                            error = r2.error as any;
+                        }
+
+                        // 3차: 전체에서 패턴 매칭
+                        if (!data) {
+                            const r3 = await supabase
+                                .from(table)
+                                .select('*')
+                                .limit(1000);
+                            const all = r3.data || [];
+                            const shortId = String(reId).slice(0, 8);
+                            const found = all.find((row: any) =>
+                                row?.reservation_id?.includes?.(shortId) ||
+                                row?.re_id?.includes?.(shortId) ||
+                                JSON.stringify(row).includes(shortId)
+                            );
+                            if (found) data = found;
+                            if (r3.error) error = r3.error as any;
+                        }
+
+                        if (error) console.warn('Fallback 조회 경고:', error);
+                        setRawData(data || null);
+                    }
+                } catch (e: any) {
+                    setError(e?.message || '알 수 없는 오류');
+                } finally {
+                    setLoading(false);
+                }
+            };
+            run();
+        }, [reservation?.re_id, reservation?.re_type]);
+
+        const renderGrid = (obj: any) => {
+            if (!obj) return null;
+            return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                    {Object.entries(obj).map(([k, v]) => (
+                        <div key={k} className="flex">
+                            <div className="w-40 text-gray-600">{k}</div>
+                            <div className="flex-1 font-medium break-words">
+                                {v === null || v === undefined
+                                    ? '—'
+                                    : typeof v === 'number' && String(k).toLowerCase().includes('price')
+                                        ? `${v.toLocaleString()}동`
+                                        : typeof v === 'object'
+                                            ? JSON.stringify(v)
+                                            : String(v)}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
+        return (
+            <div className="space-y-3">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm">
+                    <div className="font-semibold text-yellow-800">세부 데이터가 연결되지 않아 원시 데이터를 표시합니다.</div>
+                    <div className="text-yellow-700">서비스 타입: {getServiceName(reservation?.re_type)} / 예약ID: <span className="font-mono">{reservation?.re_id}</span></div>
+                </div>
+                {loading && <div className="text-xs text-gray-500">원시 데이터 로딩 중...</div>}
+                {error && <div className="text-xs text-red-600">오류: {error}</div>}
+                {rawData ? (
+                    <>
+                        <div className="font-medium text-gray-700">서비스 원시 데이터</div>
+                        {renderGrid(rawData)}
+                    </>
+                ) : (
+                    <>
+                        <div className="font-medium text-gray-700">예약 기본 정보</div>
+                        {renderGrid(reservation)}
+                    </>
+                )}
+            </div>
+        );
+    };
+
 
     // 가격 테이블 정보를 표시하는 별도 컴포넌트
     const PriceTableInfo = ({ serviceType, priceCode }: { serviceType: string; priceCode: string }) => {
@@ -248,60 +519,149 @@ export default function ManagerReservationDetailsPage() {
                     .catch(() => {
                         setLoading(false);
                     });
+            } else {
+                setPriceInfo(null);
             }
         }, [serviceType, priceCode]);
 
-        if (loading) {
-            return <div className="text-xs text-gray-500">가격 정보 로딩 중...</div>;
-        }
+        const codeKey = (
+            serviceType === 'cruise' ? 'room_code'
+                : serviceType === 'airport' ? 'airport_code'
+                    : serviceType === 'hotel' ? 'hotel_code'
+                        : serviceType === 'tour' ? 'tour_code'
+                            : serviceType === 'rentcar' ? 'rentcar_code'
+                                : serviceType === 'car' ? 'car_code'
+                                    : 'code'
+        );
 
-        if (!priceInfo) {
-            return <div className="text-xs text-gray-500">가격 정보 없음</div>;
-        }
+        const renderEntries = () => {
+            if (loading) {
+                return <div className="text-xs text-gray-500">가격 정보 로딩 중...</div>;
+            }
+
+            if (priceInfo) {
+                return (
+                    <div className="grid grid-cols-2 gap-2">
+                        {Object.entries(priceInfo).map(([key, value]) => {
+                            if (key === 'id' || key === 'created_at' || key === 'updated_at') return null;
+                            return (
+                                <div key={key}>
+                                    <span className="text-gray-600">{key}:</span>
+                                    <span className="ml-1 font-medium">
+                                        {typeof value === 'number' && key.includes('price')
+                                            ? `${value.toLocaleString()}동`
+                                            : String(value || '')
+                                        }
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            }
+
+            // Fallback: 서비스 타입별 기본 필드 구성(크루즈는 예시 양식 고정 표시)
+            if (serviceType === 'cruise') {
+                const fields: Record<string, any> = {
+                    room_code: priceCode || '',
+                    schedule: '',
+                    room_category: '',
+                    cruise: '',
+                    room_type: '',
+                    price: '',
+                    start_date: '',
+                    end_date: '',
+                    payment: '',
+                };
+                return (
+                    <div className="grid grid-cols-2 gap-2">
+                        {Object.entries(fields).map(([key, value]) => (
+                            <div key={key}>
+                                <span className="text-gray-600">{key}:</span>
+                                <span className="ml-1 font-medium">{String(value)}</span>
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+
+            // 기타 타입: 코드만 노출
+            return (
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <span className="text-gray-600">{codeKey}:</span>
+                        <span className="ml-1 font-medium">{priceCode || ''}</span>
+                    </div>
+                </div>
+            );
+        };
 
         return (
             <div className="mt-2 p-3 bg-white border rounded text-xs">
                 <div className="font-medium text-gray-700 mb-2">📋 가격 테이블 정보</div>
-                <div className="grid grid-cols-2 gap-2">
-                    {Object.entries(priceInfo).map(([key, value]) => {
-                        if (key === 'id' || key === 'created_at' || key === 'updated_at') return null;
-                        return (
-                            <div key={key}>
-                                <span className="text-gray-600">{key}:</span>
-                                <span className="ml-1 font-medium">
-                                    {typeof value === 'number' && key.includes('price')
-                                        ? `${value.toLocaleString()}원`
-                                        : String(value || '정보 없음')
-                                    }
-                                </span>
-                            </div>
-                        );
-                    })}
-                </div>
+                {renderEntries()}
             </div>
         );
     };
 
     const renderServiceDetails = (reservation: any) => {
         const details = reservation.service_details;
-        if (!details) return <p className="text-gray-500">상세 정보 없음</p>;
+
+        if (!details) {
+            return <FallbackServiceDetails reservation={reservation} />;
+        }
 
         switch (reservation.re_type) {
             case 'cruise':
                 return (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-3">
-                            <h5 className="font-semibold text-blue-600 border-b pb-2">📅 예약 정보</h5>
+                            <h5 className="font-semibold text-blue-600 border-b pb-2">🚢 크루즈 정보</h5>
+                            <div><strong>크루즈명:</strong> <span className="text-blue-700 font-medium">{details.cruise_name || details.room_price_info?.cruise || ''}</span></div>
+                            <div><strong>객실명:</strong> <span className="text-blue-700">{details.room_name || details.room_price_info?.room_category || ''}</span></div>
+                            <div><strong>객실타입:</strong> <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">{details.room_type || details.room_price_info?.room_type || ''}</span></div>
                             <div><strong>체크인 날짜:</strong> {details.checkin ? new Date(details.checkin).toLocaleDateString('ko-KR') : '미정'}</div>
-                            <div><strong>투숙객 수:</strong> {details.guest_count}명</div>
-                            <div><strong>객실 가격 코드:</strong> <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">{details.room_price_code}</span></div>
-                            <PriceTableInfo serviceType="cruise" priceCode={details.room_price_code} />
-                            <div><strong>단가:</strong> {details.unit_price?.toLocaleString()}원</div>
-                            {details.boarding_assist && <div><strong>탑승 지원:</strong> {details.boarding_assist}</div>}
+                            <div><strong>투숙객 수:</strong> <span className="font-semibold text-purple-600">{typeof details.guest_count === 'number' ? `${details.guest_count}명` : ''}</span></div>
+                            <div><strong>객실 가격 코드:</strong> <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">{details.room_price_code || ''}</span></div>
+                            <div><strong>탑승 지원:</strong> {details.boarding_assist || ''}</div>
                         </div>
                         <div className="space-y-3">
                             <h5 className="font-semibold text-green-600 border-b pb-2">💰 금액 정보</h5>
-                            <div><strong>객실 총 금액:</strong> <span className="text-lg font-bold text-green-600">{details.room_total_price?.toLocaleString()}원</span></div>
+                            <div><strong>단가:</strong> <span className="text-lg text-orange-600">{details.unit_price?.toLocaleString()}동</span></div>
+                            <div><strong>객실 총 금액:</strong> <span className="text-lg font-bold text-green-600">{details.room_total_price?.toLocaleString()}동</span></div>
+                            <div><strong>생성일:</strong> {details.created_at ? new Date(details.created_at).toLocaleString('ko-KR') : '정보 없음'}</div>
+
+                            <div className="mt-4">
+                                <PriceTableInfo serviceType="cruise" priceCode={details.room_price_code} />
+                            </div>
+
+                            {/* 객실 상세 정보 섹션 제거됨 */}
+
+                            {details.request_note && (
+                                <div className="mt-4">
+                                    <strong>요청사항:</strong>
+                                    <div className="bg-gray-100 p-3 rounded mt-2 text-sm">{details.request_note}</div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+
+            case 'car':
+                return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                            <h5 className="font-semibold text-amber-600 border-b pb-2">🚐 차량 정보</h5>
+                            <div><strong>차량 가격 코드:</strong> <span className="bg-amber-100 text-amber-800 px-2 py-1 rounded text-sm">{details.car_price_code}</span></div>
+                            <PriceTableInfo serviceType="car" priceCode={details.car_price_code} />
+                            {details.vehicle_number && <div><strong>차량번호:</strong> {details.vehicle_number}</div>}
+                            {details.seat_number && <div><strong>좌석 수:</strong> {details.seat_number}석</div>}
+                            {details.color_label && <div><strong>색상:</strong> {details.color_label}</div>}
+                            <div><strong>단가:</strong> {details.unit_price?.toLocaleString()}동</div>
+                        </div>
+                        <div className="space-y-3">
+                            <h5 className="font-semibold text-blue-600 border-b pb-2">💰 금액 및 메모</h5>
+                            <div><strong>총 금액:</strong> <span className="text-lg font-bold text-green-600">{details.total_price?.toLocaleString()}동</span></div>
                             <div><strong>생성일:</strong> {details.created_at ? new Date(details.created_at).toLocaleString('ko-KR') : '정보 없음'}</div>
                             {details.request_note && (
                                 <div className="mt-4">
@@ -331,8 +691,8 @@ export default function ManagerReservationDetailsPage() {
                             <div><strong>승객 수:</strong> {details.ra_passenger_count}명</div>
                             <div><strong>차량 수:</strong> {details.ra_car_count}대</div>
                             <div><strong>수하물 개수:</strong> {details.ra_luggage_count}개</div>
-                            <div><strong>단가:</strong> {details.unit_price?.toLocaleString()}원</div>
-                            <div><strong>총 금액:</strong> <span className="text-lg font-bold text-green-600">{details.total_price?.toLocaleString()}원</span></div>
+                            <div><strong>단가:</strong> {details.unit_price?.toLocaleString()}동</div>
+                            <div><strong>총 금액:</strong> <span className="text-lg font-bold text-green-600">{details.total_price?.toLocaleString()}동</span></div>
                             <div><strong>처리 상태:</strong> {details.ra_is_processed || '미처리'}</div>
                             {details.request_note && (
                                 <div className="mt-4">
@@ -360,7 +720,7 @@ export default function ManagerReservationDetailsPage() {
                             <h5 className="font-semibold text-blue-600 border-b pb-2">🛏️ 객실 및 금액</h5>
                             <div><strong>투숙객 수:</strong> {details.guest_count}명</div>
                             <div><strong>객실 수:</strong> {details.room_count}개</div>
-                            <div><strong>총 금액:</strong> <span className="text-lg font-bold text-green-600">{details.total_price?.toLocaleString()}원</span></div>
+                            <div><strong>총 금액:</strong> <span className="text-lg font-bold text-green-600">{details.total_price?.toLocaleString()}동</span></div>
                             <div><strong>생성일:</strong> {details.created_at ? new Date(details.created_at).toLocaleString('ko-KR') : '정보 없음'}</div>
                             {details.request_note && (
                                 <div className="mt-4">
@@ -385,7 +745,7 @@ export default function ManagerReservationDetailsPage() {
                         </div>
                         <div className="space-y-3">
                             <h5 className="font-semibold text-green-600 border-b pb-2">💰 금액 정보</h5>
-                            <div><strong>총 금액:</strong> <span className="text-lg font-bold text-green-600">{details.total_price?.toLocaleString()}원</span></div>
+                            <div><strong>총 금액:</strong> <span className="text-lg font-bold text-green-600">{details.total_price?.toLocaleString()}동</span></div>
                             <div><strong>생성일:</strong> {details.created_at ? new Date(details.created_at).toLocaleString('ko-KR') : '정보 없음'}</div>
                             {details.request_note && (
                                 <div className="mt-4">
@@ -406,7 +766,7 @@ export default function ManagerReservationDetailsPage() {
                             <PriceTableInfo serviceType="rentcar" priceCode={details.rentcar_price_code} />
                             <div><strong>렌터카 수:</strong> {details.rentcar_count}대</div>
                             <div><strong>차량 수:</strong> {details.car_count || '정보 없음'}대</div>
-                            <div><strong>단가:</strong> {details.unit_price?.toLocaleString()}원</div>
+                            <div><strong>단가:</strong> {details.unit_price?.toLocaleString()}동</div>
                             <div><strong>픽업 일시:</strong> {details.pickup_datetime ? new Date(details.pickup_datetime).toLocaleString('ko-KR') : '미정'}</div>
                         </div>
                         <div className="space-y-3">
@@ -417,7 +777,7 @@ export default function ManagerReservationDetailsPage() {
                             {details.via_location && <div><strong>경유지:</strong> {details.via_location}</div>}
                             {details.via_waiting && <div><strong>경유 대기:</strong> {details.via_waiting}</div>}
                             <div><strong>수하물 개수:</strong> {details.luggage_count}개</div>
-                            <div><strong>총 금액:</strong> <span className="text-lg font-bold text-green-600">{details.total_price?.toLocaleString()}원</span></div>
+                            <div><strong>총 금액:</strong> <span className="text-lg font-bold text-green-600">{details.total_price?.toLocaleString()}동</span></div>
                             <div><strong>생성일:</strong> {details.created_at ? new Date(details.created_at).toLocaleString('ko-KR') : '정보 없음'}</div>
                             {details.request_note && (
                                 <div className="mt-4">
@@ -436,8 +796,8 @@ export default function ManagerReservationDetailsPage() {
 
     const filteredReservations = reservations.filter(reservation => {
         const matchesSearch = searchQuery === '' ||
-            reservation.user?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            reservation.user?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            reservation.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            reservation.customer_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             reservation.re_id.toLowerCase().includes(searchQuery.toLowerCase());
 
         const matchesStatus = statusFilter === 'all' || reservation.re_status === statusFilter;
@@ -532,7 +892,7 @@ export default function ManagerReservationDetailsPage() {
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-3">
                                                     <h4 className="font-semibold text-lg">
-                                                        {getServiceName(reservation.re_type)} - {reservation.user?.name || '고객명 없음'}
+                                                        {getServiceName(reservation.re_type)} - {reservation.customer_name}
                                                     </h4>
                                                     <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(reservation.re_status)}`}>
                                                         {getStatusText(reservation.re_status)}
@@ -545,17 +905,17 @@ export default function ManagerReservationDetailsPage() {
                                                         {new Date(reservation.re_created_at).toLocaleDateString('ko-KR')}
                                                     </span>
 
-                                                    {reservation.user?.email && (
+                                                    {reservation.customer_email && (
                                                         <span className="flex items-center gap-1">
                                                             <Mail className="w-4 h-4" />
-                                                            {reservation.user.email}
+                                                            {reservation.customer_email}
                                                         </span>
                                                     )}
 
-                                                    {reservation.user?.phone && (
+                                                    {reservation.customer_phone && (
                                                         <span className="flex items-center gap-1">
                                                             <Phone className="w-4 h-4" />
-                                                            {reservation.user.phone}
+                                                            {reservation.customer_phone}
                                                         </span>
                                                     )}
 
@@ -565,11 +925,27 @@ export default function ManagerReservationDetailsPage() {
                                                 </div>
 
                                                 {/* 서비스별 간단 정보 */}
-                                                <div className="mt-2 text-sm text-gray-500">
+                                                <div className="mt-2 text-sm text-gray-500 flex flex-wrap gap-4">
                                                     {reservation.service_details && (
                                                         <>
-                                                            {reservation.re_type === 'cruise' && reservation.service_details.checkin && (
-                                                                <span>체크인: {new Date(reservation.service_details.checkin).toLocaleDateString('ko-KR')}</span>
+                                                            {reservation.re_type === 'cruise' && (
+                                                                <>
+                                                                    <span>
+                                                                        체크인: {reservation.service_details.checkin
+                                                                            ? new Date(reservation.service_details.checkin).toLocaleDateString('ko-KR')
+                                                                            : '미정'}
+                                                                    </span>
+                                                                    {(reservation.service_details.cruise_name || reservation.service_details.room_price_info?.cruise) && (
+                                                                        <span>
+                                                                            크루즈: {reservation.service_details.cruise_name || reservation.service_details.room_price_info?.cruise}
+                                                                        </span>
+                                                                    )}
+                                                                    {(reservation.service_details.room_name || reservation.service_details.room_price_info?.room_category) && (
+                                                                        <span>
+                                                                            객실: {reservation.service_details.room_name || reservation.service_details.room_price_info?.room_category}
+                                                                        </span>
+                                                                    )}
+                                                                </>
                                                             )}
                                                             {reservation.re_type === 'airport' && reservation.service_details.ra_airport_location && (
                                                                 <span>공항: {reservation.service_details.ra_airport_location}</span>
@@ -634,10 +1010,12 @@ export default function ManagerReservationDetailsPage() {
                                             예약자 정보
                                         </h4>
                                         <div className="space-y-2 text-sm">
-                                            <div><strong>이름:</strong> {selectedReservation.user?.name || '정보 없음'}</div>
-                                            <div><strong>이메일:</strong> {selectedReservation.user?.email || '정보 없음'}</div>
-                                            <div><strong>전화번호:</strong> {selectedReservation.user?.phone || '정보 없음'}</div>
-                                            <div><strong>역할:</strong> <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">{selectedReservation.user?.role || '미정'}</span></div>
+                                            <div><strong>이름:</strong> {selectedReservation.customer_name}</div>
+                                            <div><strong>이메일:</strong> {selectedReservation.customer_email || '정보 없음'}</div>
+                                            <div><strong>전화번호:</strong> {selectedReservation.customer_phone || '정보 없음'}</div>
+                                            {selectedReservation.user?.role && (
+                                                <div><strong>역할:</strong> <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">{selectedReservation.user.role}</span></div>
+                                            )}
                                         </div>
                                     </div>
 

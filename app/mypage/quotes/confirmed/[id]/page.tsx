@@ -10,7 +10,7 @@ export default function ConfirmedQuoteDetailPage() {
   const router = useRouter();
   const params = useParams();
   const quoteId = params.id as string;
-  
+
   const [quote, setQuote] = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
   const [showReservationModal, setShowReservationModal] = useState(false);
@@ -177,7 +177,7 @@ export default function ConfirmedQuoteDetailPage() {
                 <div>
                   <span className="text-gray-600 font-medium">총 금액:</span>
                   <span className="ml-3 text-2xl font-bold text-green-600">
-                    {quote.total_price > 0 ? `${quote.total_price.toLocaleString()}원` : '금액 협의'}
+                    {quote.total_price > 0 ? `${quote.total_price.toLocaleString()}동` : '금액 협의'}
                   </span>
                 </div>
               </div>
@@ -207,10 +207,10 @@ export default function ConfirmedQuoteDetailPage() {
                       <div className="flex items-center space-x-3">
                         <span className="text-2xl">
                           {item.service_type === 'cruise' ? '🚢' :
-                           item.service_type === 'airport' ? '✈️' :
-                           item.service_type === 'hotel' ? '🏨' :
-                           item.service_type === 'tour' ? '🗺️' :
-                           item.service_type === 'rentcar' ? '🚗' : '📋'}
+                            item.service_type === 'airport' ? '✈️' :
+                              item.service_type === 'hotel' ? '🏨' :
+                                item.service_type === 'tour' ? '🗺️' :
+                                  item.service_type === 'rentcar' ? '🚗' : '📋'}
                         </span>
                         <h3 className="text-lg font-semibold text-gray-800 capitalize">
                           {item.service_type}
@@ -218,7 +218,7 @@ export default function ConfirmedQuoteDetailPage() {
                       </div>
                       {item.price > 0 && (
                         <span className="text-lg font-bold text-blue-600">
-                          {item.price.toLocaleString()}원
+                          {item.price.toLocaleString()}동
                         </span>
                       )}
                     </div>
@@ -246,7 +246,7 @@ export default function ConfirmedQuoteDetailPage() {
                 <div className="text-2xl mb-1">🎫</div>
                 <div>예약하기</div>
               </button>
-              
+
               <button
                 onClick={() => router.push(`/mypage/quotes/${quote.id}/edit`)}
                 className="bg-amber-500 text-white px-6 py-4 rounded-lg hover:bg-amber-600 transition-colors font-semibold text-center"
@@ -254,7 +254,7 @@ export default function ConfirmedQuoteDetailPage() {
                 <div className="text-2xl mb-1">✏️</div>
                 <div>수정 요청</div>
               </button>
-              
+
               <button
                 onClick={() => router.push(`/mypage/quotes/new?baseQuoteId=${quote.id}`)}
                 className="bg-purple-500 text-white px-6 py-4 rounded-lg hover:bg-purple-600 transition-colors font-semibold text-center"
@@ -262,7 +262,7 @@ export default function ConfirmedQuoteDetailPage() {
                 <div className="text-2xl mb-1">📋</div>
                 <div>복사하여 새 견적</div>
               </button>
-              
+
               <button
                 onClick={() => window.print()}
                 className="bg-gray-500 text-white px-6 py-4 rounded-lg hover:bg-gray-600 transition-colors font-semibold text-center"
@@ -316,7 +316,7 @@ export default function ConfirmedQuoteDetailPage() {
           <div className="bg-white rounded-xl p-8 max-w-md mx-4">
             <h3 className="text-xl font-bold text-gray-800 mb-4">🎫 예약 확인</h3>
             <p className="text-gray-600 mb-6">
-              이 견적으로 예약을 진행하시겠습니까?<br/>
+              이 견적으로 예약을 진행하시겠습니까?<br />
               예약 페이지로 이동합니다.
             </p>
             <div className="flex space-x-3">

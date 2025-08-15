@@ -71,12 +71,12 @@ export default function ReservationViewPage() {
 
       {reservation_room.length > 0 && (
         <SectionBox title="객실 정보">
-          {reservation_room.map((room, index) => (
+          {reservation_room.map((room: any, index: number) => (
             <div key={index} className="border-b py-2">
               <p>🏨 객실 요금 코드: {room.room_price_code}</p>
               <p>📅 체크인: {room.checkin}</p>
               <p>👥 인원수: {room.guest_count}</p>
-              <p>💰 단가: {room.unit_price.toLocaleString()}원</p>
+              <p>💰 단가: {room.unit_price.toLocaleString()}동</p>
             </div>
           ))}
         </SectionBox>
@@ -84,11 +84,11 @@ export default function ReservationViewPage() {
 
       {reservation_car.length > 0 && (
         <SectionBox title="차량 정보">
-          {reservation_car.map((car, index) => (
+          {reservation_car.map((car: any, index: number) => (
             <div key={index} className="border-b py-2">
               <p>🚗 차량 요금 코드: {car.car_price_code}</p>
               <p>🚘 차량 수: {car.car_count}</p>
-              <p>💰 단가: {car.unit_price.toLocaleString()}원</p>
+              <p>💰 단가: {car.unit_price.toLocaleString()}동</p>
             </div>
           ))}
         </SectionBox>

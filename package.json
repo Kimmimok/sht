@@ -9,6 +9,7 @@
     "lint": "next lint",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "format": "prettier --write .",
+    "import:sheets": "node ./utils/import-from-sheets.js",
     "prepare": "husky install"
   },
   "dependencies": {
@@ -17,6 +18,7 @@
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.10.3",
     "jspdf": "^3.0.1",
+    "googleapis": "^144.0.0",
     "lucide-react": "^0.525.0",
     "next": "15.3.5",
     "react": "^19.0.0",

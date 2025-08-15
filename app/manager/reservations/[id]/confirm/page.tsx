@@ -216,7 +216,7 @@ export default function ReservationConfirmPage() {
                                 {cruiseRows.map((r, i) => (
                                     <div key={i} className="flex items-center justify-between">
                                         <div className="text-gray-700 flex items-center gap-2"><Clock className="w-4 h-4" /> 체크인 {r.checkin ? new Date(r.checkin).toLocaleDateString('ko-KR') : '-'} · 승객 {r.guest_count || 0}명</div>
-                                        <div className="font-medium text-blue-600">{Number(r.room_total_price || 0).toLocaleString()}원</div>
+                                        <div className="font-medium text-blue-600">{Number(r.room_total_price || 0).toLocaleString()}동</div>
                                     </div>
                                 ))}
                                 {cruiseCarRows.length > 0 && (
@@ -225,7 +225,7 @@ export default function ReservationConfirmPage() {
                                         {cruiseCarRows.map((c, i) => (
                                             <div key={i} className="flex items-center justify-between text-sm">
                                                 <div className="flex items-center gap-2"><MapPin className="w-4 h-4" /> {c.pickup_location || ''} → {c.dropoff_location || ''}</div>
-                                                <div className="font-medium text-blue-600">{Number(c.car_total_price || 0).toLocaleString()}원</div>
+                                                <div className="font-medium text-blue-600">{Number(c.car_total_price || 0).toLocaleString()}동</div>
                                             </div>
                                         ))}
                                     </div>
@@ -242,7 +242,7 @@ export default function ReservationConfirmPage() {
                                 {airportRows.map((r, i) => (
                                     <div key={i} className="flex items-center justify-between">
                                         <div className="text-gray-700 flex items-center gap-2"><Clock className="w-4 h-4" /> {r.ra_datetime ? new Date(r.ra_datetime).toLocaleString('ko-KR') : '-'} · {r.ra_airport_location || ''} {r.ra_flight_number ? `· 편명 ${r.ra_flight_number}` : ''}</div>
-                                        <div className="font-medium text-green-700">{Number(r.total_price || 0).toLocaleString()}원</div>
+                                        <div className="font-medium text-green-700">{Number(r.total_price || 0).toLocaleString()}동</div>
                                     </div>
                                 ))}
                             </div>
@@ -257,7 +257,7 @@ export default function ReservationConfirmPage() {
                                 {hotelRows.map((r, i) => (
                                     <div key={i} className="flex items-center justify-between">
                                         <div className="text-gray-700 flex items-center gap-2"><Calendar className="w-4 h-4" /> 체크인 {r.checkin_date ? new Date(r.checkin_date).toLocaleDateString('ko-KR') : '-'} · {r.hotel_category || ''}</div>
-                                        <div className="font-medium text-purple-700">{Number(r.total_price || 0).toLocaleString()}원</div>
+                                        <div className="font-medium text-purple-700">{Number(r.total_price || 0).toLocaleString()}동</div>
                                     </div>
                                 ))}
                             </div>
@@ -272,7 +272,7 @@ export default function ReservationConfirmPage() {
                                 {rentcarRows.map((r, i) => (
                                     <div key={i} className="flex items-center justify-between">
                                         <div className="text-gray-700 flex items-center gap-2"><Clock className="w-4 h-4" /> {r.pickup_datetime ? new Date(r.pickup_datetime).toLocaleString('ko-KR') : '-'} · {r.pickup_location || ''}{r.destination ? ` → ${r.destination}` : ''}</div>
-                                        <div className="font-medium text-red-700">{Number(r.total_price || 0).toLocaleString()}원</div>
+                                        <div className="font-medium text-red-700">{Number(r.total_price || 0).toLocaleString()}동</div>
                                     </div>
                                 ))}
                             </div>
@@ -287,7 +287,7 @@ export default function ReservationConfirmPage() {
                                 {tourRows.map((r, i) => (
                                     <div key={i} className="flex items-center justify-between">
                                         <div className="text-gray-700 flex items-center gap-2"><Calendar className="w-4 h-4" /> {r.tour_date ? new Date(r.tour_date).toLocaleDateString('ko-KR') : '-'} · {r.pickup_location || ''}{r.dropoff_location ? ` → ${r.dropoff_location}` : ''}</div>
-                                        <div className="font-medium text-orange-700">{Number(r.total_price || 0).toLocaleString()}원</div>
+                                        <div className="font-medium text-orange-700">{Number(r.total_price || 0).toLocaleString()}동</div>
                                     </div>
                                 ))}
                             </div>
@@ -298,7 +298,7 @@ export default function ReservationConfirmPage() {
                 {/* 합계 */}
                 <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200 mb-6">
                     <div className="text-sm text-yellow-800 mb-1">예상 총 금액</div>
-                    <div className="text-2xl font-bold text-red-600">{grandTotal.toLocaleString()}원</div>
+                    <div className="text-2xl font-bold text-red-600">{grandTotal.toLocaleString()}동</div>
                 </div>
 
                 {/* 비고 */}

@@ -156,7 +156,7 @@ export default function QuoteReservationPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!quote || !user) return;
 
     // 필수 필드 검증
@@ -304,27 +304,27 @@ export default function QuoteReservationPage() {
 
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto space-y-8">
-            
+
             {/* 견적 정보 요약 */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h2 className="text-xl font-bold text-gray-800 mb-4">📋 견적 정보</h2>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h3 className="font-semibold text-gray-700 mb-2">견적 상세</h3>
                   <div className="space-y-2 text-sm text-gray-600">
                     <div><span className="font-medium">견적명:</span> {quote.title}</div>
-                    <div><span className="font-medium">상태:</span> 
+                    <div><span className="font-medium">상태:</span>
                       <span className="ml-2 px-2 py-1 bg-green-100 text-green-600 rounded-full text-xs">
-                        {quote.status === 'approved' ? '승인됨' : 
-                         quote.status === 'confirmed' ? '확정됨' : 
-                         quote.status === 'completed' ? '완료됨' : quote.status}
+                        {quote.status === 'approved' ? '승인됨' :
+                          quote.status === 'confirmed' ? '확정됨' :
+                            quote.status === 'completed' ? '완료됨' : quote.status}
                       </span>
                     </div>
                     <div><span className="font-medium">생성일:</span> {new Date(quote.created_at).toLocaleDateString('ko-KR')}</div>
-                    <div><span className="font-medium">총 금액:</span> 
+                    <div><span className="font-medium">총 금액:</span>
                       <span className="ml-2 font-bold text-blue-600 text-lg">
-                        {quote.total_price.toLocaleString()}원
+                        {quote.total_price.toLocaleString()}동
                       </span>
                     </div>
                   </div>
@@ -340,7 +340,7 @@ export default function QuoteReservationPage() {
                           <span className="text-blue-800 font-medium">{getServiceName(item.service_type)}</span>
                         </div>
                         <div className="text-sm text-blue-600">
-                          {item.total_price.toLocaleString()}원
+                          {item.total_price.toLocaleString()}동
                         </div>
                       </div>
                     ))}
@@ -359,9 +359,9 @@ export default function QuoteReservationPage() {
             {/* 예약 신청 폼 */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h2 className="text-xl font-bold text-gray-800 mb-6">✍️ 예약 신청 정보</h2>
-              
+
               <form onSubmit={handleSubmit} className="space-y-6">
-                
+
                 {/* 연락처 정보 */}
                 <div>
                   <h3 className="text-lg font-semibold text-gray-700 mb-4">📞 연락처 정보</h3>

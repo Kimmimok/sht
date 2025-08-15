@@ -54,6 +54,8 @@ public,quote,updated_at,timestamp with time zone,YES,now()
 public,quote,submitted_at,timestamp with time zone,YES,null
 public,quote,approved_at,timestamp with time zone,YES,null
 public,quote,manager_note,text,YES,null
+public,quote,payment_status,text,NO,'pending'::text
+public,quote,confirmed_at,timestamp with time zone,YES,null
 public,quote_item,id,uuid,NO,gen_random_uuid()
 public,quote_item,quote_id,uuid,NO,null
 public,quote_item,service_type,varchar(20),NO,null
@@ -83,15 +85,14 @@ public,reservation,re_quote_id,uuid,YES,null
 public,reservation,re_type,text,NO,null
 public,reservation,re_status,text,NO,'pending'::text
 public,reservation,re_created_at,timestamp with time zone,NO,now()
-public,reservation,contact_name,text,YES,null
-public,reservation,contact_phone,text,YES,null
 public,reservation,contact_email,text,YES,null
-public,reservation,emergency_contact,text,YES,null
 public,reservation,special_requests,text,YES,null
 public,reservation,applicant_name,text,YES,null
 public,reservation,applicant_email,text,YES,null
 public,reservation,applicant_phone,text,YES,null
 public,reservation,application_datetime,timestamp with time zone,YES,null
+public,reservation,contact_name,text,YES,null
+public,reservation,contact_phone,text,YES,null
 public,reservation_airport,reservation_id,uuid,NO,null
 public,reservation_airport,airport_price_code,text,NO,null
 public,reservation_airport,ra_airport_location,text,NO,null
@@ -111,9 +112,19 @@ public,reservation_airport,total_price,"numeric(12,2)",YES,null
 public,reservation_car_sht,reservation_id,uuid,YES,null
 public,reservation_car_sht,vehicle_number,text,YES,null
 public,reservation_car_sht,seat_number,text,YES,null
-public,reservation_car_sht,color_label,text,YES,null
+public,reservation_car_sht,sht_category,text,YES,null
 public,reservation_car_sht,id,uuid,NO,gen_random_uuid()
 public,reservation_car_sht,created_at,timestamp with time zone,NO,now()
+public,reservation_confirmation,id,uuid,NO,gen_random_uuid()
+public,reservation_confirmation,quote_id,uuid,NO,null
+public,reservation_confirmation,sender_id,uuid,YES,null
+public,reservation_confirmation,method,text,YES,null
+public,reservation_confirmation,status,text,NO,'sent'::text
+public,reservation_confirmation,subject,text,YES,null
+public,reservation_confirmation,recipient_email,text,YES,null
+public,reservation_confirmation,meta,jsonb,YES,null
+public,reservation_confirmation,created_at,timestamp with time zone,NO,now()
+public,reservation_confirmation,sent_at,timestamp with time zone,YES,null
 public,reservation_cruise,reservation_id,uuid,NO,null
 public,reservation_cruise,room_price_code,text,NO,null
 public,reservation_cruise,checkin,date,NO,null
@@ -124,12 +135,13 @@ public,reservation_cruise,room_total_price,"numeric(0,0)",YES,null
 public,reservation_cruise,request_note,text,YES,null
 public,reservation_cruise,id,uuid,NO,gen_random_uuid()
 public,reservation_cruise,created_at,timestamp with time zone,NO,now()
+public,reservation_cruise,boarding_code,text,YES,null
 public,reservation_cruise_car,id,uuid,NO,gen_random_uuid()
 public,reservation_cruise_car,reservation_id,uuid,NO,null
 public,reservation_cruise_car,car_price_code,text,YES,null
 public,reservation_cruise_car,car_count,integer,YES,0
 public,reservation_cruise_car,passenger_count,integer,YES,0
-public,reservation_cruise_car,pickup_datetime,timestamp without time zone,YES,null
+public,reservation_cruise_car,pickup_datetime,date,YES,null
 public,reservation_cruise_car,pickup_location,text,YES,null
 public,reservation_cruise_car,dropoff_location,text,YES,null
 public,reservation_cruise_car,car_total_price,"numeric(10,2)",YES,0
@@ -192,6 +204,7 @@ public,room,adult_count,integer,YES,0
 public,room,child_count,integer,YES,0
 public,room,extra_count,integer,YES,0
 public,room,single_charge_count,integer,YES,0
+public,room,boarding_code,text,YES,null
 public,room_price,room_code,text,NO,null
 public,room_price,schedule,text,YES,null
 public,room_price,room_category,text,YES,null
@@ -225,11 +238,7 @@ public,users,phone_number,text,YES,null
 public,users,created_at,timestamp with time zone,YES,now()
 public,users,kakao_id,text,YES,null
 public,users,role,text,NO,'member'::text
-public,users,phone,varchar(20),YES,null
 public,users,birth_date,date,YES,null
-public,users,address,text,YES,null
-public,users,emergency_contact,varchar(100),YES,null
-public,users,emergency_phone,varchar(20),YES,null
 public,users,passport_number,varchar(50),YES,null
 public,users,passport_expiry,date,YES,null
 public,users,status,varchar(20),YES,'pending'::character varying
