@@ -337,7 +337,7 @@ export default function BulkReservationPage() {
                         <div className="flex items-center gap-4 mb-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                     작업
+                                    작업
                                 </label>
                                 <select
                                     value={bulkAction}
@@ -425,59 +425,61 @@ export default function BulkReservationPage() {
                             </h3>
                         </div>
                     ) : (
-                        <div className="divide-y">
-                            {reservations.map((reservation) => (
-                                <div
-                                    key={reservation.re_id}
-                                    className={`p-6 hover:bg-gray-50 transition-colors ${selectedItems.has(reservation.re_id) ? 'bg-blue-50 border-l-4 border-blue-500' : ''
-                                        }`}
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <button
-                                            onClick={() => handleSelectItem(reservation.re_id)}
-                                            className="p-1 hover:bg-gray-200 rounded"
-                                        >
-                                            {selectedItems.has(reservation.re_id) ? (
-                                                <CheckSquare className="w-5 h-5 text-blue-600" />
-                                            ) : (
-                                                <Square className="w-5 h-5 text-gray-400" />
-                                            )}
-                                        </button>
+                        <div className="max-h-[70vh] overflow-y-auto">
+                            <div className="divide-y">
+                                {reservations.map((reservation) => (
+                                    <div
+                                        key={reservation.re_id}
+                                        className={`p-6 hover:bg-gray-50 transition-colors ${selectedItems.has(reservation.re_id) ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <button
+                                                onClick={() => handleSelectItem(reservation.re_id)}
+                                                className="p-1 hover:bg-gray-200 rounded"
+                                            >
+                                                {selectedItems.has(reservation.re_id) ? (
+                                                    <CheckSquare className="w-5 h-5 text-blue-600" />
+                                                ) : (
+                                                    <Square className="w-5 h-5 text-gray-400" />
+                                                )}
+                                            </button>
 
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <h4 className="font-medium text-gray-800">
-                                                    {getTypeName(reservation.re_type)} 예약
-                                                </h4>
-                                                <span className={`px-2 py-1 rounded text-xs ${getStatusColor(reservation.re_status)}`}>
-                                                    {getStatusText(reservation.re_status)}
-                                                </span>
-                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <h4 className="font-medium text-gray-800">
+                                                        {getTypeName(reservation.re_type)} 예약
+                                                    </h4>
+                                                    <span className={`px-2 py-1 rounded text-xs ${getStatusColor(reservation.re_status)}`}>
+                                                        {getStatusText(reservation.re_status)}
+                                                    </span>
+                                                </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-600">
-                                                <div>
-                                                    <strong>고객:</strong> {reservation.users?.name || 'N/A'}
-                                                </div>
-                                                <div>
-                                                    <strong>견적:</strong> {reservation.quote?.title || 'N/A'}
-                                                </div>
-                                                <div>
-                                                    <strong>예약일:</strong> {new Date(reservation.re_created_at).toLocaleDateString('ko-KR')}
-                                                </div>
-                                                <div>
-                                                    <strong>이메일:</strong> {reservation.users?.email || 'N/A'}
-                                                </div>
-                                                <div>
-                                                    <strong>전화:</strong> {reservation.users?.phone || 'N/A'}
-                                                </div>
-                                                <div>
-                                                    <strong>ID:</strong> {reservation.re_id.slice(0, 8)}...
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-600">
+                                                    <div>
+                                                        <strong>고객:</strong> {reservation.users?.name || 'N/A'}
+                                                    </div>
+                                                    <div>
+                                                        <strong>견적:</strong> {reservation.quote?.title || 'N/A'}
+                                                    </div>
+                                                    <div>
+                                                        <strong>예약일:</strong> {new Date(reservation.re_created_at).toLocaleDateString('ko-KR')}
+                                                    </div>
+                                                    <div>
+                                                        <strong>이메일:</strong> {reservation.users?.email || 'N/A'}
+                                                    </div>
+                                                    <div>
+                                                        <strong>전화:</strong> {reservation.users?.phone || 'N/A'}
+                                                    </div>
+                                                    <div>
+                                                        <strong>ID:</strong> {reservation.re_id.slice(0, 8)}...
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>

@@ -77,7 +77,7 @@ export default function AdminLayout({ children, title, activeTab }: AdminLayoutP
     <SecurityProvider>
       <div className="min-h-screen bg-gray-100">
         {/* Admin Header */}
-        <header className="bg-red-600 text-white shadow-lg">
+        <header className="sticky top-0 z-50 bg-red-600 text-white shadow-lg">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center space-x-4">
@@ -104,7 +104,7 @@ export default function AdminLayout({ children, title, activeTab }: AdminLayoutP
         </header>
 
         {/* Admin Navigation */}
-        <nav className="bg-white shadow border-b border-gray-200">
+        <nav className="sticky top-16 z-40 bg-white shadow border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex space-x-8 overflow-x-auto">
               {adminTabs.map((tab) => (
@@ -125,7 +125,7 @@ export default function AdminLayout({ children, title, activeTab }: AdminLayoutP
         </nav>
 
         {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-6">
           {title && (
             <div className="mb-4">
               <h2 className="text-lg font-semibold text-gray-900">{title}</h2>

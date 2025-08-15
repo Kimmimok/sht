@@ -32,6 +32,8 @@ export default function ManagerServiceTablesPage() {
 
     const serviceTabs = [
         { id: 'cruise', label: '크루즈', icon: <Ship className="w-4 h-4" />, color: 'blue' },
+        { id: 'cruise_car', label: '크루즈 차량', icon: <Car className="w-4 h-4" />, color: 'cyan' },
+        { id: 'sht_car', label: '스하 차량', icon: <Car className="w-4 h-4" />, color: 'teal' },
         { id: 'airport', label: '공항서비스', icon: <Plane className="w-4 h-4" />, color: 'green' },
         { id: 'hotel', label: '호텔', icon: <Building className="w-4 h-4" />, color: 'purple' },
         { id: 'tour', label: '투어', icon: <MapPin className="w-4 h-4" />, color: 'orange' },
@@ -51,6 +53,14 @@ export default function ManagerServiceTablesPage() {
                 case 'cruise':
                     tableName = 'reservation_cruise';
                     orderCandidates.push('created_at', 'checkin', 'id');
+                    break;
+                case 'cruise_car':
+                    tableName = 'reservation_cruise_car';
+                    orderCandidates.push('created_at', 'id');
+                    break;
+                case 'sht_car':
+                    tableName = 'reservation_car_sht';
+                    orderCandidates.push('created_at', 'id');
                     break;
                 case 'airport':
                     tableName = 'reservation_airport';
@@ -198,6 +208,29 @@ export default function ManagerServiceTablesPage() {
                     { key: 'reservation.re_status', label: '상태', width: 'w-24', type: 'status' },
                     { key: 'created_at', label: '등록일', width: 'w-40', type: 'datetime' }
                 ];
+            case 'cruise_car':
+                return [
+                    { key: 'reservation.users.name', label: '고객명', width: 'w-32' },
+                    { key: 'reservation.users.email', label: '이메일', width: 'w-48' },
+                    { key: 'car_price_code', label: '차량코드', width: 'w-32' },
+                    { key: 'pickup_location', label: '픽업장소', width: 'w-40' },
+                    { key: 'dropoff_location', label: '드롭장소', width: 'w-40' },
+                    { key: 'unit_price', label: '단가', width: 'w-32', type: 'price' },
+                    { key: 'reservation.re_status', label: '상태', width: 'w-24', type: 'status' },
+                    { key: 'created_at', label: '등록일', width: 'w-40', type: 'datetime' }
+                ];
+            case 'sht_car':
+                return [
+                    { key: 'reservation.users.name', label: '고객명', width: 'w-32' },
+                    { key: 'reservation.users.email', label: '이메일', width: 'w-48' },
+                    { key: 'vehicle_number', label: '차량번호', width: 'w-32' },
+                    { key: 'seat_number', label: '좌석번호', width: 'w-20' },
+                    { key: 'color_label', label: '색상', width: 'w-20' },
+                    { key: 'pickup_location', label: '픽업장소', width: 'w-40' },
+                    { key: 'dropoff_location', label: '드롭장소', width: 'w-40' },
+                    { key: 'reservation.re_status', label: '상태', width: 'w-24', type: 'status' },
+                    { key: 'created_at', label: '등록일', width: 'w-40', type: 'datetime' }
+                ];
             case 'airport':
                 return [
                     { key: 'reservation.users.name', label: '고객명', width: 'w-32' },
@@ -317,10 +350,21 @@ export default function ManagerServiceTablesPage() {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === tab.id
-                                    ? `bg-${tab.color}-600 text-white shadow-md`
-                                    : 'text-gray-600 hover:text-gray-900 hover:bg-white'
-                                    }`}
+                                className={
+                                    `flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all ` +
+                                    (activeTab === tab.id
+                                        ? `${tab.color === 'blue' ? 'bg-blue-600 text-white shadow-md' :
+                                            tab.color === 'cyan' ? 'bg-cyan-600 text-white shadow-md' :
+                                                tab.color === 'teal' ? 'bg-teal-600 text-white shadow-md' :
+                                                    tab.color === 'green' ? 'bg-green-600 text-white shadow-md' :
+                                                        tab.color === 'purple' ? 'bg-purple-600 text-white shadow-md' :
+                                                            tab.color === 'orange' ? 'bg-orange-600 text-white shadow-md' :
+                                                                tab.color === 'red' ? 'bg-red-600 text-white shadow-md' :
+                                                                    'bg-gray-600 text-white shadow-md'
+                                        }
+                                        `
+                                        : 'text-gray-600 hover:text-gray-900 hover:bg-white')
+                                }
                             >
                                 {tab.icon}
                                 <span>{tab.label}</span>
@@ -370,19 +414,19 @@ export default function ManagerServiceTablesPage() {
                             <p className="text-gray-500">검색 조건을 변경해보세요.</p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
                             <table className="w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
+                                <thead className="bg-gray-50 sticky top-0 z-10">
                                     <tr>
                                         {getTableColumns(activeTab).map((column) => (
                                             <th
                                                 key={column.key}
-                                                className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.width}`}
+                                                className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.width} bg-gray-50`}
                                             >
                                                 {column.label}
                                             </th>
                                         ))}
-                                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+                                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20 bg-gray-50">
                                             상세
                                         </th>
                                     </tr>

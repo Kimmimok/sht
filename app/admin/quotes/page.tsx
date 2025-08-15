@@ -31,7 +31,7 @@ export default function AdminQuotesPage() {
     if (quote.title && quote.title.trim()) {
       return quote.title;
     }
-    
+
     // title이 없으면 크루즈 코드와 일정 코드로 생성
     const cruiseCode = quote.cruise_code || '크루즈 미정';
     const scheduleCode = quote.schedule_code || '';
@@ -133,7 +133,7 @@ export default function AdminQuotesPage() {
     }
 
     // 로컬 상태 업데이트
-    setQuotes(prev => prev.map(quote => 
+    setQuotes(prev => prev.map(quote =>
       quote.id === quoteId ? { ...quote, status: newStatus } : quote
     ));
 
@@ -223,26 +223,26 @@ export default function AdminQuotesPage() {
         {/* 견적 목록 */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {filteredQuotes.length > 0 ? (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="sticky top-0 z-10 bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                       견적 정보
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                       사용자
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                       크루즈/일정
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                       상태
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                       금액
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                       작업
                     </th>
                   </tr>
@@ -273,12 +273,11 @@ export default function AdminQuotesPage() {
                         <select
                           value={quote.status}
                           onChange={(e) => updateQuoteStatus(quote.id, e.target.value)}
-                          className={`px-2 py-1 text-xs rounded ${
-                            quote.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                            quote.status === 'processing' ? 'bg-blue-100 text-blue-800' :
-                            quote.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                            'bg-yellow-100 text-yellow-800'
-                          }`}
+                          className={`px-2 py-1 text-xs rounded ${quote.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                              quote.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                                quote.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                  'bg-yellow-100 text-yellow-800'
+                            }`}
                         >
                           <option value="pending">대기중</option>
                           <option value="processing">처리중</option>

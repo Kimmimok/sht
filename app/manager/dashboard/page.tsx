@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import supabase from '@/lib/supabase';
 import { AuthWrapper } from '@/components/AuthWrapper';
 import DatabaseStatusWidget from '@/components/DatabaseStatusWidget';
+import ManagerHeader from '@/components/ManagerHeader';
+import ManagerNav from '@/components/ManagerNav';
 
 export default function ManagerDashboard() {
   const router = useRouter();
@@ -193,17 +195,8 @@ export default function ManagerDashboard() {
   return (
     <AuthWrapper allowedRoles={['manager', 'admin']}>
       <div className="min-h-screen bg-gray-50">
-        {/* 헤더 */}
-        <div className="bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-100">
-          <div className="container mx-auto px-4 py-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              📊 매니저 대시보드
-            </h1>
-            <p className="text-lg text-gray-600">
-              견적 및 예약 운영 관리 시스템
-            </p>
-          </div>
-        </div>
+        <ManagerHeader title="📊 매니저 대시보드" user={user} subtitle="견적 및 예약 운영 관리 시스템" />
+        <ManagerNav activeTab="dashboard" />
 
         {/* 통계 카드 */}
         <div className="container mx-auto px-4 py-8">

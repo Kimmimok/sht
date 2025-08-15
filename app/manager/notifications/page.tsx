@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import supabase from '@/lib/supabase';
+import ManagerHeader from '@/components/ManagerHeader';
+import ManagerNav from '@/components/ManagerNav';
 
 interface Notification {
   id: string;
@@ -157,7 +159,7 @@ export default function NotificationManagement() {
       //   .update({ read: true })
       //   .eq('id', notificationId);
 
-      setNotifications(prev => 
+      setNotifications(prev =>
         prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
       );
     } catch (error) {
@@ -240,223 +242,217 @@ export default function NotificationManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      {/* 헤더 */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">🔔 알림 관리</h1>
-            <p className="text-gray-600">
-              시스템 알림 및 고객 소통 관리 
-              {unreadCount > 0 && (
-                <span className="ml-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs">
-                  {unreadCount}개 읽지 않음
-                </span>
-              )}
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={markAllAsRead}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              📖 모두 읽음
-            </button>
-            <button
-              onClick={loadNotifications}
-              className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-            >
-              🔄 새로고침
-            </button>
-            <button
-              onClick={() => router.push('/manager/dashboard')}
-              className="p-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
-              title="대시보드로 이동"
-            >
-              📊
-            </button>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <ManagerHeader title="🔔 알림 관리" user={user} />
+      <ManagerNav activeTab="notifications" />
 
-      {/* 필터 섹션 */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex gap-4">
-          {[
-            { key: 'all', label: '전체', icon: '📋' },
-            { key: 'unread', label: '읽지 않음', icon: '🔴' },
-            { key: 'urgent', label: '긴급', icon: '🚨' },
-            { key: 'system', label: '시스템', icon: '⚙️' }
-          ].map(option => (
-            <button
-              key={option.key}
-              onClick={() => setFilter(option.key)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                filter === option.key 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <span>{option.icon}</span>
-              <span>{option.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 알림 목록 */}
-      <div className="bg-white rounded-lg shadow-md">
-        <div className="p-6 border-b">
-          <h2 className="text-lg font-semibold text-gray-800">알림 목록</h2>
-        </div>
-        
-        <div className="divide-y divide-gray-200">
-          {notifications.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              📭 알림이 없습니다.
+      <div className="p-6">
+        {/* 알림 관리 도구 */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold text-gray-800">알림 관리</h2>
+              <p className="text-gray-600">
+                시스템 알림 및 고객 소통 관리
+                {unreadCount > 0 && (
+                  <span className="ml-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs">
+                    {unreadCount}개 읽지 않음
+                  </span>
+                )}
+              </p>
             </div>
-          ) : (
-            notifications.map(notification => (
-              <div
-                key={notification.id}
-                className={`p-6 cursor-pointer hover:bg-gray-50 transition-colors ${
-                  !notification.read ? 'bg-blue-50 border-l-4 border-blue-500' : ''
-                }`}
-                onClick={() => handleNotificationClick(notification)}
+            <div className="flex gap-3">
+              <button
+                onClick={markAllAsRead}
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4 flex-1">
-                    <span className="text-2xl">{getTypeIcon(notification.type)}</span>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className={`font-semibold ${!notification.read ? 'text-blue-900' : 'text-gray-800'}`}>
-                          {notification.title}
-                        </h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(notification.priority)}`}>
-                          {notification.priority.toUpperCase()}
-                        </span>
+                📖 모두 읽음
+              </button>
+              <button
+                onClick={loadNotifications}
+                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                🔄 새로고침
+              </button>
+            </div>
+          </div>
+        </div>      {/* 필터 섹션 */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="flex gap-4">
+            {[
+              { key: 'all', label: '전체', icon: '📋' },
+              { key: 'unread', label: '읽지 않음', icon: '🔴' },
+              { key: 'urgent', label: '긴급', icon: '🚨' },
+              { key: 'system', label: '시스템', icon: '⚙️' }
+            ].map(option => (
+              <button
+                key={option.key}
+                onClick={() => setFilter(option.key)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${filter === option.key
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
+                <span>{option.icon}</span>
+                <span>{option.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 알림 목록 */}
+        <div className="bg-white rounded-lg shadow-md">
+          <div className="p-6 border-b">
+            <h2 className="text-lg font-semibold text-gray-800">알림 목록</h2>
+          </div>
+
+          <div className="divide-y divide-gray-200">
+            {notifications.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                📭 알림이 없습니다.
+              </div>
+            ) : (
+              notifications.map(notification => (
+                <div
+                  key={notification.id}
+                  className={`p-6 cursor-pointer hover:bg-gray-50 transition-colors ${!notification.read ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                    }`}
+                  onClick={() => handleNotificationClick(notification)}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4 flex-1">
+                      <span className="text-2xl">{getTypeIcon(notification.type)}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className={`font-semibold ${!notification.read ? 'text-blue-900' : 'text-gray-800'}`}>
+                            {notification.title}
+                          </h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(notification.priority)}`}>
+                            {notification.priority.toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="text-gray-600 mb-2">{notification.message}</p>
+                        <p className="text-xs text-gray-400">
+                          {new Date(notification.created_at).toLocaleString('ko-KR')}
+                        </p>
                       </div>
-                      <p className="text-gray-600 mb-2">{notification.message}</p>
-                      <p className="text-xs text-gray-400">
-                        {new Date(notification.created_at).toLocaleString('ko-KR')}
-                      </p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {!notification.read && (
+                    <div className="flex items-center gap-2">
+                      {!notification.read && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markAsRead(notification.id);
+                          }}
+                          className="text-blue-500 hover:text-blue-700 p-1"
+                          title="읽음 처리"
+                        >
+                          📖
+                        </button>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          markAsRead(notification.id);
+                          deleteNotification(notification.id);
                         }}
-                        className="text-blue-500 hover:text-blue-700 p-1"
-                        title="읽음 처리"
+                        className="text-red-500 hover:text-red-700 p-1"
+                        title="삭제"
                       >
-                        📖
+                        🗑️
                       </button>
-                    )}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteNotification(notification.id);
-                      }}
-                      className="text-red-500 hover:text-red-700 p-1"
-                      title="삭제"
-                    >
-                      🗑️
-                    </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* 알림 상세 모달 */}
-      {showModal && selectedNotification && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">알림 상세</h3>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">유형</label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">{getTypeIcon(selectedNotification.type)}</span>
-                    <span>{selectedNotification.type.replace('_', ' ')}</span>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">제목</label>
-                  <p className="text-gray-900">{selectedNotification.title}</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">내용</label>
-                  <p className="text-gray-700">{selectedNotification.message}</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">우선순위</label>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(selectedNotification.priority)}`}>
-                    {selectedNotification.priority.toUpperCase()}
-                  </span>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">생성일시</label>
-                  <p className="text-gray-700">
-                    {new Date(selectedNotification.created_at).toLocaleString('ko-KR')}
-                  </p>
-                </div>
-                
-                {selectedNotification.related_id && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">관련 ID</label>
-                    <p className="text-gray-700 font-mono text-sm">{selectedNotification.related_id}</p>
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                >
-                  닫기
-                </button>
-                {selectedNotification.related_id && (
+        {/* 알림 상세 모달 */}
+        {showModal && selectedNotification && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">알림 상세</h3>
                   <button
-                    onClick={() => {
-                      // 관련 페이지로 이동
-                      if (selectedNotification.type === 'quote_request') {
-                        router.push(`/manager/quotes/${selectedNotification.related_id}`);
-                      } else if (selectedNotification.type === 'reservation_reminder') {
-                        router.push(`/manager/reservations/${selectedNotification.related_id}`);
-                      }
-                      setShowModal(false);
-                    }}
-                    className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                    onClick={() => setShowModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
                   >
-                    🔗 관련 페이지로
+                    ✕
                   </button>
-                )}
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">유형</label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">{getTypeIcon(selectedNotification.type)}</span>
+                      <span>{selectedNotification.type.replace('_', ' ')}</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">제목</label>
+                    <p className="text-gray-900">{selectedNotification.title}</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">내용</label>
+                    <p className="text-gray-700">{selectedNotification.message}</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">우선순위</label>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(selectedNotification.priority)}`}>
+                      {selectedNotification.priority.toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">생성일시</label>
+                    <p className="text-gray-700">
+                      {new Date(selectedNotification.created_at).toLocaleString('ko-KR')}
+                    </p>
+                  </div>
+
+                  {selectedNotification.related_id && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">관련 ID</label>
+                      <p className="text-gray-700 font-mono text-sm">{selectedNotification.related_id}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                  >
+                    닫기
+                  </button>
+                  {selectedNotification.related_id && (
+                    <button
+                      onClick={() => {
+                        // 관련 페이지로 이동
+                        if (selectedNotification.type === 'quote_request') {
+                          router.push(`/manager/quotes/${selectedNotification.related_id}`);
+                        } else if (selectedNotification.type === 'reservation_reminder') {
+                          router.push(`/manager/reservations/${selectedNotification.related_id}`);
+                        }
+                        setShowModal(false);
+                      }}
+                      className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                    >
+                      🔗 관련 페이지로
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

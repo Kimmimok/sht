@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import supabase from '@/lib/supabase';
+import ManagerHeader from '@/components/ManagerHeader';
+import ManagerNav from '@/components/ManagerNav';
 
 export default function PricingManagement() {
   const router = useRouter();
@@ -252,7 +254,7 @@ export default function PricingManagement() {
         case 'tour': table = 'tour_price_code'; break;
         default: table = 'room_price_code';
       }
-      
+
       if (modalType === 'add') {
         const { error } = await supabase
           .from(table)
@@ -282,7 +284,7 @@ export default function PricingManagement() {
 
     try {
       const table = activeTab === 'room' ? 'room_price' : 'car_price';
-      
+
       const { error } = await supabase
         .from(table)
         .delete()
@@ -302,11 +304,11 @@ export default function PricingManagement() {
     try {
       const table = activeTab === 'room' ? 'room_price' : 'car_price';
       const { id, created_at, updated_at, ...copyData } = priceData;
-      
+
       // 새로운 날짜 범위로 복사
       const newStartDate = prompt('새 시작일을 입력하세요 (YYYY-MM-DD):', copyData.start_date);
       const newEndDate = prompt('새 종료일을 입력하세요 (YYYY-MM-DD):', copyData.end_date);
-      
+
       if (!newStartDate || !newEndDate) return;
 
       const newData = {
@@ -339,7 +341,7 @@ export default function PricingManagement() {
   const renderPriceTable = () => {
     let data: any[] = [];
     let title = '';
-    
+
     switch (activeTab) {
       case 'room':
         data = roomPrices;
@@ -361,7 +363,7 @@ export default function PricingManagement() {
         data = roomPrices;
         title = '객실 가격 관리';
     }
-    
+
     return (
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
         <div className="px-4 py-5 sm:p-6">
@@ -377,21 +379,21 @@ export default function PricingManagement() {
             </button>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="sticky top-0 z-10 bg-gray-50">
                 <tr>
                   {(activeTab === 'room' || activeTab === 'car') && (
                     <>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                         일정
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                         크루즈
                       </th>
                     </>
                   )}
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                     {activeTab === 'room' && '객실'}
                     {activeTab === 'car' && '차량'}
                     {activeTab === 'hotel' && '호텔'}
@@ -521,7 +523,7 @@ export default function PricingManagement() {
                 ✕
               </button>
             </div>
-            
+
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -668,78 +670,59 @@ export default function PricingManagement() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
-              <h1 className="text-3xl font-bold text-gray-900">💰 가격 관리</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-500">매니저: {user?.email}</div>
-              <button
-                onClick={() => router.push('/manager/dashboard')}
-                className="p-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
-                title="대시보드로 이동"
-              >
-                �
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ManagerHeader title="💰 가격 관리" user={user} />
+      <ManagerNav activeTab="pricing" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* 탭 메뉴 */}
-        <div className="mb-6">
-          <nav className="flex space-x-8">
+      {/* 탭 메뉴 - sticky로 고정 */}
+      <div className="sticky top-16 z-40 bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav className="flex space-x-8 py-4">
             <button
               onClick={() => setActiveTab('room')}
-              className={`${
-                activeTab === 'room'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
+              className={`${activeTab === 'room'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
             >
               <span>🛏️</span>
               <span>객실 가격</span>
             </button>
             <button
               onClick={() => setActiveTab('car')}
-              className={`${
-                activeTab === 'car'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
+              className={`${activeTab === 'car'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
             >
               <span>🚗</span>
               <span>차량 가격</span>
             </button>
             <button
               onClick={() => setActiveTab('hotel')}
-              className={`${
-                activeTab === 'hotel'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
+              className={`${activeTab === 'hotel'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
             >
               <span>🏨</span>
               <span>호텔 가격</span>
             </button>
             <button
               onClick={() => setActiveTab('tour')}
-              className={`${
-                activeTab === 'tour'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
+              className={`${activeTab === 'tour'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
             >
               <span>🗺️</span>
               <span>투어 가격</span>
             </button>
           </nav>
         </div>
+      </div>
 
+      {/* 메인 컨텐츠 영역 */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 필터 */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <select
@@ -754,7 +737,7 @@ export default function PricingManagement() {
               </option>
             ))}
           </select>
-          
+
           <select
             value={filter.cruise}
             onChange={(e) => setFilter({ ...filter, cruise: e.target.value })}
@@ -767,7 +750,7 @@ export default function PricingManagement() {
               </option>
             ))}
           </select>
-          
+
           <input
             type="date"
             value={filter.startDate}
@@ -775,7 +758,7 @@ export default function PricingManagement() {
             className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="시작일"
           />
-          
+
           <input
             type="date"
             value={filter.endDate}

@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import supabase from '@/lib/supabase';
+import ManagerHeader from '@/components/ManagerHeader';
+import ManagerNav from '@/components/ManagerNav';
 
 export default function CustomerManagement() {
   const router = useRouter();
@@ -86,11 +88,11 @@ export default function CustomerManagement() {
       query = query.order(sortBy, { ascending: sortOrder === 'asc' });
 
       const { data: customerData, error } = await query;
-      
+
       console.log('📊 고객 조회 결과:');
       console.log('  - 고객 수:', customerData?.length || 0);
       console.log('  - 오류:', error?.message || '없음');
-      
+
       if (error) {
         console.error('❌ 고객 데이터 조회 실패:', error);
         setCustomers([]);
@@ -202,7 +204,7 @@ export default function CustomerManagement() {
 
   const getActivityBadge = (lastStatus: string, lastActivity: string) => {
     const daysSince = Math.floor((Date.now() - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (daysSince <= 7) {
       return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">활성</span>;
     } else if (daysSince <= 30) {
@@ -224,26 +226,8 @@ export default function CustomerManagement() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
-              <h1 className="text-3xl font-bold text-gray-900">👥 고객 관리</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-500">매니저: {user?.email}</div>
-              <button
-                onClick={() => router.push('/manager/dashboard')}
-                className="p-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
-                title="대시보드로 이동"
-              >
-                �
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ManagerHeader title="👥 고객 관리" user={user} />
+      <ManagerNav activeTab="customers" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 검색 및 정렬 */}
@@ -335,8 +319,8 @@ export default function CustomerManagement() {
                           {customer.email}
                         </div>
                         <div className="text-xs text-gray-400">
-                          가입일: {formatDate(customer.created_at)} • 
-                          견적 {customer.quote_count}건 • 
+                          가입일: {formatDate(customer.created_at)} •
+                          견적 {customer.quote_count}건 •
                           예약 {customer.confirmed_count}건
                         </div>
                         <div className="mt-1">
@@ -380,7 +364,7 @@ export default function CustomerManagement() {
                   ✕
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">이름</label>
@@ -395,7 +379,7 @@ export default function CustomerManagement() {
                     }}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">전화번호</label>
                   <input

@@ -541,15 +541,15 @@ export default function ReservationExportPage() {
                             <p className="text-gray-600">선택한 조건에 해당하는 데이터가 없습니다.</p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
                             <table className="min-w-full table-auto text-sm">
-                                <thead>
+                                <thead className="sticky top-0 z-10 bg-gray-50">
                                     <tr className="bg-gray-50">
-                                        <th className="px-4 py-2 text-left font-medium text-gray-700">예약 ID</th>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-700">서비스</th>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-700">상태</th>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-700">고객</th>
-                                        <th className="px-4 py-2 text-left font-medium text-gray-700">예약일</th>
+                                        <th className="px-4 py-2 text-left font-medium text-gray-700 bg-gray-50">예약 ID</th>
+                                        <th className="px-4 py-2 text-left font-medium text-gray-700 bg-gray-50">서비스</th>
+                                        <th className="px-4 py-2 text-left font-medium text-gray-700 bg-gray-50">상태</th>
+                                        <th className="px-4 py-2 text-left font-medium text-gray-700 bg-gray-50">고객</th>
+                                        <th className="px-4 py-2 text-left font-medium text-gray-700 bg-gray-50">예약일</th>
                                     </tr>
                                 </thead>
                                 <tbody>

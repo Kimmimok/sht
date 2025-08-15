@@ -576,12 +576,12 @@ export default function ManagerPaymentsPage() {
                   )}
                   <div className="max-h-64 overflow-auto border rounded">
                     <table className="w-full text-sm">
-                      <thead>
+                      <thead className="sticky top-0 z-10 bg-gray-50">
                         <tr className="bg-gray-50 text-gray-600">
-                          <th className="px-3 py-2 text-left">선택</th>
-                          <th className="px-3 py-2 text-left">예약 ID</th>
-                          <th className="px-3 py-2 text-left">상태</th>
-                          <th className="px-3 py-2 text-right">금액</th>
+                          <th className="px-3 py-2 text-left bg-gray-50">선택</th>
+                          <th className="px-3 py-2 text-left bg-gray-50">예약 ID</th>
+                          <th className="px-3 py-2 text-left bg-gray-50">상태</th>
+                          <th className="px-3 py-2 text-right bg-gray-50">금액</th>
                         </tr>
                       </thead>
                       <tbody>

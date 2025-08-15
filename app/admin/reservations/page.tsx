@@ -236,23 +236,23 @@ export default function AdminReservationsPage() {
         {/* 예약 목록 */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {filteredReservations.length > 0 ? (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="sticky top-0 z-10 bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                       예약 정보
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                       사용자
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                       타입
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                       상태
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                       작업
                     </th>
                   </tr>
@@ -275,13 +275,12 @@ export default function AdminReservationsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div
-                          className={`px-2 py-1 text-xs rounded ${
-                            reservation.re_type === 'cruise'
+                          className={`px-2 py-1 text-xs rounded ${reservation.re_type === 'cruise'
                               ? 'bg-blue-100 text-blue-800'
                               : reservation.re_type === 'hotel'
                                 ? 'bg-green-100 text-green-800'
                                 : 'bg-purple-100 text-purple-800'
-                          }`}
+                            }`}
                         >
                           {reservation.re_type === 'cruise'
                             ? '크루즈'
@@ -298,13 +297,12 @@ export default function AdminReservationsPage() {
                           onChange={(e) =>
                             updateReservationStatus(reservation.re_id, e.target.value)
                           }
-                          className={`px-2 py-1 text-xs rounded ${
-                            reservation.re_status === 'confirmed'
+                          className={`px-2 py-1 text-xs rounded ${reservation.re_status === 'confirmed'
                               ? 'bg-green-100 text-green-800'
                               : reservation.re_status === 'cancelled'
                                 ? 'bg-red-100 text-red-800'
                                 : 'bg-yellow-100 text-yellow-800'
-                          }`}
+                            }`}
                         >
                           <option value="pending">대기중</option>
                           <option value="confirmed">확정</option>

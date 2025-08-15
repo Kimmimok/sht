@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import supabase from '@/lib/supabase';
+import ManagerHeader from '@/components/ManagerHeader';
+import ManagerNav from '@/components/ManagerNav';
 
 export default function ServiceManagement() {
   const router = useRouter();
@@ -59,7 +61,7 @@ export default function ServiceManagement() {
   const loadData = async () => {
     try {
       console.log('🔍 서비스 데이터 로딩:', activeTab);
-      
+
       switch (activeTab) {
         case 'rooms':
           const { data: roomPriceData, error: roomError } = await supabase
@@ -67,7 +69,7 @@ export default function ServiceManagement() {
             .select('*')
             .order('room_code')
             .limit(20);
-          
+
           if (roomError) {
             console.error('객실 가격 데이터 로드 실패:', roomError);
             setRooms([]);
@@ -82,14 +84,14 @@ export default function ServiceManagement() {
             setRooms(roomInfoData);
           }
           break;
-        
+
         case 'cars':
           const { data: carPriceData, error: carError } = await supabase
             .from('car_price')
             .select('*')
             .order('car_code')
             .limit(20);
-          
+
           if (carError) {
             console.error('차량 가격 데이터 로드 실패:', carError);
             setCars([]);
@@ -104,7 +106,7 @@ export default function ServiceManagement() {
             setCars(carInfoData);
           }
           break;
-          
+
         case 'cruises':
           // cruise 테이블의 실제 데이터 조회
           const { data: cruiseData, error: cruiseError } = await supabase
@@ -112,7 +114,7 @@ export default function ServiceManagement() {
             .select('cruise_code, cruise_name, schedule_code')
             .order('cruise_name')
             .limit(20);
-          
+
           if (cruiseError) {
             console.error('크루즈 데이터 로드 실패:', cruiseError);
             setCruises([]);
@@ -127,7 +129,7 @@ export default function ServiceManagement() {
             setCruises(cruiseInfoData);
           }
           break;
-        
+
         case 'schedules':
           // 임시 스케줄 데이터 (실제 테이블이 없으므로)
           setSchedules([
@@ -251,14 +253,14 @@ export default function ServiceManagement() {
             </button>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="sticky top-0 z-10 bg-gray-50">
                 <tr>
                   {columns.map((column) => (
                     <th
                       key={column}
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50"
                     >
                       {column}
                     </th>
@@ -329,7 +331,7 @@ export default function ServiceManagement() {
                 ✕
               </button>
             </div>
-            
+
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -350,7 +352,7 @@ export default function ServiceManagement() {
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700">이름</label>
                 <input
@@ -361,7 +363,7 @@ export default function ServiceManagement() {
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700">설명</label>
                 <textarea
@@ -402,31 +404,13 @@ export default function ServiceManagement() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
-              <h1 className="text-3xl font-bold text-gray-900">🛠️ 서비스 관리</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-500">매니저: {user?.email}</div>
-              <button
-                onClick={() => router.push('/manager/dashboard')}
-                className="p-2 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors"
-                title="대시보드로 이동"
-              >
-                �
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ManagerHeader title="🛠️ 서비스 관리" user={user} />
+      <ManagerNav activeTab="services" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* 탭 메뉴 */}
-        <div className="mb-6">
-          <nav className="flex space-x-8">
+      {/* 탭 메뉴 - sticky로 고정 */}
+      <div className="sticky top-16 z-40 bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav className="flex space-x-8 py-4">
             {[
               { key: 'cruises', label: '크루즈', icon: '🚢' },
               { key: 'schedules', label: '일정', icon: '📅' },
@@ -436,11 +420,10 @@ export default function ServiceManagement() {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`${
-                  activeTab === tab.key
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
+                className={`${activeTab === tab.key
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2`}
               >
                 <span>{tab.icon}</span>
                 <span>{tab.label}</span>
@@ -448,7 +431,10 @@ export default function ServiceManagement() {
             ))}
           </nav>
         </div>
+      </div>
 
+      {/* 메인 컨텐츠 영역 */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 서비스 통계 */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white p-4 rounded-lg shadow">
