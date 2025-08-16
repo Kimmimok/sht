@@ -650,7 +650,7 @@ export default function ManagerReservationsPage() {
               {/* 확장된 고객의 상세 예약 목록 */}
               {Array.from(expandedUsers).map(userId => {
                 if (!filteredUsers.includes(userId)) return null;
-
+                
                 const userGroup = groupedReservations[userId];
                 const filteredReservations = (filter === 'all'
                   ? userGroup.reservations
