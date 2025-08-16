@@ -21,6 +21,11 @@ interface ServiceData {
     [key: string]: any;
 }
 
+interface RoomPriceInfo {
+    room_code: string;
+    name: string;
+}
+
 export default function ManagerServiceTablesPage() {
     const [activeTab, setActiveTab] = useState('cruise');
     const [serviceData, setServiceData] = useState<ServiceData[]>([]);
@@ -29,6 +34,10 @@ export default function ManagerServiceTablesPage() {
     const [loadError, setLoadError] = useState<string | null>(null);
     const [selectedItem, setSelectedItem] = useState<ServiceData | null>(null);
     const [showDetails, setShowDetails] = useState(false);
+    const [roomPriceMap, setRoomPriceMap] = useState<Record<string, { cruise: string; room_type: string; name: string }>>({});
+    const [carPriceMap, setCarPriceMap] = useState<Record<string, { car_type?: string }>>({});
+    // 상태: 공항 가격 테이블 맵 추가
+    const [airportPriceMap, setAirportPriceMap] = useState<Record<string, { category?: string; route?: string; car_type?: string }>>({});
 
     const serviceTabs = [
         { id: 'cruise', label: '크루즈', icon: <Ship className="w-4 h-4" />, color: 'blue' },
@@ -180,8 +189,84 @@ export default function ManagerServiceTablesPage() {
         loadServiceData(activeTab);
     }, [activeTab]);
 
+    // 객실 가격 테이블(room_price)에서 객실명, 크루즈, 객실타입 맵 로드
+    useEffect(() => {
+        async function fetchRoomPriceMap() {
+            // 컬럼명: room_code, cruise, room_type, room_category
+            const { data, error } = await supabase
+                .from('room_price')
+                .select('room_code, cruise, room_type, room_category');
+            if (!error && data) {
+                // room_code → {cruise, room_type, name} 맵 생성 (name은 room_category 사용)
+                const map: Record<string, { cruise: string; room_type: string; name: string }> = {};
+                data.forEach((row: any) => {
+                    if (row.room_code) {
+                        map[row.room_code] = {
+                            cruise: row.cruise || '-',
+                            room_type: row.room_type || '-',
+                            name: row.room_category || '-' // 객실명은 room_category 컬럼 사용
+                        };
+                    }
+                });
+                setRoomPriceMap(map);
+            }
+        }
+        fetchRoomPriceMap();
+    }, []); // ← activeTab 의존성 제거, 최초 1회만 로드
+
+    // 차량 가격 테이블(car_price)에서 차량코드별 차량타입(차량명) 맵 로드
+    useEffect(() => {
+        async function fetchCarPriceMap() {
+            const { data, error } = await supabase
+                .from('car_price')
+                .select('car_code, car_type');
+            if (!error && data) {
+                const map: Record<string, { car_type?: string }> = {};
+                data.forEach((row: any) => {
+                    if (row.car_code) {
+                        map[row.car_code] = { car_type: row.car_type || '-' };
+                    }
+                });
+                setCarPriceMap(map);
+            }
+        }
+        fetchCarPriceMap();
+    }, []);
+
+    // 공항 가격 테이블(airport_price)에서 가격코드별 정보 맵 로드 (실제 DB 컬럼명 사용)
+    useEffect(() => {
+        async function fetchAirportPriceMap() {
+            const { data, error } = await supabase
+                .from('airport_price')
+                .select('airport_code, airport_category, airport_route, airport_car_type');
+            if (!error && data) {
+                const map: Record<string, { category?: string; route?: string; car_type?: string }> = {};
+                data.forEach((row: any) => {
+                    if (row.airport_code) {
+                        map[row.airport_code] = {
+                            category: row.airport_category || '-',
+                            route: row.airport_route || '-',
+                            car_type: row.airport_car_type || '-'
+                        };
+                    }
+                });
+                setAirportPriceMap(map);
+            }
+        }
+        fetchAirportPriceMap();
+    }, []);
+
     // 검색 필터링
     const filteredData = serviceData.filter(item => {
+        if (activeTab === 'sht_car') {
+            // 오늘 이후 사용일자만 표시 (usage_date가 오늘 이후)
+            if (!item.usage_date) return false;
+            const usageDate = new Date(item.usage_date);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (usageDate < today) return false;
+        }
+
         if (!searchTerm) return true;
 
         const searchLower = searchTerm.toLowerCase();
@@ -194,6 +279,37 @@ export default function ManagerServiceTablesPage() {
             reservationId.includes(searchLower);
     });
 
+    // 크루즈 체크인별 그룹화 함수 (오늘 이후만)
+    const groupCruiseByCheckin = (data: ServiceData[]) => {
+        // 오늘 이후 체크인만
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const filtered = data.filter(item => {
+            if (!item.checkin) return false;
+            const checkinDate = new Date(item.checkin);
+            return checkinDate >= today;
+        });
+
+        // 체크인 날짜별 그룹화 (오름차순)
+        const groups: Record<string, ServiceData[]> = {};
+        filtered.forEach(item => {
+            const date = item.checkin ? new Date(item.checkin).toISOString().slice(0, 10) : '미지정';
+            if (!groups[date]) groups[date] = [];
+            groups[date].push(item);
+        });
+
+        const sortedKeys = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+        return sortedKeys.map(key => ({
+            groupKey: key,
+            date: key,
+            items: groups[key]
+        }));
+    };
+
+    // 크루즈 탭일 때만 그룹화 데이터 사용
+    const isCruiseTab = activeTab === 'cruise';
+    const groupedCruise = isCruiseTab ? groupCruiseByCheckin(serviceData) : [];
+
     // 서비스별 테이블 컬럼 정의
     const getTableColumns = (serviceType: string) => {
         switch (serviceType) {
@@ -202,43 +318,49 @@ export default function ManagerServiceTablesPage() {
                     { key: 'reservation.users.name', label: '고객명', width: 'w-32' },
                     { key: 'reservation.users.email', label: '이메일', width: 'w-48' },
                     { key: 'checkin', label: '체크인', width: 'w-32', type: 'date' },
-                    { key: 'guest_count', label: '인원', width: 'w-20' },
                     { key: 'room_price_code', label: '객실코드', width: 'w-32' },
+                    { key: 'cruise_name', label: '크루즈', width: 'w-40' }, // 크루즈명
+                    { key: 'room_type_name', label: '객실타입', width: 'w-40' }, // 객실타입명
+                    { key: 'room_name', label: '구분', width: 'w-40' }, // 객실명 추가
+                    { key: 'guest_count', label: '인원', width: 'w-20' },
                     { key: 'room_total_price', label: '총금액', width: 'w-32', type: 'price' },
-                    { key: 'reservation.re_status', label: '상태', width: 'w-24', type: 'status' },
-                    { key: 'created_at', label: '등록일', width: 'w-40', type: 'datetime' }
+                    { key: 'reservation.re_status', label: '상태', width: 'w-24', type: 'status' }
                 ];
             case 'cruise_car':
                 return [
                     { key: 'reservation.users.name', label: '고객명', width: 'w-32' },
                     { key: 'reservation.users.email', label: '이메일', width: 'w-48' },
                     { key: 'car_price_code', label: '차량코드', width: 'w-32' },
+                    { key: 'car_type_name', label: '차량명', width: 'w-32' }, // 차량명(차량타입) 추가
                     { key: 'pickup_location', label: '픽업장소', width: 'w-40' },
                     { key: 'dropoff_location', label: '드롭장소', width: 'w-40' },
+                    { key: 'pickup_datetime', label: '픽업일시', width: 'w-40', type: 'datetime' },
                     { key: 'unit_price', label: '단가', width: 'w-32', type: 'price' },
-                    { key: 'reservation.re_status', label: '상태', width: 'w-24', type: 'status' },
-                    { key: 'created_at', label: '등록일', width: 'w-40', type: 'datetime' }
+                    { key: 'reservation.re_status', label: '상태', width: 'w-24', type: 'status' }
                 ];
             case 'sht_car':
                 return [
-                    { key: 'reservation.users.name', label: '고객명', width: 'w-32' },
-                    { key: 'reservation.users.email', label: '이메일', width: 'w-48' },
+
+                    { key: 'usage_date', label: '사용일자', width: 'w-32', type: 'date' }, // 사용일자(usage_date)
+                    { key: 'sht_category', label: '카테고리', width: 'w-24' }, // 카테고리(sht_category)
                     { key: 'vehicle_number', label: '차량번호', width: 'w-32' },
                     { key: 'seat_number', label: '좌석번호', width: 'w-20' },
-                    { key: 'color_label', label: '색상', width: 'w-20' },
-                    { key: 'pickup_location', label: '픽업장소', width: 'w-40' },
-                    { key: 'dropoff_location', label: '드롭장소', width: 'w-40' },
-                    { key: 'reservation.re_status', label: '상태', width: 'w-24', type: 'status' },
-                    { key: 'created_at', label: '등록일', width: 'w-40', type: 'datetime' }
+                    { key: 'reservation.users.name', label: '고객명', width: 'w-32' },
+                    { key: 'reservation.users.email', label: '이메일', width: 'w-48' },
+                    { key: 'reservation.re_status', label: '상태', width: 'w-24', type: 'status' }
                 ];
             case 'airport':
                 return [
                     { key: 'reservation.users.name', label: '고객명', width: 'w-32' },
                     { key: 'reservation.users.email', label: '이메일', width: 'w-48' },
-                    { key: 'ra_airport_location', label: '공항', width: 'w-32' },
-                    { key: 'ra_datetime', label: '일시', width: 'w-40', type: 'datetime' },
-                    { key: 'ra_passenger_count', label: '승객수', width: 'w-20' },
-                    { key: 'ra_car_count', label: '차량수', width: 'w-20' },
+                    { key: 'airport_price_code', label: '코드', width: 'w-32' }, // 공항 가격 코드 추가
+                    { key: 'airport_category', label: '구분', width: 'w-24' }, // 공항카테고리
+                    { key: 'airport_route', label: '경로', width: 'w-40' },   // 경로
+                    { key: 'airport_car_type', label: '차량', width: 'w-32' }, // 차량타입
+                    { key: 'ra_airport_location', label: '공항', width: 'w-42' },
+                    { key: 'ra_datetime', label: '일시', width: 'w-60', type: 'datetime' },
+                    { key: 'ra_passenger_count', label: '승객', width: 'w-10' },
+                    { key: 'ra_car_count', label: '차량', width: 'w-10' },
                     { key: 'total_price', label: '총금액', width: 'w-32', type: 'price' },
                     { key: 'reservation.re_status', label: '상태', width: 'w-24', type: 'status' }
                 ];
@@ -280,8 +402,42 @@ export default function ManagerServiceTablesPage() {
         }
     };
 
-    // 값 포맷팅
-    const formatValue = (value: any, type?: string) => {
+    // 값 포맷팅 (크루즈명, 객실타입명, 객실명 처리)
+    const formatValue = (value: any, type?: string, row?: any, columnKey?: string) => {
+        // 공항 서비스 매핑 - airport_price_code로 airport_price 테이블 검색
+        if (columnKey === 'airport_category') {
+            const code = row?.airport_price_code;
+            return code && airportPriceMap[code] ? airportPriceMap[code].category : '-';
+        }
+        if (columnKey === 'airport_route') {
+            const code = row?.airport_price_code;
+            return code && airportPriceMap[code] ? airportPriceMap[code].route : '-';
+        }
+        if (columnKey === 'airport_car_type') {
+            const code = row?.airport_price_code;
+            return code && airportPriceMap[code] ? airportPriceMap[code].car_type : '-';
+        }
+
+        // 차량 서비스 매핑
+        if (columnKey === 'car_type_name') {
+            const code = row?.car_price_code;
+            return code && carPriceMap[code] ? carPriceMap[code].car_type : '-';
+        }
+
+        // 크루즈 서비스 매핑
+        if (columnKey === 'cruise_name') {
+            const code = row?.room_price_code;
+            return code && roomPriceMap[code] ? roomPriceMap[code].cruise : '-';
+        }
+        if (columnKey === 'room_type_name') {
+            const code = row?.room_price_code;
+            return code && roomPriceMap[code] ? roomPriceMap[code].room_type : '-';
+        }
+        if (columnKey === 'room_name') {
+            const code = row?.room_price_code;
+            return code && roomPriceMap[code] ? roomPriceMap[code].name : '-';
+        }
+
         if (!value && value !== 0) return '-';
 
         switch (type) {
@@ -321,6 +477,40 @@ export default function ManagerServiceTablesPage() {
         return path.split('.').reduce((o, p) => o?.[p], obj);
     };
 
+    // 상세 정보 표시를 위한 매핑 함수 수정
+    const getEnhancedServiceDetails = (item: ServiceData, serviceType: string) => {
+        const details: Record<string, any> = { ...item };
+
+        switch (serviceType) {
+            case 'cruise':
+                const roomCode = item.room_price_code;
+                if (roomCode && roomPriceMap[roomCode]) {
+                    details['크루즈명'] = roomPriceMap[roomCode].cruise;
+                    details['객실타입'] = roomPriceMap[roomCode].room_type;
+                    details['객실구분'] = roomPriceMap[roomCode].name;
+                }
+                break;
+
+            case 'cruise_car':
+                const carCode = item.car_price_code;
+                if (carCode && carPriceMap[carCode]) {
+                    details['차량타입'] = carPriceMap[carCode].car_type;
+                }
+                break;
+
+            case 'airport':
+                const airportCode = item.airport_price_code;
+                if (airportCode && airportPriceMap[airportCode]) {
+                    details['공항카테고리'] = airportPriceMap[airportCode].category;
+                    details['공항경로'] = airportPriceMap[airportCode].route;
+                    details['공항차량타입'] = airportPriceMap[airportCode].car_type;
+                }
+                break;
+        }
+
+        return details;
+    };
+
     // 상세 보기
     const handleViewDetails = (item: ServiceData) => {
         setSelectedItem(item);
@@ -339,6 +529,99 @@ export default function ManagerServiceTablesPage() {
             </ManagerLayout>
         );
     }
+
+    // sht_car(스하차량) 사용일자+카테고리 기준 그룹화
+    const groupShtCarByDateAndCategory = (data: ServiceData[]) => {
+        // 사용일자(usage_date), 카테고리(sht_category) 기준 그룹화
+        const groups: Record<string, ServiceData[]> = {};
+        data.forEach(item => {
+            const date = item.usage_date ? new Date(item.usage_date).toISOString().slice(0, 10) : '미지정';
+            const category = item.sht_category || '미지정';
+            const key = `${date}__${category}`;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(item);
+        });
+
+        // 사용일자 오름차순, 같은 날짜 내에서는 픽업이 위로 오도록 정렬
+        const sortedKeys = Object.keys(groups).sort((a, b) => {
+            const [dateA, catA] = a.split('__');
+            const [dateB, catB] = b.split('__');
+            if (dateA !== dateB) return dateA < dateB ? -1 : 1; // 오름차순
+            if (catA === '픽업' && catB !== '픽업') return -1;
+            if (catA !== '픽업' && catB === '픽업') return 1;
+            return catA.localeCompare(catB, 'ko-KR');
+        });
+
+        return sortedKeys.map(key => ({
+            groupKey: key,
+            date: key.split('__')[0],
+            category: key.split('__')[1],
+            items: groups[key]
+        }));
+    };
+
+    // sht_car 탭일 때만 그룹화 데이터 사용
+    const isShtCarTab = activeTab === 'sht_car';
+    const groupedShtCar = isShtCarTab ? groupShtCarByDateAndCategory(filteredData) : [];
+
+    // 크루즈 차량 픽업일시 기준 그룹화 함수 추가
+    const groupCruiseCarByPickupDatetime = (data: ServiceData[]) => {
+        // 오늘 이후 픽업일시만
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        // pickup_datetime 기준 그룹화 (날짜만 추출)
+        const groups: Record<string, ServiceData[]> = {};
+        data.forEach(item => {
+            if (!item.pickup_datetime) return;
+            const dt = new Date(item.pickup_datetime);
+            if (dt < today) return; // 오늘 이전은 제외
+            const dateKey = dt.toISOString().slice(0, 10);
+            if (!groups[dateKey]) groups[dateKey] = [];
+            groups[dateKey].push(item);
+        });
+
+        const sortedKeys = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+        return sortedKeys.map(key => ({
+            groupKey: key,
+            date: key,
+            items: groups[key]
+        }));
+    };
+
+    // 크루즈 차량 탭일 때만 그룹화 데이터 사용
+    const isCruiseCarTab = activeTab === 'cruise_car';
+    const groupedCruiseCar = isCruiseCarTab ? groupCruiseCarByPickupDatetime(filteredData) : [];
+
+    // 공항서비스 일시별 그룹화 함수 추가
+    const groupAirportByDatetime = (data: ServiceData[]) => {
+        // 오늘 이후 일시만
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const filtered = data.filter(item => {
+            if (!item.ra_datetime) return false;
+            const dt = new Date(item.ra_datetime);
+            return dt >= today;
+        });
+
+        // ra_datetime 날짜별 그룹화 (오름차순)
+        const groups: Record<string, ServiceData[]> = {};
+        filtered.forEach(item => {
+            const date = item.ra_datetime ? new Date(item.ra_datetime).toISOString().slice(0, 10) : '미지정';
+            if (!groups[date]) groups[date] = [];
+            groups[date].push(item);
+        });
+
+        const sortedKeys = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+        return sortedKeys.map(key => ({
+            groupKey: key,
+            date: key,
+            items: groups[key]
+        }));
+    };
+
+    // 공항서비스 탭일 때만 그룹화 데이터 사용
+    const isAirportTab = activeTab === 'airport';
+    const groupedAirport = isAirportTab ? groupAirportByDatetime(filteredData) : [];
 
     return (
         <ManagerLayout title="서비스별 조회" activeTab="service-tables">
@@ -407,55 +690,257 @@ export default function ManagerServiceTablesPage() {
                         </div>
                     )}
 
-                    {filteredData.length === 0 && !loadError ? (
-                        <div className="p-8 text-center">
-                            <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                            <h3 className="text-lg font-medium text-gray-600 mb-2">데이터가 없습니다</h3>
-                            <p className="text-gray-500">검색 조건을 변경해보세요.</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
-                            <table className="w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50 sticky top-0 z-10">
-                                    <tr>
-                                        {getTableColumns(activeTab).map((column) => (
-                                            <th
-                                                key={column.key}
-                                                className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.width} bg-gray-50`}
-                                            >
-                                                {column.label}
-                                            </th>
-                                        ))}
-                                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20 bg-gray-50">
-                                            상세
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {filteredData.map((item, index) => (
-                                        <tr key={item.id || index} className="hover:bg-gray-50">
+                    {/* 크루즈: 체크인별 그룹화 테이블 */}
+                    {isCruiseTab ? (
+                        groupedCruise.length === 0 && !loadError ? (
+                            <div className="p-8 text-center">
+                                <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                <h3 className="text-lg font-medium text-gray-600 mb-2">데이터가 없습니다</h3>
+                                <p className="text-gray-500">검색 조건을 변경해보세요.</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+                                {groupedCruise.map(group => (
+                                    <div key={group.groupKey} className="mb-8">
+                                        <div className="bg-blue-50 px-4 py-2 rounded-t-lg flex items-center gap-4">
+                                            <Calendar className="w-4 h-4 text-blue-600" />
+                                            <span className="font-semibold text-blue-900">{group.date}</span>
+                                            <span className="ml-2 text-xs text-gray-500">총 {group.items.length}건</span>
+                                        </div>
+                                        <table className="w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50 sticky top-0 z-10">
+                                                <tr>
+                                                    {getTableColumns('cruise').map((column) => (
+                                                        <th
+                                                            key={column.key}
+                                                            className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.width} bg-gray-50`}
+                                                        >
+                                                            {column.label}
+                                                        </th>
+                                                    ))}
+                                                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20 bg-gray-50">
+                                                        상세
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {group.items.map((item, index) => (
+                                                    <tr key={item.id || index} className="hover:bg-gray-50">
+                                                        {getTableColumns('cruise').map((column) => (
+                                                            <td
+                                                                key={column.key}
+                                                                className={`px-6 py-4 text-sm text-gray-900 ${column.width}`}
+                                                            >
+                                                                {formatValue(
+                                                                    column.key === 'room_name'
+                                                                        ? undefined
+                                                                        : getNestedValue(item, column.key),
+                                                                    column.type,
+                                                                    item,
+                                                                    column.key
+                                                                )}
+                                                            </td>
+                                                        ))}
+                                                        <td className="px-6 py-4 text-center">
+                                                            <button
+                                                                onClick={() => handleViewDetails(item)}
+                                                                className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                                                                title="상세 보기"
+                                                            >
+                                                                <Eye className="w-4 h-4" />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ))}
+                            </div>
+                        )
+                    ) : isCruiseCarTab ? (
+                        // 크루즈 차량 탭일 때 그룹화 테이블
+                        groupedCruiseCar.length === 0 && !loadError ? (
+                            <div className="p-8 text-center">
+                                <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                <h3 className="text-lg font-medium text-gray-600 mb-2">데이터가 없습니다</h3>
+                                <p className="text-gray-500">검색 조건을 변경해보세요.</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+                                {groupedCruiseCar.map(group => (
+                                    <div key={group.groupKey} className="mb-8">
+                                        <div className="bg-cyan-50 px-4 py-2 rounded-t-lg flex items-center gap-4">
+                                            <Calendar className="w-4 h-4 text-cyan-600" />
+                                            <span className="font-semibold text-cyan-900">{group.date}</span>
+                                            <span className="ml-2 text-xs text-gray-500">총 {group.items.length}건</span>
+                                        </div>
+                                        <table className="w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50 sticky top-0 z-10">
+                                                <tr>
+                                                    {getTableColumns('cruise_car').map((column) => (
+                                                        <th
+                                                            key={column.key}
+                                                            className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.width} bg-gray-50`}
+                                                        >
+                                                            {column.label}
+                                                        </th>
+                                                    ))}
+                                                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20 bg-gray-50">
+                                                        상세
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {group.items.map((item, index) => (
+                                                    <tr key={item.id || index} className="hover:bg-gray-50">
+                                                        {getTableColumns('cruise_car').map((column) => (
+                                                            <td
+                                                                key={column.key}
+                                                                className={`px-6 py-4 text-sm text-gray-900 ${column.width}`}
+                                                            >
+                                                                {formatValue(
+                                                                    getNestedValue(item, column.key),
+                                                                    column.type,
+                                                                    item,
+                                                                    column.key
+                                                                )}
+                                                            </td>
+                                                        ))}
+                                                        <td className="px-6 py-4 text-center">
+                                                            <button
+                                                                onClick={() => handleViewDetails(item)}
+                                                                className="text-cyan-600 hover:text-cyan-900 p-1 rounded hover:bg-cyan-50"
+                                                                title="상세 보기"
+                                                            >
+                                                                <Eye className="w-4 h-4" />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ))}
+                            </div>
+                        )
+                    ) : isAirportTab ? (
+                        // 공항서비스 탭일 때 그룹화 테이블
+                        groupedAirport.length === 0 && !loadError ? (
+                            <div className="p-8 text-center">
+                                <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                <h3 className="text-lg font-medium text-gray-600 mb-2">데이터가 없습니다</h3>
+                                <p className="text-gray-500">검색 조건을 변경해보세요.</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+                                {groupedAirport.map(group => (
+                                    <div key={group.groupKey} className="mb-8">
+                                        <div className="bg-green-50 px-4 py-2 rounded-t-lg flex items-center gap-4">
+                                            <Calendar className="w-4 h-4 text-green-600" />
+                                            <span className="font-semibold text-green-900">{group.date}</span>
+                                            <span className="ml-2 text-xs text-gray-500">총 {group.items.length}건</span>
+                                        </div>
+                                        <table className="w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50 sticky top-0 z-10">
+                                                <tr>
+                                                    {getTableColumns('airport').map((column) => (
+                                                        <th
+                                                            key={column.key}
+                                                            className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.width} bg-gray-50`}
+                                                        >
+                                                            {column.label}
+                                                        </th>
+                                                    ))}
+                                                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20 bg-gray-50">
+                                                        상세
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {group.items.map((item, index) => (
+                                                    <tr key={item.id || index} className="hover:bg-gray-50">
+                                                        {getTableColumns('airport').map((column) => (
+                                                            <td
+                                                                key={column.key}
+                                                                className={`px-6 py-4 text-sm text-gray-900 ${column.width}`}
+                                                            >
+                                                                {formatValue(
+                                                                    getNestedValue(item, column.key),
+                                                                    column.type,
+                                                                    item,
+                                                                    column.key
+                                                                )}
+                                                            </td>
+                                                        ))}
+                                                        <td className="px-6 py-4 text-center">
+                                                            <button
+                                                                onClick={() => handleViewDetails(item)}
+                                                                className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
+                                                                title="상세 보기"
+                                                            >
+                                                                <Eye className="w-4 h-4" />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                        // 기존(그룹화 없는) 테이블
+                        filteredData.length === 0 && !loadError ? (
+                            <div className="p-8 text-center">
+                                <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                <h3 className="text-lg font-medium text-gray-600 mb-2">데이터가 없습니다</h3>
+                                <p className="text-gray-500">검색 조건을 변경해보세요.</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
+                                <table className="w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50 sticky top-0 z-10">
+                                        <tr>
                                             {getTableColumns(activeTab).map((column) => (
-                                                <td
+                                                <th
                                                     key={column.key}
-                                                    className={`px-6 py-4 text-sm text-gray-900 ${column.width}`}
+                                                    className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.width} bg-gray-50`}
                                                 >
-                                                    {formatValue(getNestedValue(item, column.key), column.type)}
-                                                </td>
+                                                    {column.label}
+                                                </th>
                                             ))}
-                                            <td className="px-6 py-4 text-center">
-                                                <button
-                                                    onClick={() => handleViewDetails(item)}
-                                                    className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
-                                                    title="상세 보기"
-                                                >
-                                                    <Eye className="w-4 h-4" />
-                                                </button>
-                                            </td>
+                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-20 bg-gray-50">
+                                                상세
+                                            </th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {filteredData.map((item, index) => (
+                                            <tr key={item.id || index} className="hover:bg-gray-50">
+                                                {getTableColumns(activeTab).map((column) => (
+                                                    <td
+                                                        key={column.key}
+                                                        className={`px-6 py-4 text-sm text-gray-900 ${column.width}`}
+                                                    >
+                                                        {formatValue(getNestedValue(item, column.key), column.type)}
+                                                    </td>
+                                                ))}
+                                                <td className="px-6 py-4 text-center">
+                                                    <button
+                                                        onClick={() => handleViewDetails(item)}
+                                                        className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                                                        title="상세 보기"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )
                     )}
                 </div>
 
@@ -491,22 +976,61 @@ export default function ManagerServiceTablesPage() {
                                             <div><strong>이메일:</strong> {selectedItem.reservation?.users?.email || '정보 없음'}</div>
                                             <div><strong>전화번호:</strong> {selectedItem.reservation?.users?.phone || '정보 없음'}</div>
                                             <div><strong>예약ID:</strong> {selectedItem.reservation?.re_id || '정보 없음'}</div>
+                                            <div><strong>예약상태:</strong> {getStatusBadge(selectedItem.reservation?.re_status || 'pending')}</div>
                                         </div>
                                     </div>
 
-                                    {/* 서비스 상세 정보 */}
+                                    {/* 서비스 상세 정보 (가격 테이블 매핑 포함) */}
                                     <div className="bg-gray-50 p-4 rounded-lg">
                                         <h4 className="text-md font-semibold text-gray-800 mb-3 flex items-center">
                                             {currentTab?.icon}
                                             서비스 상세
                                         </h4>
                                         <div className="space-y-2 text-sm">
-                                            {Object.entries(selectedItem).map(([key, value]) => {
+                                            {Object.entries(getEnhancedServiceDetails(selectedItem, activeTab)).map(([key, value]) => {
                                                 if (key === 'id' || key === 'reservation_id' || key === 'reservation' ||
                                                     key === 'created_at' || key === 'updated_at') return null;
+
+                                                // 특정 키들에 대해 한글 라벨 적용
+                                                const labelMap: Record<string, string> = {
+                                                    'room_price_code': '객실코드',
+                                                    'car_price_code': '차량코드',
+                                                    'airport_price_code': '공항코드',
+                                                    'checkin': '체크인',
+                                                    'guest_count': '인원수',
+                                                    'room_total_price': '총금액',
+                                                    'pickup_location': '픽업장소',
+                                                    'dropoff_location': '드롭장소',
+                                                    'pickup_datetime': '픽업일시',
+                                                    'unit_price': '단가',
+                                                    'usage_date': '사용일자',
+                                                    'sht_category': '카테고리',
+                                                    'vehicle_number': '차량번호',
+                                                    'seat_number': '좌석번호',
+                                                    'ra_airport_location': '공항',
+                                                    'ra_datetime': '일시',
+                                                    'ra_passenger_count': '승객수',
+                                                    'ra_car_count': '차량수',
+                                                    'total_price': '총금액'
+                                                };
+
+                                                const label = labelMap[key] || key;
+                                                let displayValue = value;
+
+                                                // 날짜/시간 포맷팅
+                                                if (key.includes('datetime') || key === 'ra_datetime') {
+                                                    displayValue = value ? new Date(value).toLocaleString('ko-KR') : '정보 없음';
+                                                } else if (key.includes('date') || key === 'checkin') {
+                                                    displayValue = value ? new Date(value).toLocaleDateString('ko-KR') : '정보 없음';
+                                                } else if (key.includes('price')) {
+                                                    displayValue = value ? `${Number(value).toLocaleString()}원` : '정보 없음';
+                                                } else {
+                                                    displayValue = value ? String(value) : '정보 없음';
+                                                }
+
                                                 return (
                                                     <div key={key}>
-                                                        <strong>{key}:</strong> {value ? String(value) : '정보 없음'}
+                                                        <strong>{label}:</strong> {displayValue}
                                                     </div>
                                                 );
                                             })}
