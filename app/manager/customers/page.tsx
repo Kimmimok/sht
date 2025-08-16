@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import supabase from '@/lib/supabase';
-import ManagerHeader from '@/components/ManagerHeader';
-import ManagerNav from '@/components/ManagerNav';
+import ManagerLayout from '@/components/ManagerLayout';
 
 export default function CustomerManagement() {
   const router = useRouter();
@@ -225,11 +224,8 @@ export default function CustomerManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <ManagerHeader title="👥 고객 관리" user={user} />
-      <ManagerNav activeTab="customers" />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <ManagerLayout title="👥 고객 관리" activeTab="customers">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-6">
         {/* 검색 및 정렬 */}
         <div className="mb-6 flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
@@ -335,12 +331,7 @@ export default function CustomerManagement() {
                       >
                         상세보기
                       </button>
-                      <button
-                        onClick={() => router.push(`/manager/quotes?customer=${customer.id}`)}
-                        className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm"
-                      >
-                        견적 보기
-                      </button>
+
                     </div>
                   </div>
                 </li>
@@ -349,7 +340,6 @@ export default function CustomerManagement() {
           </ul>
         </div>
       </div>
-
       {/* 고객 상세 모달 */}
       {showModal && selectedCustomer && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -428,7 +418,7 @@ export default function CustomerManagement() {
           </div>
         </div>
       )}
-    </div>
+    </ManagerLayout>
   );
 }
 

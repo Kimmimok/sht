@@ -3,8 +3,7 @@ import React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import supabase from '@/lib/supabase';
-import ManagerHeader from './ManagerHeader';
-import ManagerNav from './ManagerNav';
+import ManagerSidebar from './ManagerSidebar';
 
 interface ManagerLayoutProps {
   children: React.ReactNode;
@@ -71,21 +70,24 @@ export default function ManagerLayout({ children, title, activeTab }: ManagerLay
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 overflow-x-hidden">
-      <ManagerHeader user={user} />
-      <ManagerNav activeTab={activeTab} />
-
-      {/* Main Content */}
-      <main className="w-full py-4 pt-6">
-        <div className="px-2 md:px-4 lg:px-6">
-          {title && (
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-            </div>
-          )}
-          {children}
+    <div className="h-screen w-full flex bg-gray-100 overflow-hidden">
+      {/* 좌측 사이드바 */}
+      <ManagerSidebar
+        activeTab={activeTab}
+        userEmail={user?.email}
+        onLogout={handleLogout}
+      />
+      {/* 우측 콘텐츠 영역 */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* 상단 바 (선택적 타이틀) */}
+        <div className="h-16 flex items-center px-4 border-b border-gray-200 bg-white/90 backdrop-blur supports-[backdrop-filter]:backdrop-blur-sm sticky top-0 z-30">
+          {title && <h1 className="text-lg font-semibold text-gray-800 truncate">{title}</h1>}
         </div>
-      </main>
+        <main className="flex-1 overflow-y-auto px-4 py-6">
+          {children}
+          <div className="h-10" />
+        </main>
+      </div>
     </div>
   );
 }

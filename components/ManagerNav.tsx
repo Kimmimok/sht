@@ -4,9 +4,10 @@ import Link from 'next/link';
 
 interface ManagerNavProps {
     activeTab?: string;
+    embedded?: boolean; // 헤더 내부 포함 여부
 }
 
-export default function ManagerNav({ activeTab }: ManagerNavProps) {
+export default function ManagerNav({ activeTab, embedded = false }: ManagerNavProps) {
     const managerTabs = [
         { id: 'analytics', label: '분석 대시보드', path: '/manager/analytics', icon: '📊' },
         { id: 'quotes', label: '견적 관리', path: '/manager/quotes', icon: '📋' },
@@ -24,10 +25,14 @@ export default function ManagerNav({ activeTab }: ManagerNavProps) {
         { id: 'dashboard', label: '대시보드', path: '/manager/dashboard', icon: '🏠' },
     ];
 
+    const containerClasses = embedded
+        ? 'border-t border-b border-gray-200'
+        : 'sticky top-16 z-40 shadow border-b border-gray-200';
+
     return (
-        <nav className="sticky top-16 z-40 bg-white shadow border-b border-gray-200">
+        <nav className={`bg-white ${containerClasses}`}>
             <div className="w-full px-2">
-                <div className="flex space-x-1 overflow-x-auto">
+                <div className="flex space-x-1 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300">
                     {managerTabs.map((tab) => (
                         <Link
                             key={tab.id}

@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import supabase from '@/lib/supabase';
-import ManagerHeader from '@/components/ManagerHeader';
-import ManagerNav from '@/components/ManagerNav';
+import ManagerLayout from '@/components/ManagerLayout';
 
 export default function PricingManagement() {
   const router = useRouter();
@@ -669,9 +668,7 @@ export default function PricingManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <ManagerHeader title="💰 가격 관리" user={user} />
-      <ManagerNav activeTab="pricing" />
+    <ManagerLayout title="💰 가격 관리" activeTab="pricing">
 
       {/* 탭 메뉴 - sticky로 고정 */}
       <div className="sticky top-16 z-40 bg-white shadow-sm border-b border-gray-200">
@@ -722,7 +719,7 @@ export default function PricingManagement() {
       </div>
 
       {/* 메인 컨텐츠 영역 */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-6">
         {/* 필터 */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <select
@@ -803,7 +800,7 @@ export default function PricingManagement() {
 
       {/* 모달 */}
       {renderModal()}
-    </div>
+    </ManagerLayout>
   );
 }
 

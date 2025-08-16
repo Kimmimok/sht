@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import supabase from '@/lib/supabase';
 import { AuthWrapper } from '@/components/AuthWrapper';
 import DatabaseStatusWidget from '@/components/DatabaseStatusWidget';
-import ManagerHeader from '@/components/ManagerHeader';
-import ManagerNav from '@/components/ManagerNav';
+import ManagerLayout from '@/components/ManagerLayout';
 
 export default function ManagerDashboard() {
   const router = useRouter();
@@ -194,9 +193,7 @@ export default function ManagerDashboard() {
 
   return (
     <AuthWrapper allowedRoles={['manager', 'admin']}>
-      <div className="min-h-screen bg-gray-50">
-        <ManagerHeader title="📊 매니저 대시보드" user={user} subtitle="견적 및 예약 운영 관리 시스템" />
-        <ManagerNav activeTab="dashboard" />
+      <ManagerLayout title="📊 매니저 대시보드" activeTab="dashboard">
 
         {/* 통계 카드 */}
         <div className="container mx-auto px-4 py-8">
@@ -320,7 +317,7 @@ export default function ManagerDashboard() {
           {/* 데이터베이스 상태 위젯 - 제일 아래로 이동 */}
           <DatabaseStatusWidget />
         </div>
-      </div>
+      </ManagerLayout>
     </AuthWrapper>
   );
 }

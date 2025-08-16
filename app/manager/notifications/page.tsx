@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import supabase from '@/lib/supabase';
-import ManagerHeader from '@/components/ManagerHeader';
-import ManagerNav from '@/components/ManagerNav';
+import ManagerLayout from '@/components/ManagerLayout';
 
 interface Notification {
   id: string;
@@ -242,11 +241,8 @@ export default function NotificationManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <ManagerHeader title="🔔 알림 관리" user={user} />
-      <ManagerNav activeTab="notifications" />
-
-      <div className="p-6">
+    <ManagerLayout title="🔔 알림 관리" activeTab="notifications">
+      <div className="p-4 sm:p-6">
         {/* 알림 관리 도구 */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex justify-between items-center">
@@ -453,6 +449,6 @@ export default function NotificationManagement() {
           </div>
         )}
       </div>
-    </div>
+    </ManagerLayout>
   );
 }

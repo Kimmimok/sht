@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import supabase from '@/lib/supabase';
-import ManagerHeader from '@/components/ManagerHeader';
-import ManagerNav from '@/components/ManagerNav';
+import ManagerLayout from '@/components/ManagerLayout';
 
 export default function ServiceManagement() {
   const router = useRouter();
@@ -403,9 +402,7 @@ export default function ServiceManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <ManagerHeader title="🛠️ 서비스 관리" user={user} />
-      <ManagerNav activeTab="services" />
+    <ManagerLayout title="🛠️ 서비스 관리" activeTab="services">
 
       {/* 탭 메뉴 - sticky로 고정 */}
       <div className="sticky top-16 z-40 bg-white shadow-sm border-b border-gray-200">
@@ -434,7 +431,7 @@ export default function ServiceManagement() {
       </div>
 
       {/* 메인 컨텐츠 영역 */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-6">
         {/* 서비스 통계 */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white p-4 rounded-lg shadow">
@@ -461,6 +458,6 @@ export default function ServiceManagement() {
 
       {/* 모달 */}
       {renderModal()}
-    </div>
+    </ManagerLayout>
   );
 }
